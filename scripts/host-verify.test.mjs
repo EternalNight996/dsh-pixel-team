@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { actualChangedPaths, missingDeclaredChanges, runHostVerification } from '../lib/host-verify.js'
 import { buildDeliveryReport, writeDeliveryReport } from '../lib/delivery-report.js'
+import { selectCleanupCandidates } from '../lib/cleanup.js'
 import { readFile } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
 
@@ -64,6 +65,22 @@ test('delivery report records host evidence and residual risks', async (t) => {
   assert.match(markdown, /old verdict drift/)
   const path = await writeDeliveryReport(dir, team, markdown)
   assert.match(await readFile(path, 'utf8'), /Residual risks/)
+})
+
+test('cleanup selects only old terminal teams and never the current captain', () => {
+  const now = Date.now()
+  const day = 86_400_000
+  const team = (id, captain, ageDays, status) => ({
+    id, name: id, captainSessionId: captain, createdAt: now - ageDays * day,
+    tasks: [{ id: 't1', subject: 'x', status, updatedAt: now - ageDays * day }],
+  })
+  const candidates = selectCleanupCandidates([
+    team('old', 'other', 10, 'completed'),
+    team('fresh', 'other', 1, 'completed'),
+    team('active', 'other', 10, 'in_progress'),
+    team('current', 'me', 10, 'completed'),
+  ], { now, olderThanDays: 7, excludeCaptainSessionId: 'me' })
+  assert.deepEqual(candidates.map(item => item.id), ['old'])
 })
 
 test('actual changed paths come from git and declared paths must exist', async (t) => {

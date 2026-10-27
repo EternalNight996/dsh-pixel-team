@@ -18,6 +18,7 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { join } from 'node:path'
+import { readdir } from 'node:fs/promises'
 import { appendTeamEvent, captainSessionOf } from './events.ts'
 import {
   amendTaskContract,
@@ -60,6 +61,7 @@ import {
 import { appendTaskEvidence } from './quality-gates.ts'
 import { actualChangedPaths, missingDeclaredChanges, runHostVerification } from './host-verify.ts'
 import { buildDeliveryReport, writeDeliveryReport } from './delivery-report.ts'
+import { selectCleanupCandidates } from './cleanup.ts'
 import {
   artifactDrift,
   bindReviewToRevision,
@@ -2609,6 +2611,86 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         await archiveTeamDir(stateRoot, fresh.id)
       })
       return { deleted: true, team_name: team.name }
+    },
+  }))
+  ctx.tools.register(defineTool({
+    name: 'agent_teams_cleanup',
+    description: 'Archive abandoned terminal teams in this workspace: every task completed/cancelled/failed and the newest activity older than older_than_days (default 7). The current captain team is never touched. Dry-run by default; pass dry_run=false to archive.',
+    parameters: {
+      older_than_days: { type: 'number', description: 'Age cutoff in days (default 7, max 3650).' },
+      dry_run: { type: 'boolean', description: 'Default true. Pass false to actually archive the candidates.' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          dry_run: { type: 'boolean', required: true },
+          candidates: {
+            type: 'array',
+            required: true,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                id: { type: 'string', required: true },
+                name: { type: 'string', required: true },
+                age_days: { type: 'number', required: true },
+                tasks: { type: 'number', required: true },
+              },
+            },
+          },
+          archived: { type: 'array', required: true, items: { type: 'string' } },
+          errors: { type: 'array', items: { type: 'string' } },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: value.candidates.length === 0
+          ? 'Cleanup: no abandoned terminal teams matched.'
+          : `Cleanup ${value.dry_run ? 'dry-run' : 'archived'}: ${value.candidates.map((item) => `${item.id} (${item.age_days}d, ${item.tasks} tasks)`).join('; ')}${value.archived.length ? `\nArchived: ${value.archived.join(', ')}` : ''}${value.errors?.length ? `\nErrors: ${value.errors.join('; ')}` : ''}`,
+      }],
+    },
+    async execute(args, exec) {
+      const captain = requireCaptain(exec)
+      const workspace = workspaceOf(captain)
+      const stateRoot = stateRootOf(workspace, config)
+      const rawDays = args.older_than_days
+      const days = typeof rawDays !== 'number' || !Number.isFinite(rawDays) ? 7 : Math.min(3650, Math.max(0, Math.floor(rawDays)))
+      const dryRun = args.dry_run !== false
+      const teams = []
+      try {
+        for (const entry of await readdir(stateRoot, { withFileTypes: true })) {
+          if (!entry.isDirectory() || entry.name === 'archive') continue
+          try {
+            const candidate = await readTeam(stateRoot, entry.name)
+            if (candidate !== undefined) teams.push(candidate)
+          } catch { /* skip unreadable/foreign dirs */ }
+        }
+      } catch { /* no state root: nothing to clean */ }
+      const candidates = selectCleanupCandidates(teams, {
+        now: Date.now(),
+        olderThanDays: days,
+        excludeCaptainSessionId: captain.id,
+      })
+      const archived: string[] = []
+      const errors: string[] = []
+      if (!dryRun) {
+        for (const candidate of candidates) {
+          try {
+            await archiveTeamDir(stateRoot, candidate.id)
+            archived.push(candidate.id)
+          } catch (error) {
+            errors.push(`${candidate.id}: ${String(error instanceof Error ? error.message : error)}`)
+          }
+        }
+      }
+      return {
+        dry_run: dryRun,
+        candidates: candidates.map((candidate) => ({ id: candidate.id, name: candidate.name, age_days: candidate.ageDays, tasks: candidate.tasks })),
+        archived,
+        ...errors.length === 0 ? {} : { errors },
+      }
     },
   }))
   // Live-member hydration validates saved filters against registered tools.

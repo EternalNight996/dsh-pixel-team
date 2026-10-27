@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.8] - 2026-10-27
+
+### Added
+- `agent_teams_cleanup` archives old terminal teams (dry-run by default,
+  current captain excluded).
+
 ## [0.1.7] - 2026-10-27
 
 ### Added
