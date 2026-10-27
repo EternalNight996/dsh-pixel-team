@@ -22,7 +22,6 @@
     "assets/agent-teams",
     "assets/readme",
     "assets/support",
-    "assets/ui.png",
     "SPONSOR.md",
     "cordis.patch.yml",
     "release-notes",
@@ -35,7 +34,8 @@
     "scripts/legacy-session-source-repair.mjs",
     "dsh-plugin.naming.json",
     "assets/zhulong.ico",
-    "assets/zhulong-icon.png"
+    "assets/zhulong-icon.png",
+    "assets/app-icons"
   ],
   "license": "MIT",
   "author": {

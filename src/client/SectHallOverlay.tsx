@@ -17,6 +17,7 @@ import { TeamConfigPanel } from './TeamConfigPanel.tsx'
 import { PixelOffice, type SceneAction } from './pixel-office/PixelOffice.tsx'
 import { QuickStartWizard } from './QuickStartDialog.tsx'
 import { CULTIVATION_ITEMS, captainKey, cultivationFromXp, idleXpPer10s, memberKey } from './cultivation.ts'
+import { APP_ICON } from './artwork.ts'
 import { useCultivationVersion, xpOf } from './cultivation-store.ts'
 import { OPEN_HALL_SHEET_EVENT, type HallSheetAction } from './hall-events.ts'
 import { ASCENSION_RANKS, ASCENSION_STORY, ASCENSION_TIPS, rankAtLevel } from './immortals.ts'
@@ -1013,7 +1014,10 @@ export function SectHallOverlay({
         >
           <header className={css.head} onPointerDown={beginDrag}>
             <span className={css.caret} aria-hidden>▾</span>
-            <span className={css.title}>⛩ {hall.name}</span>
+            <span className={css.title}>
+              {APP_ICON !== '' && <img className={css.brandIcon} src={APP_ICON} alt="" aria-hidden />}
+              <span className={css.titleText}>{APP_ICON === '' ? '⛩ ' : ''}{hall.name}</span>
+            </span>
             <span className={css.meta}>{hasTeam ? `${done}/${total}` : t('office.hallNoTeam')}</span>
             {hasTeam && (viewingCaptain || viewingMember !== undefined) && (
               <button

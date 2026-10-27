@@ -64,6 +64,9 @@ const KEYWORD_ART: ReadonlyArray<readonly [RegExp, string]> = [
 /** Captain portrait (the sect leader). */
 export const LEAD_ART = art('avatar-captain.png')
 
+/** New app icon (assets/app-icons, embedded as a 64px data URL). */
+export const APP_ICON = art('app-icon.png')
+
 /** Status action artwork per member activity. */
 export const ACTION_ART: Record<'working' | 'idle' | 'unknown', string> = {
   working: art('state-working.png'),

@@ -14,6 +14,8 @@
  */
 /** Captain portrait (the sect leader). */
 export declare const LEAD_ART: string;
+/** New app icon (assets/app-icons, embedded as a 64px data URL). */
+export declare const APP_ICON: string;
 /** Status action artwork per member activity. */
 export declare const ACTION_ART: Record<'working' | 'idle' | 'unknown', string>;
 /**
