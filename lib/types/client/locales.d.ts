@@ -265,6 +265,8 @@ export declare const zh: {
     'office.historyCurrent': string;
     'office.viewingState': string;
     'office.levelUp': string;
+    'office.star': string;
+    'office.starHint': string;
     'office.equipment': string;
     'office.weapon': string;
     'office.mounts': string;
@@ -875,6 +877,8 @@ export declare const en: {
     'office.historyCurrent': string;
     'office.viewingState': string;
     'office.levelUp': string;
+    'office.star': string;
+    'office.starHint': string;
     'office.equipment': string;
     'office.weapon': string;
     'office.mounts': string;

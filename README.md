@@ -177,10 +177,22 @@ Useful docs: [release checklist](docs/release-checklist.md), [maintenance workfl
 
 App icons live in `assets/app-icons/` (desktop, web, iOS, Android) and the plugin ships `assets/zhulong.ico` / `assets/zhulong-icon.png` for app packaging.
 
-## 💛 Community & support
+## 💬 Community
 
-- QQ group, WeChat support QRs and product updates are in **宗门志** after install.
-- Sponsorship is voluntary; MIT stays free. See [SPONSOR.md](SPONSOR.md).
+**Questions, ideas, or DSH plugin talk — join the QQ group:**
+
+| QQ group |
+|:---:|
+| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="240" alt="QQ group QR" /> |
+
+**Buy the author a coffee (optional):**
+
+| WeChat Pay | WeChat Reward |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" width="200" alt="WeChat Pay QR" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" width="200" alt="WeChat Reward QR" /> |
+
+> Sponsorship is optional and changes nothing; the plugin stays MIT and free. See [SPONSOR.md](SPONSOR.md).
+
 - Issues: https://github.com/EternalNight996/dsh-pixel-team/issues
 - Maintained and published by **惠州市梦游科技有限公司** (Huizhou Mengyou Technology Co., Ltd.).
 

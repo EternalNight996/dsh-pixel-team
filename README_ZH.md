@@ -177,10 +177,22 @@
 
 应用图标在 `assets/app-icons/`（桌面 / Web / iOS / Android），插件同时携带 `assets/zhulong.ico` 与 `assets/zhulong-icon.png` 供应用打包使用。
 
-## 💛 社区与支持
+## 💬 交流群 & 赞助
 
-- 安装后可在 **宗门志** 查看 QQ 群、微信支持码与产品更新。
-- 赞助完全自愿，MIT 始终免费；见 [SPONSOR.md](SPONSOR.md)。
+**有问题、想法，或想聊 DSH 插件——扫码进 QQ 交流群：**
+
+| QQ 交流群 |
+|:---:|
+| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="240" alt="QQ 交流群二维码" /> |
+
+**请作者喝杯咖啡（完全自愿）：**
+
+| 微信收款码 | 微信赞赏码 |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" width="200" alt="微信收款码" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" width="200" alt="微信赞赏码" /> |
+
+> 赞助完全自愿，不影响任何功能；插件本体始终开源免费（MIT）。见 [SPONSOR.md](SPONSOR.md)。
+
 - Issues：https://github.com/EternalNight996/dsh-pixel-team/issues
 - 由 **惠州市梦游科技有限公司** 维护与发布。
 

@@ -1019,6 +1019,18 @@ export function SectHallOverlay({
               <span className={css.titleText}>{APP_ICON === '' ? '⛩ ' : ''}{hall.name}</span>
             </span>
             <span className={css.meta}>{hasTeam ? `${done}/${total}` : t('office.hallNoTeam')}</span>
+            <a
+              className={css.starLink}
+              href={`${PLUGIN_REPO}/stargazers`}
+              target="_blank"
+              rel="noreferrer"
+              title={t('office.starHint')}
+              aria-label={t('office.starHint')}
+              onPointerDown={(event) => { event.stopPropagation() }}
+            >
+              <span aria-hidden>⭐</span>
+              <span className={css.starLabel}>{t('office.star')}</span>
+            </a>
             {hasTeam && (viewingCaptain || viewingMember !== undefined) && (
               <button
                 type="button"
