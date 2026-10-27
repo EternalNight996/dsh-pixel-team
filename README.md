@@ -59,6 +59,17 @@ It is a real team runtime in a pixel coat:
 
 **Open a sect, hand it a goal, approve the plan, and watch the work move.**
 
+## 🆚 Not another agent dashboard
+
+|  | Typical agent UI | dsh-pixel-team |
+|---|---|---|
+| Who is working | log rows | cultivators at their desks |
+| What is blocked | status text | merit stele + dependency edges |
+| Review | optional | independent gate |
+| Progress | a percentage | 15 realms, gear and mounts |
+| State | a cloud account | your workspace, local-first |
+| Fun | none | honestly, a lot |
+
 ## ✨ Why you'll love it
 
 - 🏯 **A hall, not a dashboard** — six clickable facilities, a floor bar, and a living pixel scene. Click a cultivator to open their conversation; click the level badge to open gear.
