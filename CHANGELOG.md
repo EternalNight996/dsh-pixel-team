@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2] - 2026-10-27
+
+### Fixed
+- Stop button is danger-red; stop confirmation is an anchored popover instead of a centered
+  modal that could be covered by the progress panel.
+- "结束旧宗门并开新宗" is a red action; after explicit confirmation the host ends the current
+  team even with live work, then founds the new sect.
+- Existing-sect copy points to the red action instead of an invisible right pane.
+
 ## [0.1.1] - 2026-10-27
 
 ### Changed
