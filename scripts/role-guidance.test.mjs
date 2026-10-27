@@ -8,6 +8,7 @@ import test from 'node:test'
 import { ROLE_CONTRACT_IDS, roleGuidance } from '../lib/role-guidance.js'
 import { buildQuickStartPlan } from '../lib/quick-start.js'
 import { memberPersona } from '../lib/members.js'
+import { resolveTeamProfile } from '../lib/profiles.js'
 
 test('software roles expose bounded contracts with ownership, rules and done', () => {
   for (const role of ['frontend', 'backend', 'integrator', 'verifier', 'reviewer', 'security']) {
@@ -71,6 +72,37 @@ test('the fix/feat/array templates emit quality contracts, not ordinary work', (
   assert.equal(arrayById.get('refactor')?.kind, 'implementation')
   assert.equal(arrayById.get('review')?.kind, 'review')
   assert.equal(arrayById.get('review')?.reviewedTaskId, 'refactor')
+})
+
+test('profile seed tasks can declare quality contracts and review targets', () => {
+  const profile = resolveTeamProfile({
+    quality: {
+      taskPlanning: 'seed',
+      members: [
+        { name: 'builder', role: 'implementer' },
+        { name: 'checker', role: 'verifier' },
+        { name: 'critic', role: 'reviewer' },
+      ],
+      tasks: [
+        { id: 'impl', subject: 'ship parser', assignee: 'builder', kind: 'implementation', objective: 'Ship the parser', inScope: ['src/'], verify: ['pnpm typecheck'], acceptance: ['parser accepts empty input'] },
+        { id: 'verify', subject: 'verify parser', assignee: 'checker', kind: 'verification', dependencies: ['impl'], objective: 'Verify the parser', acceptance: ['declared commands pass'] },
+        { id: 'review', subject: 'review parser', assignee: 'critic', kind: 'review', dependencies: ['verify'], reviewedTaskId: 'impl', objective: 'Review the parser', acceptance: ['implementation satisfies the goal'] },
+      ],
+    },
+  }, 'quality', 8)
+  const byId = new Map(profile.tasks.map(task => [task.id, task]))
+  assert.equal(byId.get('impl')?.kind, 'implementation')
+  assert.deepEqual(byId.get('impl')?.inScope, ['src/'])
+  assert.deepEqual(byId.get('impl')?.verify, ['pnpm typecheck'])
+  assert.equal(byId.get('review')?.reviewedTaskId, 'impl')
+
+  assert.throws(() => resolveTeamProfile({
+    broken: {
+      taskPlanning: 'seed',
+      members: [{ name: 'builder', role: 'implementer' }],
+      tasks: [{ id: 'impl', subject: 'ship parser', assignee: 'builder', kind: 'implementation', objective: 'Ship', inScope: ['src/'], verify: ['pnpm typecheck'] }],
+    },
+  }, 'broken', 8), /acceptance/)
 })
 
 test('the fullstack template becomes a quality DAG when disjoint layers exist', () => {

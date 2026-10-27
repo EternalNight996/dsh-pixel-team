@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5] - 2026-10-27
+
+### Added
+- Profile seed tasks support quality kinds and full contracts, including
+  reviewed/source seed-id mapping.
+- Host audits declared changedPaths against the real git diff on implementation
+  and repair completion.
+
 ## [0.1.4] - 2026-10-27
 
 ### Changed

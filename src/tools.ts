@@ -58,7 +58,7 @@ import {
   taskKindOf,
 } from './state.ts'
 import { appendTaskEvidence } from './quality-gates.ts'
-import { runHostVerification } from './host-verify.ts'
+import { actualChangedPaths, missingDeclaredChanges, runHostVerification } from './host-verify.ts'
 import {
   artifactDrift,
   bindReviewToRevision,
@@ -1868,7 +1868,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
 
   ctx.tools.register(defineTool({
     name: 'agent_teams_update_task',
-    description: 'Update a task status/output. Members must supply the current attempt_id returned by claim_task; stale attempts are rejected after takeover/reassignment. The host re-runs declared verify commands when a quality task completes and rejects the update on a real failure; self-reported passes are not delivery evidence. Terminal results are immutable, but owners and the captain can append acceptanceResults/commandsRun/evidence_note as attributed supplemental evidence, without reclaiming or changing the verdict. A captain must use reassign_task(assignee="captain") before updating active member-owned work.',
+    description: 'Update a task status/output. Members must supply the current attempt_id returned by claim_task; stale attempts are rejected after takeover/reassignment. The host re-runs declared verify commands when a quality task completes and checks implementation/repair changedPaths against the real git diff; self-reported passes or invented paths are not delivery evidence. Terminal results are immutable, but owners and the captain can append acceptanceResults/commandsRun/evidence_note as attributed supplemental evidence, without reclaiming or changing the verdict. A captain must use reassign_task(assignee="captain") before updating active member-owned work.',
     parameters: {
       task_id: { type: 'string', required: true, description: 'The task id to update.' },
       attempt_id: { type: 'string', description: 'Members must explicitly include the current attempt_id from their assignment/claim in EVERY update, including failed reviews with findings. If omitted, retry with the same current id; omission does not revoke the attempt.' },
@@ -2003,9 +2003,9 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         const findings = parseFindings(args.findings)
         const acceptanceResults = parseAcceptanceResults(args.acceptanceResults)
         let commandsRun = parseCommandResults(args.commandsRun)
-        if (args.status === 'completed' && isQualityKind(taskKindOf(task)) && (task.verify?.length ?? 0) > 0) {
+        if (args.status === 'completed' && isQualityKind(taskKindOf(task))) {
           // Check the transition/contract first, so a claimed task cannot run
-          // verification commands on its way to an illegal direct completion.
+          // workspace checks on its way to an illegal direct completion.
           const preliminary = evaluateQualityCompletion(task, {
             status: args.status,
             output: args.output,
@@ -2016,12 +2016,24 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             commandsRun,
           })
           if (!preliminary.ok) throw new Error(preliminary.error ?? 'update_task rejected by quality gates')
-          const hostResults = await runHostVerification(workspace, task.verify ?? [])
-          const failed = hostResults.find((item) => item.status === 'failed')
-          if (failed !== undefined) {
-            throw new Error(`host verification failed for "${failed.command}"\n${failed.evidence ?? ''}`)
+          const kind = taskKindOf(task)
+          if ((kind === 'implementation' || kind === 'repair') && (input.changedPaths?.length ?? 0) > 0) {
+            const actual = await actualChangedPaths(workspace)
+            if (actual !== undefined) {
+              const missing = missingDeclaredChanges(actual, input.changedPaths ?? [])
+              if (missing.length > 0) {
+                throw new Error(`declared changedPaths are not present in the workspace: ${missing.join(', ')}`)
+              }
+            }
           }
-          commandsRun = hostResults
+          if ((task.verify?.length ?? 0) > 0) {
+            const hostResults = await runHostVerification(workspace, task.verify ?? [])
+            const failed = hostResults.find((item) => item.status === 'failed')
+            if (failed !== undefined) {
+              throw new Error(`host verification failed for "${failed.command}"\n${failed.evidence ?? ''}`)
+            }
+            commandsRun = hostResults
+          }
         }
         const gate = evaluateQualityCompletion(task, {
           status: args.status,
@@ -2685,6 +2697,18 @@ async function initializeProfileTeam(input: {
       attempt: 0,
       createdAt: now,
       updatedAt: now,
+      ...template.kind === undefined ? {} : { kind: template.kind },
+      ...template.objective === undefined ? {} : { objective: template.objective },
+      ...template.inScope === undefined ? {} : { inScope: template.inScope },
+      ...template.outOfScope === undefined ? {} : { outOfScope: template.outOfScope },
+      ...template.acceptance === undefined ? {} : { acceptance: template.acceptance },
+      ...template.verify === undefined ? {} : { verify: template.verify },
+      ...template.deliverables === undefined ? {} : { deliverables: template.deliverables },
+      ...template.nonGoals === undefined ? {} : { nonGoals: template.nonGoals },
+      ...template.coverageOf === undefined ? {} : { coverageOf: template.coverageOf },
+      ...template.reviewedTaskId === undefined ? {} : { reviewedTaskId: seedToActual.get(template.reviewedTaskId) ?? template.reviewedTaskId },
+      ...template.sourceTaskId === undefined ? {} : { sourceTaskId: seedToActual.get(template.sourceTaskId) ?? template.sourceTaskId },
+      ...template.sourceFindingIds === undefined ? {} : { sourceFindingIds: template.sourceFindingIds },
     })),
     taskSeq: profile.tasks.length,
   }

@@ -8,6 +8,7 @@
  *
  * @module dsh-agent-teams/profiles
  */
+import type { TaskKind } from './types.ts';
 /** Hard cap on named profiles so the usage prompt cannot grow without bound. */
 export declare const MAX_TEAM_PROFILES = 16;
 /** Hard cap on seed tasks per profile. The software-delivery example has 13. */
@@ -40,6 +41,18 @@ export interface TeamProfileTaskConfig {
     description?: string;
     assignee?: string;
     dependencies?: string[];
+    kind?: TaskKind;
+    objective?: string;
+    inScope?: string[];
+    outOfScope?: string[];
+    acceptance?: string[];
+    verify?: string[];
+    deliverables?: string[];
+    nonGoals?: string[];
+    reviewedTaskId?: string;
+    sourceTaskId?: string;
+    sourceFindingIds?: string[];
+    coverageOf?: string[];
 }
 /** One named team-profile template from plugin config. */
 export interface TeamProfileConfig {
@@ -76,6 +89,18 @@ export interface NormalizedProfileTask {
     assignee?: string;
     dependencies: string[];
     sourceIndex: number;
+    kind?: TaskKind;
+    objective?: string;
+    inScope?: string[];
+    outOfScope?: string[];
+    acceptance?: string[];
+    verify?: string[];
+    deliverables?: string[];
+    nonGoals?: string[];
+    reviewedTaskId?: string;
+    sourceTaskId?: string;
+    sourceFindingIds?: string[];
+    coverageOf?: string[];
 }
 /** A fully validated, topologically ordered team profile. */
 export interface NormalizedTeamProfile {

@@ -10,6 +10,8 @@
  */
 
 import { CAPTAIN_KEY, sanitizeKey } from './state.ts'
+import { isQualityKind, isTaskKind } from './quality-gates.ts'
+import type { TaskKind } from './types.ts'
 
 /** Hard cap on named profiles so the usage prompt cannot grow without bound. */
 export const MAX_TEAM_PROFILES = 16
@@ -22,7 +24,7 @@ const PROFILE_KEYS = ['description', 'protocol', 'executionPrompt', 'fallback', 
 const REVIEW_POLICY_KEYS = ['requirementsMinRounds', 'requirementsMaxRounds', 'codeMaxRounds', 'maxRepairAttempts', 'requiredReviewers'] as const
 const MEMBER_KEYS = ['name', 'role', 'provider', 'model', 'reasoning_effort', 'executionPrompt', 'fallback', 'tool_policy'] as const
 const FALLBACK_KEYS = ['provider', 'model'] as const
-const TASK_KEYS = ['id', 'subject', 'description', 'assignee', 'dependencies'] as const
+const TASK_KEYS = ['id', 'subject', 'description', 'assignee', 'dependencies', 'kind', 'objective', 'inScope', 'outOfScope', 'acceptance', 'verify', 'deliverables', 'nonGoals', 'reviewedTaskId', 'sourceTaskId', 'sourceFindingIds', 'coverageOf'] as const
 
 /** One member row in a named team-profile template (unresolved). */
 export interface TeamModelFallbackConfig {
@@ -52,6 +54,18 @@ export interface TeamProfileTaskConfig {
   description?: string
   assignee?: string
   dependencies?: string[]
+  kind?: TaskKind
+  objective?: string
+  inScope?: string[]
+  outOfScope?: string[]
+  acceptance?: string[]
+  verify?: string[]
+  deliverables?: string[]
+  nonGoals?: string[]
+  reviewedTaskId?: string
+  sourceTaskId?: string
+  sourceFindingIds?: string[]
+  coverageOf?: string[]
 }
 
 /** One named team-profile template from plugin config. */
@@ -91,6 +105,18 @@ export interface NormalizedProfileTask {
   assignee?: string
   dependencies: string[]
   sourceIndex: number
+  kind?: TaskKind
+  objective?: string
+  inScope?: string[]
+  outOfScope?: string[]
+  acceptance?: string[]
+  verify?: string[]
+  deliverables?: string[]
+  nonGoals?: string[]
+  reviewedTaskId?: string
+  sourceTaskId?: string
+  sourceFindingIds?: string[]
+  coverageOf?: string[]
 }
 
 /** A fully validated, topologically ordered team profile. */
@@ -385,6 +411,21 @@ function normalizeListedProfile(
     draftTasks.push(task)
   }
 
+  for (const task of draftTasks) {
+    if (task.reviewedTaskId !== undefined) {
+      if (task.reviewedTaskId === task.id) throw new Error(`profile task "${task.id}" cannot review itself`)
+      if (!taskById.has(task.reviewedTaskId)) {
+        throw new Error(`profile task "${task.id}" reviews unknown seed task "${task.reviewedTaskId}"`)
+      }
+    }
+    if (task.sourceTaskId !== undefined) {
+      if (task.sourceTaskId === task.id) throw new Error(`profile task "${task.id}" cannot repair itself`)
+      if (!taskById.has(task.sourceTaskId)) {
+        throw new Error(`profile task "${task.id}" repairs unknown seed task "${task.sourceTaskId}"`)
+      }
+    }
+  }
+
   const tasks = topoSortTasks(draftTasks, listed.name)
   return omitUndefined({
     name: listed.name,
@@ -513,6 +554,37 @@ function normalizeTask(
     memberByName,
     memberByKey,
   )
+  const kindRaw = raw['kind']
+  if (kindRaw !== undefined && !isTaskKind(kindRaw)) {
+    throw new Error(`${path}.kind must be one of work, requirements, implementation, verification, review, repair, integration`)
+  }
+  const kind = kindRaw as TaskKind | undefined
+  const objective = optionalNonEmptyString(raw['objective'], `${path}.objective`)
+  const inScope = normalizeOptionalStringList(raw['inScope'], `${path}.inScope`)
+  const outOfScope = normalizeOptionalStringList(raw['outOfScope'], `${path}.outOfScope`)
+  const acceptance = normalizeOptionalStringList(raw['acceptance'], `${path}.acceptance`)
+  const verify = normalizeOptionalStringList(raw['verify'], `${path}.verify`)
+  const deliverables = normalizeOptionalStringList(raw['deliverables'], `${path}.deliverables`)
+  const nonGoals = normalizeOptionalStringList(raw['nonGoals'], `${path}.nonGoals`)
+  const reviewedTaskId = optionalNonEmptyString(raw['reviewedTaskId'], `${path}.reviewedTaskId`)
+  const sourceTaskId = optionalNonEmptyString(raw['sourceTaskId'], `${path}.sourceTaskId`)
+  const sourceFindingIds = normalizeOptionalStringList(raw['sourceFindingIds'], `${path}.sourceFindingIds`)
+  const coverageOf = normalizeOptionalStringList(raw['coverageOf'], `${path}.coverageOf`)
+
+  if (kind !== undefined && isQualityKind(kind)) {
+    if (objective === undefined) throw new Error(`profile task "${id}" (${kind}) requires a non-empty objective`)
+    if (acceptance === undefined) throw new Error(`profile task "${id}" (${kind}) requires at least one acceptance criterion`)
+    if ((kind === 'implementation' || kind === 'repair') && (inScope === undefined || verify === undefined)) {
+      throw new Error(`profile task "${id}" (${kind}) requires inScope and verify`)
+    }
+    if (kind === 'review' && reviewedTaskId === undefined) {
+      throw new Error(`profile task "${id}" (review) requires reviewedTaskId`)
+    }
+    if (kind === 'repair' && (sourceTaskId === undefined || sourceFindingIds === undefined)) {
+      throw new Error(`profile task "${id}" (repair) requires sourceTaskId and sourceFindingIds`)
+    }
+  }
+
   return omitUndefined({
     id,
     subject,
@@ -520,7 +592,34 @@ function normalizeTask(
     assignee,
     dependencies,
     sourceIndex,
+    kind,
+    objective,
+    inScope,
+    outOfScope,
+    acceptance,
+    verify,
+    deliverables,
+    nonGoals,
+    reviewedTaskId,
+    sourceTaskId,
+    sourceFindingIds,
+    coverageOf,
   })
+}
+
+function normalizeOptionalStringList(value: unknown, path: string): string[] | undefined {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) throw new Error(`${path} must be an array of strings`)
+  const items: string[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const item = value[index]
+    if (typeof item !== 'string' || item.trim() === '') {
+      throw new Error(`${path}[${index}] must be a non-empty string`)
+    }
+    items.push(item.trim())
+  }
+  if (items.length === 0) throw new Error(`${path} must not be empty`)
+  return items
 }
 
 function normalizeDependencies(value: unknown, path: string, taskId: string): string[] {
