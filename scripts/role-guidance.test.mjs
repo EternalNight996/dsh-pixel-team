@@ -124,6 +124,26 @@ test('the fullstack template becomes a quality DAG when disjoint layers exist', 
   assert.equal(byId.get('review')?.reviewedTaskId, 'integrate')
 })
 
+test('hardening and build templates emit quality contracts', () => {
+  const harden = buildQuickStartPlan('harden the login flow', 'hardening')
+  const hardenById = new Map(harden.tasks.map(task => [task.id, task]))
+  assert.equal(hardenById.get('audit')?.kind, 'requirements')
+  assert.equal(hardenById.get('fix')?.kind, 'implementation')
+  assert.ok((hardenById.get('fix')?.inScope ?? []).length > 0)
+  assert.equal(hardenById.get('verify')?.kind, 'verification')
+  assert.equal(hardenById.get('review')?.kind, 'review')
+  assert.equal(hardenById.get('review')?.reviewedTaskId, 'fix')
+
+  const build = buildQuickStartPlan('ship v1', 'build')
+  const buildById = new Map(build.tasks.map(task => [task.id, task]))
+  assert.equal(buildById.get('impl')?.kind, 'implementation')
+  assert.equal(buildById.get('verify')?.kind, 'verification')
+  assert.equal(buildById.get('release')?.kind, 'integration')
+  assert.equal(buildById.get('review')?.kind, 'review')
+  assert.equal(buildById.get('review')?.reviewedTaskId, 'release')
+  assert.ok(build.members.some(member => member.role === 'reviewer'))
+})
+
 test('the hardening template audits, fixes minimally, verifies and reviews', () => {
   const plan = buildQuickStartPlan('harden the login flow', 'hardening')
   const roles = plan.members.map(member => member.role)

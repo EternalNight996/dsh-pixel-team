@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10] - 2026-10-27
+
+### Added
+- Hardening quick-start emits a requirements → implementation → verification
+  → review quality DAG.
+- Build quick-start emits implementation → verification → integration →
+  review with a reviewer role.
+
 ## [0.1.9] - 2026-10-27
 
 ### Added
