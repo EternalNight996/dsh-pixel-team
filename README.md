@@ -181,9 +181,9 @@ App icons live in `assets/app-icons/` (desktop, web, iOS, Android) and the plugi
 
 **Questions, ideas, or DSH plugin talk — join the QQ group:**
 
-| QQ group |
-|:---:|
-| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="240" alt="QQ group QR" /> |
+| QQ group | WeChat group |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ group QR" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="WeChat group QR" /> |
 
 **Buy the author a coffee (optional):**
 

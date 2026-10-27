@@ -181,9 +181,9 @@
 
 **有问题、想法，或想聊 DSH 插件——扫码进 QQ 交流群：**
 
-| QQ 交流群 |
-|:---:|
-| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="240" alt="QQ 交流群二维码" /> |
+| QQ 交流群 | 微信交流群 |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ 交流群二维码" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="微信交流群二维码" /> |
 
 **请作者喝杯咖啡（完全自愿）：**
 
