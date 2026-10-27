@@ -14,6 +14,7 @@ import { join } from 'node:path'
 import { memberActivity } from './members.ts'
 import { canDeclareDelivery, describeQualityLoop, verdictAuditNotes } from './quality-gates.ts'
 import type { DeliveryEvidence } from './quality-gates.ts'
+import { buildDeliveryReport } from './delivery-report.ts'
 import { auditTeamWorkspace } from './workspace-audit.ts'
 import {
   CAPTAIN_KEY, listArchivedTeamIds, readArchivedTeam, readMailbox, readUnreadMailbox, readTeam,
@@ -102,7 +103,7 @@ export interface TeamActivitySnapshot {
   /** Present when the snapshot could audit the workspace bytes. */
   readonly loopState?: string
   readonly deliverable?: boolean
-  readonly delivery?: { readonly ok: boolean; readonly blockers: readonly string[]; readonly warnings: readonly string[]; readonly evidence: DeliveryEvidence }
+  readonly delivery?: { readonly ok: boolean; readonly blockers: readonly string[]; readonly warnings: readonly string[]; readonly evidence: DeliveryEvidence; readonly report?: string }
 }
 
 /** Snapshot projection switches for live and archived teams. */
@@ -250,7 +251,13 @@ export async function assembleTeamSnapshot(
     ...audit === undefined ? {} : {
       loopState: loop.state,
       deliverable: loop.deliverable,
-      delivery: { ok: deliveryCheck.ok, blockers: [...deliveryCheck.blockers], warnings: [...deliveryCheck.warnings], evidence: deliveryCheck.evidence },
+      delivery: {
+        ok: deliveryCheck.ok,
+        blockers: [...deliveryCheck.blockers],
+        warnings: [...deliveryCheck.warnings],
+        evidence: deliveryCheck.evidence,
+        ...deliveryCheck.ok ? { report: buildDeliveryReport(state, deliveryCheck) } : {},
+      },
     },
     members,
     tasks: tasks.map((task) => ({

@@ -41,6 +41,8 @@ export declare const zh: {
     'activity.dockRight': string;
     'activity.collapse': string;
     'activity.empty': string;
+    'team.report': string;
+    'team.reportHint': string;
     'team.stop': string;
     'team.stopped': string;
     'team.stopTitle': string;
@@ -653,6 +655,8 @@ export declare const en: {
     'activity.dockRight': string;
     'activity.collapse': string;
     'activity.empty': string;
+    'team.report': string;
+    'team.reportHint': string;
     'team.stop': string;
     'team.stopped': string;
     'team.stopTitle': string;

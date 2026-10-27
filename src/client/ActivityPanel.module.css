@@ -537,6 +537,32 @@
   font-size: 11px;
 }
 
+.reportButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  flex: none;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 7%, transparent);
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.reportButton:hover {
+  border-color: var(--dsw-alias-state-business-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent);
+}
+
+.reportButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
 .teamStopButton {
   display: grid;
   width: 26px;

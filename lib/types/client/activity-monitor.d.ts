@@ -63,6 +63,12 @@ export interface ActivityTeam {
     readonly tasks: readonly ActivityTask[];
     readonly messageCount: number;
     readonly captainInbox: readonly ActivityMessage[];
+    readonly delivery?: {
+        readonly ok: boolean;
+        readonly blockers: readonly string[];
+        readonly warnings: readonly string[];
+        readonly report?: string;
+    };
     /** Recent captain↔member messages, oldest first. */
     readonly messages?: readonly ActivityMessage[];
 }

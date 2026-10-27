@@ -91,6 +91,7 @@ export interface TeamActivitySnapshot {
         readonly blockers: readonly string[];
         readonly warnings: readonly string[];
         readonly evidence: DeliveryEvidence;
+        readonly report?: string;
     };
 }
 /** Snapshot projection switches for live and archived teams. */

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.9] - 2026-10-27
+
+### Added
+- Activity panel delivery-report export button; downloads the verified report
+  from the authenticated snapshot.
+
 ## [0.1.8] - 2026-10-27
 
 ### Added

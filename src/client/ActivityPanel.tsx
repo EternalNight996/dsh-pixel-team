@@ -29,6 +29,17 @@ import { PixelOffice } from './pixel-office/PixelOffice.tsx'
 import { currentSessionId } from './session-navigation.ts'
 import { roleLabel } from './role-labels.ts'
 import { realmPaletteForLevel } from './realm-colors.ts'
+
+function downloadDeliveryReport(team: ActivityTeam): void {
+  const report = team.delivery?.report
+  if (report === undefined) return
+  const url = URL.createObjectURL(new Blob([report], { type: 'text/markdown;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `delivery-report-${team.teamId}.md`
+  link.click()
+  URL.revokeObjectURL(url)
+}
 import type { ModelDirectory, ModelDirectoryResolver } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -689,6 +700,18 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
             <span data-stat="tasks">{t('team.stats.completed', { completed: completedCount, total: team.tasks.length })}</span>
             <span data-stat="messages">{t('team.stats.messages', { count: team.messageCount })}</span>
           </span>
+          {team.delivery?.ok === true && team.delivery.report !== undefined && (
+            <button
+              type="button"
+              className={css.reportButton}
+              aria-label={t('team.report')}
+              title={t('team.reportHint')}
+              onClick={() => { downloadDeliveryReport(team) }}
+            >
+              <span aria-hidden>⤓</span>
+              {t('team.report')}
+            </button>
+          )}
           {canStop && (
             <div className={css.stopAnchor} ref={stopAnchorRef}>
               <button
