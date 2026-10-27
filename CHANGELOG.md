@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7] - 2026-10-27
+
+### Added
+- Persist a delivery report with evidence, changed paths, commands, review
+  verdicts and residual risks when delivery is clean.
+- Return the report path from status.
+
 ## [0.1.6] - 2026-10-27
 
 ### Added

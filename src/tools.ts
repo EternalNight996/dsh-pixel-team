@@ -59,6 +59,7 @@ import {
 } from './state.ts'
 import { appendTaskEvidence } from './quality-gates.ts'
 import { actualChangedPaths, missingDeclaredChanges, runHostVerification } from './host-verify.ts'
+import { buildDeliveryReport, writeDeliveryReport } from './delivery-report.ts'
 import {
   artifactDrift,
   bindReviewToRevision,
@@ -2433,10 +2434,19 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         ...row.evidence === undefined ? {} : { evidence: row.evidence },
       }))
       const deliveryCheck = canDeclareDelivery(team, audit)
+      let deliveryReportPath: string | undefined
+      if (deliveryCheck.ok) {
+        try {
+          deliveryReportPath = await writeDeliveryReport(stateRoot, team, buildDeliveryReport(team, deliveryCheck))
+        } catch (error) {
+          ctx.logger.warn(`agent-teams: delivery report write failed: ${String(error)}`)
+        }
+      }
       const delivery = {
         ok: deliveryCheck.ok,
         blockers: [...deliveryCheck.blockers],
         warnings: [...deliveryCheck.warnings],
+        ...deliveryReportPath === undefined ? {} : { report_path: deliveryReportPath },
         evidence: {
           qualityTasks: deliveryCheck.evidence.qualityTasks,
           completedQualityTasks: deliveryCheck.evidence.completedQualityTasks,
@@ -2924,7 +2934,7 @@ function renderStatus(value: JsonValue): string {
     loop_summary?: string
     deliverable?: boolean
     coverage?: { goal_item: string; status: string; task_ids: string[] }[]
-    delivery?: { ok: boolean; blockers: string[]; warnings?: string[]; evidence?: { qualityTasks: number; completedQualityTasks: number; reviewRounds: number; hostVerifiedCommands: number; unverifiedQualityTasks: string[]; attempts: number; totalDurationMs: number; workTasks: number; completedWorkTasks: number } }
+    delivery?: { ok: boolean; blockers: string[]; warnings?: string[]; report_path?: string; evidence?: { qualityTasks: number; completedQualityTasks: number; reviewRounds: number; hostVerifiedCommands: number; unverifiedQualityTasks: string[]; attempts: number; totalDurationMs: number; workTasks: number; completedWorkTasks: number } }
     warnings?: string[]
   }
   const flags = [
@@ -2967,6 +2977,9 @@ function renderStatus(value: JsonValue): string {
     ],
     ...team.delivery === undefined ? [] : [
       `Delivery: ${team.delivery.ok ? 'ok' : `blocked (${team.delivery.blockers.join('; ')})`}`,
+    ],
+    ...team.delivery?.report_path === undefined ? [] : [
+      `Delivery report: ${team.delivery.report_path}`,
     ],
     ...team.delivery?.evidence === undefined ? [] : [
       `Delivery evidence: quality ${team.delivery.evidence.completedQualityTasks}/${team.delivery.evidence.qualityTasks}, reviews ${team.delivery.evidence.reviewRounds}, host-verified commands ${team.delivery.evidence.hostVerifiedCommands}, attempts ${team.delivery.evidence.attempts}, duration ${Math.round(team.delivery.evidence.totalDurationMs / 1000)}s${team.delivery.evidence.unverifiedQualityTasks.length === 0 ? '' : `; unverified: ${team.delivery.evidence.unverifiedQualityTasks.join(', ')}`}`,
