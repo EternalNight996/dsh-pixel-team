@@ -51,6 +51,11 @@ export interface QuickStartPlan {
 export interface QuickStartDelivery {
     inScope: string[];
     verify: string[];
+    /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
+    layers?: {
+        frontend: string[];
+        backend: string[];
+    };
 }
 /**
  * Infer a quality contract from the workspace instead of hardcoding src/ or pnpm test.

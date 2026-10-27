@@ -73,6 +73,25 @@ test('the fix/feat/array templates emit quality contracts, not ordinary work', (
   assert.equal(arrayById.get('review')?.reviewedTaskId, 'refactor')
 })
 
+test('the fullstack template becomes a quality DAG when disjoint layers exist', () => {
+  const delivery = {
+    inScope: ['src/', 'web/', 'server/', 'package.json'],
+    verify: ['pnpm test'],
+    layers: { frontend: ['web/'], backend: ['server/'] },
+  }
+  const plan = buildQuickStartPlan('implement a booking flow', 'fullstack', undefined, delivery)
+  const byId = new Map(plan.tasks.map(task => [task.id, task]))
+  assert.equal(byId.get('contract')?.kind, 'requirements')
+  assert.equal(byId.get('frontend')?.kind, 'implementation')
+  assert.deepEqual(byId.get('frontend')?.inScope, ['web/'])
+  assert.equal(byId.get('backend')?.kind, 'implementation')
+  assert.deepEqual(byId.get('backend')?.inScope, ['server/'])
+  assert.equal(byId.get('integrate')?.kind, 'integration')
+  assert.equal(byId.get('verify')?.kind, 'verification')
+  assert.equal(byId.get('review')?.kind, 'review')
+  assert.equal(byId.get('review')?.reviewedTaskId, 'integrate')
+})
+
 test('the hardening template audits, fixes minimally, verifies and reviews', () => {
   const plan = buildQuickStartPlan('harden the login flow', 'hardening')
   const roles = plan.members.map(member => member.role)

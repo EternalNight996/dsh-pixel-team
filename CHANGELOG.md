@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.4] - 2026-10-27
+
+### Changed
+- Host executes declared verify commands on quality completion and rejects a
+  real failure; self-reported passes are no longer delivery evidence.
+- Fullstack quick-start becomes a quality DAG when disjoint frontend/backend
+  roots are detected; otherwise it remains ordinary work.
+- Timed-out verification kills the whole process tree.
+
 ## [0.1.3] - 2026-10-27
 
 ### Fixed

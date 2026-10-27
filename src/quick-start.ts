@@ -119,12 +119,12 @@ export const QUICK_START_TEMPLATES: readonly QuickStartTemplate[] = [
     label: '全栈开发',
     roles: ['integrator', 'frontend', 'backend', 'verifier', 'reviewer'],
     tasks: [
-      { id: 'contract', subject: '定契约与边界', role: 'integrator', description: '先定 API/数据结构/UI 契约与非目标，明确前后端各自可写范围。产出契约文档或类型定义，作为前后端共同输入。', expected: '契约文件（端点/类型/错误码/字段所有权）+ 明确非目标。' },
-      { id: 'frontend', subject: '实现前端', role: 'frontend', description: '按契约实现界面：loading/empty/error、键盘/可访问性、320/768/1280 响应式；附浏览器证据。', expected: '可运行 UI + 截图/控制台证据路径 + 契约缺口。', dependencies: ['contract'] },
-      { id: 'backend', subject: '实现后端', role: 'backend', description: '按契约实现 API/数据：迁移+回滚、校验、鉴权、幂等、结构化错误与集成测试；发布契约变更。', expected: '迁移/回滚 + 集成测试 + 契约变更路径。', dependencies: ['contract'] },
-      { id: 'integrate', subject: '联调与契约对齐', role: 'integrator', description: '对齐前后端字段/类型/错误码，跑端到端 smoke，记录契约差异与残余风险。', expected: '端到端 smoke 命令与结果 + 契约差异清单。', dependencies: ['frontend', 'backend'] },
-      { id: 'verify', subject: '验证全链路', role: 'verifier', description: '跑测试与浏览器 smoke，按风险矩阵覆盖正常/边界/错误/鉴权/回归，记录命令与证据。', expected: '风险矩阵 + 命令/预期/实际。', dependencies: ['integrate'] },
-      { id: 'review', subject: '审查交付', role: 'reviewer', description: '对照验收与契约审查正确性、范围、安全、性能与可访问性；证据不足则失败。', expected: 'findings（文件/行/修复）+ verdict。', dependencies: ['verify'] },
+      { id: 'contract', subject: '定契约与边界', role: 'integrator', kind: 'requirements', description: '先定 API/数据结构/UI 契约与非目标，明确前后端各自可写范围。产出契约文档或类型定义，作为前后端共同输入。', expected: '契约文件（端点/类型/错误码/字段所有权）+ 明确非目标。', acceptance: ['端点/类型/错误码/字段所有权可执行', '非目标与前后端可写范围已明确'] },
+      { id: 'frontend', subject: '实现前端', role: 'frontend', kind: 'implementation', description: '按契约实现界面：loading/empty/error、键盘/可访问性、320/768/1280 响应式；附浏览器证据。', expected: '可运行 UI + 截图/控制台证据路径 + 契约缺口。', acceptance: ['前端实现满足契约', '声明的验证命令通过'], dependencies: ['contract'] },
+      { id: 'backend', subject: '实现后端', role: 'backend', kind: 'implementation', description: '按契约实现 API/数据：迁移+回滚、校验、鉴权、幂等、结构化错误与集成测试；发布契约变更。', expected: '迁移/回滚 + 集成测试 + 契约变更路径。', acceptance: ['后端实现满足契约', '声明的验证命令通过'], dependencies: ['contract'] },
+      { id: 'integrate', subject: '联调与契约对齐', role: 'integrator', kind: 'integration', description: '对齐前后端字段/类型/错误码，跑端到端 smoke，记录契约差异与残余风险。', expected: '端到端 smoke 命令与结果 + 契约差异清单。', acceptance: ['前后端契约一致', '端到端 smoke 通过并记录残余风险'], dependencies: ['frontend', 'backend'] },
+      { id: 'verify', subject: '验证全链路', role: 'verifier', kind: 'verification', description: '跑测试与浏览器 smoke，按风险矩阵覆盖正常/边界/错误/鉴权/回归，记录命令与证据。', expected: '风险矩阵 + 命令/预期/实际。', acceptance: ['声明的验证命令通过', '风险矩阵覆盖正常/边界/错误/鉴权'], dependencies: ['integrate'] },
+      { id: 'review', subject: '审查交付', role: 'reviewer', kind: 'review', reviewedTaskId: 'integrate', description: '对照验收与契约审查正确性、范围、安全、性能与可访问性；证据不足则失败。', expected: 'findings（文件/行/修复）+ verdict。', acceptance: ['实现满足契约与验收', '证据充分且记录残余风险'], dependencies: ['verify'] },
     ],
   },
   {
@@ -184,6 +184,8 @@ function shortGoal(goal: string, max: number): string {
 export interface QuickStartDelivery {
   inScope: string[]
   verify: string[]
+  /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
+  layers?: { frontend: string[]; backend: string[] }
 }
 
 const FALLBACK_IN_SCOPE = ['src/', 'lib/', 'app/', 'packages/', 'tests/', 'test/', 'scripts/', 'docs/', 'public/', 'package.json', 'README.md']
@@ -216,7 +218,15 @@ export function quickStartDeliveryDefaults(workspace: string): QuickStartDeliver
   } catch {
     // No package.json / invalid JSON: the git fallback is still runnable.
   }
-  return { inScope, verify }
+
+  // Full-stack quality needs two genuinely disjoint writable roots. Do not
+  // invent them: without them the fullstack template stays ordinary work.
+  const frontendDirs = ['web', 'frontend', 'app', 'src/client', 'src/app', 'src/components', 'src/ui', 'public', 'assets', 'apps/web', 'packages/web']
+  const backendDirs = ['server', 'backend', 'api', 'src/server', 'src/api', 'src/db', 'migrations', 'prisma', 'apps/api', 'packages/api']
+  const frontend = frontendDirs.filter((name) => existsSync(join(workspace, name))).map((name) => `${name}/`)
+  const backend = backendDirs.filter((name) => existsSync(join(workspace, name))).map((name) => `${name}/`)
+  const disjoint = frontend.every((left) => backend.every((right) => !left.startsWith(right) && !right.startsWith(left)))
+  return { inScope, verify, ...frontend.length > 0 && backend.length > 0 && disjoint ? { layers: { frontend, backend } } : {} }
 }
 
 /** Build the staged plan a quick-start request turns into. */
@@ -233,10 +243,15 @@ export function buildQuickStartPlan(
   const members = roles.map(role => ({ name: ROLE_NAMES[role] ?? role, role }))
   const inScope = delivery?.inScope ?? FALLBACK_IN_SCOPE
   const verify = delivery?.verify ?? FALLBACK_VERIFY
+  const qualityEnabled = template.id !== 'fullstack' || delivery?.layers !== undefined
   const tasks = template.tasks.map((task, index) => {
-    const kind = task.kind
+    const kind = qualityEnabled ? task.kind : undefined
     const needsScope = kind === 'implementation' || kind === 'repair'
     const needsVerify = needsScope || kind === 'verification' || kind === 'integration'
+    const layerScope = task.role === 'frontend'
+      ? delivery?.layers?.frontend
+      : task.role === 'backend' ? delivery?.layers?.backend : undefined
+    const scoped = task.inScope ?? layerScope ?? inScope
     return {
       id: task.id,
       subject: `${task.subject}：${shortGoal(goal, 40)}`,
@@ -246,9 +261,9 @@ export function buildQuickStartPlan(
       ...kind === undefined ? {} : { kind },
       ...kind === undefined ? {} : { objective: task.objective ?? `${task.subject}：${goal}` },
       ...kind === undefined ? {} : { acceptance: [...(task.acceptance ?? ['目标达成', '证据已记录'])] },
-      ...needsScope ? { inScope: [...(task.inScope ?? inScope)] } : {},
+      ...needsScope ? { inScope: [...scoped] } : {},
       ...needsVerify ? { verify: [...(task.verify ?? verify)] } : {},
-      ...task.reviewedTaskId === undefined ? {} : { reviewedTaskId: task.reviewedTaskId },
+      ...kind === undefined || task.reviewedTaskId === undefined ? {} : { reviewedTaskId: task.reviewedTaskId },
       ...kind === undefined ? {} : { coverageOf: [...(task.coverageOf ?? [goal])] },
     }
   })
