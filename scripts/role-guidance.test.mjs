@@ -47,6 +47,32 @@ test('member persona appends the contract only for recognized software roles', (
   assert.doesNotMatch(generic, /Role contract:/)
 })
 
+test('the fix/feat/array templates emit quality contracts, not ordinary work', () => {
+  const fix = buildQuickStartPlan('fix the login crash', 'fix')
+  const fixById = new Map(fix.tasks.map(task => [task.id, task]))
+  assert.equal(fixById.get('impl')?.kind, 'implementation')
+  assert.ok((fixById.get('impl')?.inScope ?? []).length > 0)
+  assert.ok((fixById.get('impl')?.verify ?? []).length > 0)
+  assert.equal(fixById.get('verify')?.kind, 'verification')
+  assert.equal(fixById.get('review')?.kind, 'review')
+  assert.equal(fixById.get('review')?.reviewedTaskId, 'impl')
+
+  const feat = buildQuickStartPlan('add a booking flow', 'feat')
+  const featById = new Map(feat.tasks.map(task => [task.id, task]))
+  assert.equal(featById.get('req')?.kind, 'requirements')
+  assert.equal(featById.get('impl')?.kind, 'implementation')
+  assert.equal(featById.get('verify')?.kind, 'verification')
+  assert.equal(featById.get('review')?.kind, 'review')
+  assert.equal(featById.get('review')?.reviewedTaskId, 'impl')
+
+  const array = buildQuickStartPlan('refactor the parser', 'array')
+  const arrayById = new Map(array.tasks.map(task => [task.id, task]))
+  assert.equal(arrayById.get('design')?.kind, 'requirements')
+  assert.equal(arrayById.get('refactor')?.kind, 'implementation')
+  assert.equal(arrayById.get('review')?.kind, 'review')
+  assert.equal(arrayById.get('review')?.reviewedTaskId, 'refactor')
+})
+
 test('the hardening template audits, fixes minimally, verifies and reviews', () => {
   const plan = buildQuickStartPlan('harden the login flow', 'hardening')
   const roles = plan.members.map(member => member.role)

@@ -41,7 +41,7 @@ import { collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.t
 import { findTeamByCaptain } from './state.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
-import { buildQuickStartPlan } from './quick-start.ts'
+import { buildQuickStartPlan, quickStartDeliveryDefaults } from './quick-start.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
 import { installTeamCapabilities } from './capabilities.ts'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
@@ -440,7 +440,8 @@ export function apply(ctx: Context, config: Config): void {
           res.end(JSON.stringify({ error: 'team creation tool is unavailable' }))
           return
         }
-        const plan = buildQuickStartPlan(goal, template, roles)
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const plan = buildQuickStartPlan(goal, template, roles, quickStartDeliveryDefaults(workspace))
         const replace = payload.replace === true
         const abort = new AbortController()
         const timeout = setTimeout(() => { abort.abort() }, 30_000)

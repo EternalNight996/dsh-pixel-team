@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3] - 2026-10-27
+
+### Fixed
+- Quick-start fix/feat/array plans now emit quality task kinds and contracts;
+  inScope/verify are derived from the workspace.
+- Work tasks require a non-empty output before completion/delivery.
+- App icon is embedded separately from the cultivation portrait set.
+
 ## [0.1.2] - 2026-10-27
 
 ### Fixed

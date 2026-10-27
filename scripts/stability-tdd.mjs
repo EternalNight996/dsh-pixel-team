@@ -30,6 +30,8 @@ await test('work, empty, staged, halted and escalated teams cannot falsely decla
     assert.equal(canDeclareDelivery(state).ok, false, status)
   }
   state.tasks[0].status = 'completed'
+  assert.equal(canDeclareDelivery(state).ok, false, 'completed work without output is not deliverable')
+  state.tasks[0].output = 'done'
   assert.equal(canDeclareDelivery(state).ok, true)
   for (const extra of [{ phase: 'staged' }, { halted: true }, { escalated: true }, { tasks: [] }]) assert.equal(canDeclareDelivery({ ...state, ...extra }).ok, false)
 })

@@ -234,10 +234,11 @@ check(
     && /name:\s*'conversation\.chat\.commandview',\s*key:\s*'agent-teams'/u.test(clientIndexSource),
 )
 check(
-  'stop-team control lives in the team panel and requires confirmation',
+  'stop-team control lives in the team panel and requires anchored confirmation',
   !clientIndexSource.includes("conversation.input.dock")
     && activityPanelSource.includes('className={css.teamStopButton}')
-    && activityPanelSource.includes('<Modal')
+    && activityPanelSource.includes('className={css.stopPopover}')
+    && activityPanelSource.includes('aria-haspopup="dialog"')
     && activityPanelSource.includes('ACTIVITY_HALT_URL'),
 )
 check(

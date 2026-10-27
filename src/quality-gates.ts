@@ -555,7 +555,12 @@ export function evaluateQualityCompletion(
   }
 
   const kind = taskKindOf(task)
-  if (kind === 'work') return { ok: true }
+  if (kind === 'work') {
+    if (nextStatus === 'completed' && (update.output ?? task.output ?? '').trim() === '') {
+      return { ok: false, error: 'work completion requires a non-empty output' }
+    }
+    return { ok: true }
+  }
 
   const verdict = update.verdict ?? task.verdict
   const findings = update.findings ?? task.findings
@@ -1630,6 +1635,7 @@ export function canDeclareDelivery(team: TeamState, audit: DeliveryAudit = {}): 
   if (team.tasks.length === 0) blockers.push('team has no completed work')
   for (const item of team.tasks.filter(item => !isQualityKind(taskKindOf(item)))) {
     if (item.status !== 'completed' && item.status !== 'cancelled') blockers.push(`${item.id} (${taskKindOf(item)}) is not completed`)
+    if (item.status === 'completed' && (item.output ?? '').trim() === '') blockers.push(`${item.id} (work) completed without output`)
   }
   if (team.tasks.length > 0 && team.tasks.every(item => item.status === 'cancelled')) blockers.push('all work was cancelled')
   const quality = team.tasks.filter((item) => isQualityKind(taskKindOf(item)))

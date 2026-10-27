@@ -5,6 +5,9 @@
  * module turns that into the same staged plan shape the captain tool accepts,
  * so the host never invents a second team model.
  */
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import type { TaskKind } from './types.ts'
 
 /** One built-in template: default roles and a small task DAG. */
 export const SECT_NAMES: Record<string, string> = {
@@ -35,6 +38,14 @@ export interface QuickStartTemplate {
     /** Expected artifact/acceptance, appended to the staged task description. */
     readonly expected?: string
     readonly dependencies?: readonly string[]
+    /** Quality task kind; omitted means ordinary work. */
+    readonly kind?: TaskKind
+    readonly objective?: string
+    readonly acceptance?: readonly string[]
+    readonly inScope?: readonly string[]
+    readonly verify?: readonly string[]
+    readonly reviewedTaskId?: string
+    readonly coverageOf?: readonly string[]
   }[]
 }
 
@@ -44,9 +55,9 @@ export const QUICK_START_TEMPLATES: readonly QuickStartTemplate[] = [
     label: '修 Bug',
     roles: ['implementer', 'verifier', 'reviewer'],
     tasks: [
-      { id: 'impl', subject: '实现修复', role: 'implementer', description: '复现问题、定位根因并给出最小修复，必要时补测试。' },
-      { id: 'verify', subject: '验证修复', role: 'verifier', description: '运行相关测试与回归，确认问题消失且无新增失败。', dependencies: ['impl'] },
-      { id: 'review', subject: '审查修复', role: 'reviewer', description: '审查改动的正确性、范围与风险，给出结论。', dependencies: ['verify'] },
+      { id: 'impl', subject: '实现修复', role: 'implementer', kind: 'implementation', description: '复现问题、定位根因并给出最小修复，必要时补测试。', acceptance: ['修复解决目标问题', '声明的验证命令通过'] },
+      { id: 'verify', subject: '验证修复', role: 'verifier', kind: 'verification', description: '运行相关测试与回归，确认问题消失且无新增失败。', acceptance: ['声明的验证命令通过', '回归证据已记录'], dependencies: ['impl'] },
+      { id: 'review', subject: '审查修复', role: 'reviewer', kind: 'review', reviewedTaskId: 'impl', description: '审查改动的正确性、范围与风险，给出结论。', acceptance: ['实现满足目标', '证据充分且记录残余风险'], dependencies: ['verify'] },
     ],
   },
   {
@@ -54,10 +65,10 @@ export const QUICK_START_TEMPLATES: readonly QuickStartTemplate[] = [
     label: '新功能',
     roles: ['planner', 'implementer', 'verifier', 'reviewer'],
     tasks: [
-      { id: 'req', subject: '明确需求与验收', role: 'planner', description: '把目标拆成可验收的需求条目，列出边界与非目标。' },
-      { id: 'impl', subject: '实现功能', role: 'implementer', description: '按需求实现，保持改动范围可审查。', dependencies: ['req'] },
-      { id: 'verify', subject: '验证功能', role: 'verifier', description: '运行测试并覆盖新增路径，记录证据。', dependencies: ['impl'] },
-      { id: 'review', subject: '审查功能', role: 'reviewer', description: '对照需求逐条验收，指出缺口与风险。', dependencies: ['verify'] },
+      { id: 'req', subject: '明确需求与验收', role: 'planner', kind: 'requirements', description: '把目标拆成可验收的需求条目，列出边界与非目标。', acceptance: ['验收标准可测试', '开放问题已关闭或明确延期'] },
+      { id: 'impl', subject: '实现功能', role: 'implementer', kind: 'implementation', description: '按需求实现，保持改动范围可审查。', acceptance: ['实现满足已批准需求', '声明的验证命令通过'], dependencies: ['req'] },
+      { id: 'verify', subject: '验证功能', role: 'verifier', kind: 'verification', description: '运行测试并覆盖新增路径，记录证据。', acceptance: ['声明的验证命令通过', '新增路径有覆盖证据'], dependencies: ['impl'] },
+      { id: 'review', subject: '审查功能', role: 'reviewer', kind: 'review', reviewedTaskId: 'impl', description: '对照需求逐条验收，指出缺口与风险。', acceptance: ['实现满足已批准需求', '证据充分且记录残余风险'], dependencies: ['verify'] },
     ],
   },
   {
@@ -87,10 +98,10 @@ export const QUICK_START_TEMPLATES: readonly QuickStartTemplate[] = [
     label: '架构重构',
     roles: ['architect', 'implementer', 'verifier', 'reviewer'],
     tasks: [
-      { id: 'design', subject: '画阵定界', role: 'architect', description: '给出目标结构、边界与迁移步骤，标注风险点。' },
-      { id: 'refactor', subject: '依阵改构', role: 'implementer', description: '按设计小步重构，保持可回退与可审查。', dependencies: ['design'] },
-      { id: 'verify', subject: '验阵', role: 'verifier', description: '验证行为不变与性能不回退，记录证据。', dependencies: ['refactor'] },
-      { id: 'review', subject: '审阵', role: 'reviewer', description: '审查边界、耦合与遗留风险。', dependencies: ['verify'] },
+      { id: 'design', subject: '画阵定界', role: 'architect', kind: 'requirements', description: '给出目标结构、边界与迁移步骤，标注风险点。', acceptance: ['边界与迁移步骤可执行', '风险点已显式记录'] },
+      { id: 'refactor', subject: '依阵改构', role: 'implementer', kind: 'implementation', description: '按设计小步重构，保持可回退与可审查。', acceptance: ['行为保持不变', '声明的验证命令通过'], dependencies: ['design'] },
+      { id: 'verify', subject: '验阵', role: 'verifier', kind: 'verification', description: '验证行为不变与性能不回退，记录证据。', acceptance: ['声明的验证命令通过', '行为与性能证据已记录'], dependencies: ['refactor'] },
+      { id: 'review', subject: '审阵', role: 'reviewer', kind: 'review', reviewedTaskId: 'refactor', description: '审查边界、耦合与遗留风险。', acceptance: ['重构满足设计目标', '证据充分且记录遗留风险'], dependencies: ['verify'] },
     ],
   },
   {
@@ -150,6 +161,13 @@ export interface QuickStartPlan {
     description: string
     assignee: string
     dependencies: string[]
+    kind?: TaskKind
+    objective?: string
+    acceptance?: string[]
+    inScope?: string[]
+    verify?: string[]
+    reviewedTaskId?: string
+    coverageOf?: string[]
   }[]
 }
 
@@ -162,19 +180,77 @@ function shortGoal(goal: string, max: number): string {
   return flat.length <= max ? flat : `${flat.slice(0, Math.max(1, max - 1))}…`
 }
 
+/** Delivery defaults inferred from the actual workspace for quality templates. */
+export interface QuickStartDelivery {
+  inScope: string[]
+  verify: string[]
+}
+
+const FALLBACK_IN_SCOPE = ['src/', 'lib/', 'app/', 'packages/', 'tests/', 'test/', 'scripts/', 'docs/', 'public/', 'package.json', 'README.md']
+const FALLBACK_VERIFY = ['git diff --check']
+
+/**
+ * Infer a quality contract from the workspace instead of hardcoding src/ or pnpm test.
+ * The same defaults are used by the quick-start route and by tests that build a plan
+ * without a workspace (which still get a runnable, conservative contract).
+ */
+export function quickStartDeliveryDefaults(workspace: string): QuickStartDelivery {
+  const dirs = ['src', 'lib', 'app', 'packages', 'tests', 'test', 'scripts', 'docs', 'public', 'assets']
+    .filter((name) => existsSync(join(workspace, name)))
+  const files = ['package.json', 'README.md', 'README_ZH.md']
+    .filter((name) => existsSync(join(workspace, name)))
+  const inScope = [...dirs.map((name) => `${name}/`), ...files]
+  if (inScope.length === 0) inScope.push('.')
+
+  let verify = [...FALLBACK_VERIFY]
+  try {
+    const pkg = JSON.parse(readFileSync(join(workspace, 'package.json'), 'utf8')) as { scripts?: Record<string, unknown> }
+    const scripts = pkg.scripts ?? {}
+    const script = ['test', 'typecheck', 'verify', 'build'].find((name) => typeof scripts[name] === 'string')
+    if (script !== undefined) {
+      const manager = existsSync(join(workspace, 'pnpm-lock.yaml'))
+        ? 'pnpm'
+        : existsSync(join(workspace, 'yarn.lock')) ? 'yarn' : 'npm'
+      verify = [manager === 'npm' ? `npm run ${script}` : `${manager} ${script}`]
+    }
+  } catch {
+    // No package.json / invalid JSON: the git fallback is still runnable.
+  }
+  return { inScope, verify }
+}
+
 /** Build the staged plan a quick-start request turns into. */
-export function buildQuickStartPlan(goal: string, templateId: string, requestedRoles?: readonly string[]): QuickStartPlan {
+export function buildQuickStartPlan(
+  goal: string,
+  templateId: string,
+  requestedRoles?: readonly string[],
+  delivery?: QuickStartDelivery,
+): QuickStartPlan {
   const template = templateOf(templateId)
   const cleaned = [...new Set((requestedRoles ?? []).map(role => role.trim()).filter(role => role !== ''))]
   const roles = cleaned.length > 0 ? cleaned : [...template.roles]
   const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
   const members = roles.map(role => ({ name: ROLE_NAMES[role] ?? role, role }))
-  const tasks = template.tasks.map((task, index) => ({
-    id: task.id,
-    subject: `${task.subject}：${shortGoal(goal, 40)}`,
-    description: `${task.description}${task.expected === undefined ? '' : `\n\n交付/验收：${task.expected}`}\n\n目标：${goal}`,
-    assignee: ROLE_NAMES[roles.includes(task.role) ? task.role : roles[index % roles.length] as string] ?? (roles.includes(task.role) ? task.role : roles[index % roles.length] as string),
-    dependencies: [...(task.dependencies ?? [])],
-  }))
+  const inScope = delivery?.inScope ?? FALLBACK_IN_SCOPE
+  const verify = delivery?.verify ?? FALLBACK_VERIFY
+  const tasks = template.tasks.map((task, index) => {
+    const kind = task.kind
+    const needsScope = kind === 'implementation' || kind === 'repair'
+    const needsVerify = needsScope || kind === 'verification' || kind === 'integration'
+    return {
+      id: task.id,
+      subject: `${task.subject}：${shortGoal(goal, 40)}`,
+      description: `${task.description}${task.expected === undefined ? '' : `\n\n交付/验收：${task.expected}`}\n\n目标：${goal}`,
+      assignee: ROLE_NAMES[roles.includes(task.role) ? task.role : roles[index % roles.length] as string] ?? (roles.includes(task.role) ? task.role : roles[index % roles.length] as string),
+      dependencies: [...(task.dependencies ?? [])],
+      ...kind === undefined ? {} : { kind },
+      ...kind === undefined ? {} : { objective: task.objective ?? `${task.subject}：${goal}` },
+      ...kind === undefined ? {} : { acceptance: [...(task.acceptance ?? ['目标达成', '证据已记录'])] },
+      ...needsScope ? { inScope: [...(task.inScope ?? inScope)] } : {},
+      ...needsVerify ? { verify: [...(task.verify ?? verify)] } : {},
+      ...task.reviewedTaskId === undefined ? {} : { reviewedTaskId: task.reviewedTaskId },
+      ...kind === undefined ? {} : { coverageOf: [...(task.coverageOf ?? [goal])] },
+    }
+  })
   return { teamName: `${SECT_NAMES[template.id] ?? '修仙宗'}·${stamp.slice(8)}`, template: template.id, members, tasks }
 }

@@ -13,7 +13,7 @@
  * @module dsh-agent-teams/client/artwork
  */
 
-import { ART_BASE64 } from './art-data.ts'
+import { APP_ICON_BASE64, ART_BASE64 } from './art-data.ts'
 
 /** Inline data URL for one packaged artwork file ('' when the build missed it). */
 function art(file: string): string {
@@ -65,7 +65,7 @@ const KEYWORD_ART: ReadonlyArray<readonly [RegExp, string]> = [
 export const LEAD_ART = art('avatar-captain.png')
 
 /** New app icon (assets/app-icons, embedded as a 64px data URL). */
-export const APP_ICON = art('app-icon.png')
+export const APP_ICON = APP_ICON_BASE64 === '' ? '' : `data:image/png;base64,${APP_ICON_BASE64}`
 
 /** Status action artwork per member activity. */
 export const ACTION_ART: Record<'working' | 'idle' | 'unknown', string> = {
