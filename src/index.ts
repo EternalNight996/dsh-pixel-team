@@ -447,22 +447,10 @@ export function apply(ctx: Context, config: Config): void {
         const run = { agent: captain, signal: abort.signal, deferContext() {}, concludeTurn() {} }
         try {
           if (replace) {
-            // Explicit user choice: end the current sect so a new one can be founded.
-            // Refuse while any task is still pending/running: archiving then would
-            // throw away live work and its conversation trail.
-            let hasLiveWork = false
-            try {
-              const status = tools?.get?.('agent_teams_status')
-              const raw = await status?.execute?.({}, run)
-              const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-              const tasks = Array.isArray((parsed as { tasks?: unknown }).tasks)
-                ? (parsed as { tasks: Array<{ status?: string }> }).tasks : []
-              hasLiveWork = tasks.some(task => task.status === 'pending' || task.status === 'claimed'
-                || task.status === 'in_progress' || task.status === 'running')
-            } catch {
-              hasLiveWork = false
-            }
-            if (hasLiveWork) throw new Error('当前宗门还有未完成或执行中的任务，请先结束任务再替换宗门')
+            // Explicit user choice (red "结束旧宗门并开新宗" button): end the
+            // current sect, including live work, then found the new one. The
+            // delete tool interrupts members and archives the team; the client
+            // only sends replace=true after the user confirms this action.
             const remove = tools?.get?.('agent_teams_delete')
             try {
               await remove?.execute?.({}, run)
