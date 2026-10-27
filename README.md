@@ -24,6 +24,8 @@
 
 <p align="center"><b>开宗 → review the plan → approve → watch the hall run.</b></p>
 
+<p align="center"><b>▶ <a href="http://180.76.144.48/en/dsh-pixel-team">Live product page</a></b> &nbsp;·&nbsp; real DSH session screenshots below</p>
+
 <p align="center"><strong>⭐ If this is the agent UI you wanted to exist, star it — that's how the hall keeps growing.</strong></p>
 
 ## 🎬 A real session, not a mockup
@@ -104,6 +106,8 @@ Then:
 
 Package version **0.1.0**. Recommended host: DeepSeek Harness **0.2.1-rc.3** (web + headless). Exact matrix: [compatibility.json](compatibility.json).
 
+Prefer to look first? **[Open the live product page](http://180.76.144.48/en/dsh-pixel-team)** on the Mengyou website.
+
 ## 🏯 The hall
 
 | Facility | What it does |
@@ -183,13 +187,13 @@ App icons live in `assets/app-icons/` (desktop, web, iOS, Android) and the plugi
 
 | QQ group | WeChat group |
 |:---:|:---:|
-| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ group QR" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="WeChat group QR" /> |
+| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ group QR" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="WeChat group QR" /></a> |
 
 **Buy the author a coffee (optional):**
 
 | WeChat Pay | WeChat Reward |
 |:---:|:---:|
-| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" width="200" alt="WeChat Pay QR" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" width="200" alt="WeChat Reward QR" /> |
+| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" width="200" alt="WeChat Pay QR" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" width="200" alt="WeChat Reward QR" /></a> |
 
 > Sponsorship is optional and changes nothing; the plugin stays MIT and free. See [SPONSOR.md](SPONSOR.md).
 

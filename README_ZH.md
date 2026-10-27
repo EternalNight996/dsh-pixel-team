@@ -24,6 +24,8 @@
 
 <p align="center"><b>开宗 → 审计划 → 批准 → 看洞府跑起来。</b></p>
 
+<p align="center"><b>▶ <a href="http://180.76.144.48/dsh-pixel-team">在线展示页</a></b> &nbsp;·&nbsp; 下面是真实 DSH 会话截图</p>
+
 <p align="center"><strong>⭐ 如果这就是你一直想要的智能体界面，点一个 Star——这座洞府靠它继续长大。</strong></p>
 
 ## 🎬 真实会话，不是示意图
@@ -104,6 +106,8 @@
 
 当前版本 **0.1.0**。推荐宿主：DeepSeek Harness **0.2.1-rc.3**（Web + Headless）。精确矩阵见 [compatibility.json](compatibility.json)。
 
+想先看效果？**[打开梦游官网的在线展示页](http://180.76.144.48/dsh-pixel-team)**。
+
 ## 🏯 洞府里有什么
 
 | 设施 | 作用 |
@@ -183,13 +187,13 @@
 
 | QQ 交流群 | 微信交流群 |
 |:---:|:---:|
-| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ 交流群二维码" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="微信交流群二维码" /> |
+| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ 交流群二维码" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="微信交流群二维码" /></a> |
 
 **请作者喝杯咖啡（完全自愿）：**
 
 | 微信收款码 | 微信赞赏码 |
 |:---:|:---:|
-| <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" width="200" alt="微信收款码" /> | <img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" width="200" alt="微信赞赏码" /> |
+| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-pay.jpg" width="200" alt="微信收款码" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/wechat-reward.jpg" width="200" alt="微信赞赏码" /></a> |
 
 > 赞助完全自愿，不影响任何功能；插件本体始终开源免费（MIT）。见 [SPONSOR.md](SPONSOR.md)。
 
