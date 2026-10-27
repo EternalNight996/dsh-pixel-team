@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.1] - 2026-10-27
+
+### Changed
+- New app icon set (desktop/web/iOS/Android) wired into the package and the hall
+  header; refreshed `assets/zhulong.ico` / `assets/zhulong-icon.png`.
+- README rebuilt: social-preview hero, six real screenshots, comparison table,
+  live demo links, and click-to-enlarge community/sponsor QRs.
+- README images moved to absolute raw GitHub URLs; npm tarball no longer carries
+  the old demo GIF and stays under the 8 MB package gate.
+
 ## [Unreleased]
 
 ### Changed
