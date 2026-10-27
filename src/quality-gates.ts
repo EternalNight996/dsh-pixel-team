@@ -137,6 +137,18 @@ export interface CoverageRow {
   evidence?: string
 }
 
+export interface DeliveryEvidence {
+  qualityTasks: number
+  completedQualityTasks: number
+  reviewRounds: number
+  hostVerifiedCommands: number
+  unverifiedQualityTasks: string[]
+  attempts: number
+  totalDurationMs: number
+  workTasks: number
+  completedWorkTasks: number
+}
+
 export interface DeliveryResult {
   ok: boolean
   blockers: string[]
@@ -146,6 +158,8 @@ export interface DeliveryResult {
    * moved on. Delivery is still allowed, but never silently.
    */
   warnings: string[]
+  /** Machine-readable delivery counters for the status tool and report/UI. */
+  evidence: DeliveryEvidence
 }
 
 /**
@@ -1687,7 +1701,41 @@ export function canDeclareDelivery(team: TeamState, audit: DeliveryAudit = {}): 
     blockers.push(`the current workspace audit is incomplete (${shown.join('; ')}${more}); no recorded verdict can be confirmed over partially enumerated or unreadable artifacts`)
   }
 
-  return { ok: blockers.length === 0, blockers, warnings }
+  const evidence = buildDeliveryEvidence(team)
+  if (evidence.unverifiedQualityTasks.length > 0) {
+    warnings.push(`completed quality tasks without host-verified commands: ${evidence.unverifiedQualityTasks.join(', ')}`)
+  }
+  return { ok: blockers.length === 0, blockers, warnings, evidence }
+}
+
+/** Counters that let status/report distinguish a verified delivery from a claim. */
+export function buildDeliveryEvidence(team: TeamState): DeliveryEvidence {
+  const quality = team.tasks.filter((task) => isQualityKind(taskKindOf(task)))
+  const completedQuality = quality.filter((task) => task.status === 'completed')
+  const work = team.tasks.filter((task) => !isQualityKind(taskKindOf(task)))
+  const completedWork = work.filter((task) => task.status === 'completed')
+  const hostVerified = (task: TeamTask): boolean => (
+    (task.commandsRun ?? []).some((item) => item.evidence?.includes('[host-verified]') === true)
+  )
+  const totalDurationMs = team.tasks.reduce((sum, task) => {
+    if (task.status !== 'completed') return sum
+    const end = task.updatedAt ?? 0
+    const start = task.createdAt ?? end
+    return sum + Math.max(0, end - start)
+  }, 0)
+  return {
+    qualityTasks: quality.length,
+    completedQualityTasks: completedQuality.length,
+    reviewRounds: quality.filter((task) => taskKindOf(task) === 'review').length,
+    hostVerifiedCommands: quality.reduce((sum, task) => sum + (task.commandsRun ?? []).filter((item) => item.evidence?.includes('[host-verified]') === true).length, 0),
+    unverifiedQualityTasks: completedQuality
+      .filter((task) => (task.verify?.length ?? 0) > 0 && !hostVerified(task))
+      .map((task) => task.id),
+    attempts: team.tasks.reduce((sum, task) => sum + (task.attempt ?? 0), 0),
+    totalDurationMs,
+    workTasks: work.length,
+    completedWorkTasks: completedWork.length,
+  }
 }
 
 export function resumeTeamState(team: TeamState, reason: string): ResumeTeamResult {

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6] - 2026-10-27
+
+### Added
+- Delivery evidence counters in status: quality/review coverage, host-verified
+  commands, attempts, duration.
+- Warning for completed quality tasks without host-verified commands.
+
 ## [0.1.5] - 2026-10-27
 
 ### Added

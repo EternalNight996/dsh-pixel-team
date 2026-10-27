@@ -32,8 +32,26 @@ await test('work, empty, staged, halted and escalated teams cannot falsely decla
   state.tasks[0].status = 'completed'
   assert.equal(canDeclareDelivery(state).ok, false, 'completed work without output is not deliverable')
   state.tasks[0].output = 'done'
-  assert.equal(canDeclareDelivery(state).ok, true)
+  const completed = canDeclareDelivery(state)
+  assert.equal(completed.ok, true)
+  assert.equal(completed.evidence.workTasks, 1)
+  assert.equal(completed.evidence.completedWorkTasks, 1)
+  assert.equal(completed.evidence.hostVerifiedCommands, 0)
   for (const extra of [{ phase: 'staged' }, { halted: true }, { escalated: true }, { tasks: [] }]) assert.equal(canDeclareDelivery({ ...state, ...extra }).ok, false)
+
+  const unverifiedQuality = canDeclareDelivery({
+    ...state,
+    tasks: [{
+      ...state.tasks[0],
+      id: 'q1',
+      kind: 'implementation',
+      verify: ['true'],
+      commandsRun: [{ command: 'true', status: 'passed', evidence: 'self-reported' }],
+    }],
+  })
+  assert.equal(unverifiedQuality.evidence.qualityTasks, 1)
+  assert.deepEqual(unverifiedQuality.evidence.unverifiedQualityTasks, ['q1'])
+  assert.ok(unverifiedQuality.warnings.some(warning => warning.includes('host-verified')))
 })
 
 await test('inbox acceptance leaves 32 messages unread; one admitted step consumes them exactly once', async t => {

@@ -8,6 +8,7 @@
  * @module dsh-agent-teams/snapshot
  */
 import type { Context } from '@deepseek-ai/cordis';
+import type { DeliveryEvidence } from './quality-gates.ts';
 import type { MemberStatus, TeamState } from './types.ts';
 /** Visual task state for the activity panel. */
 export type VisualTaskState = 'blocked' | 'open' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -89,6 +90,7 @@ export interface TeamActivitySnapshot {
         readonly ok: boolean;
         readonly blockers: readonly string[];
         readonly warnings: readonly string[];
+        readonly evidence: DeliveryEvidence;
     };
 }
 /** Snapshot projection switches for live and archived teams. */

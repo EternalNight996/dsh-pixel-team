@@ -2437,6 +2437,17 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         ok: deliveryCheck.ok,
         blockers: [...deliveryCheck.blockers],
         warnings: [...deliveryCheck.warnings],
+        evidence: {
+          qualityTasks: deliveryCheck.evidence.qualityTasks,
+          completedQualityTasks: deliveryCheck.evidence.completedQualityTasks,
+          reviewRounds: deliveryCheck.evidence.reviewRounds,
+          hostVerifiedCommands: deliveryCheck.evidence.hostVerifiedCommands,
+          unverifiedQualityTasks: [...deliveryCheck.evidence.unverifiedQualityTasks],
+          attempts: deliveryCheck.evidence.attempts,
+          totalDurationMs: deliveryCheck.evidence.totalDurationMs,
+          workTasks: deliveryCheck.evidence.workTasks,
+          completedWorkTasks: deliveryCheck.evidence.completedWorkTasks,
+        },
       }
       const loop = describeQualityLoop(team, audit)
       const result = {
@@ -2913,7 +2924,7 @@ function renderStatus(value: JsonValue): string {
     loop_summary?: string
     deliverable?: boolean
     coverage?: { goal_item: string; status: string; task_ids: string[] }[]
-    delivery?: { ok: boolean; blockers: string[]; warnings?: string[] }
+    delivery?: { ok: boolean; blockers: string[]; warnings?: string[]; evidence?: { qualityTasks: number; completedQualityTasks: number; reviewRounds: number; hostVerifiedCommands: number; unverifiedQualityTasks: string[]; attempts: number; totalDurationMs: number; workTasks: number; completedWorkTasks: number } }
     warnings?: string[]
   }
   const flags = [
@@ -2956,6 +2967,9 @@ function renderStatus(value: JsonValue): string {
     ],
     ...team.delivery === undefined ? [] : [
       `Delivery: ${team.delivery.ok ? 'ok' : `blocked (${team.delivery.blockers.join('; ')})`}`,
+    ],
+    ...team.delivery?.evidence === undefined ? [] : [
+      `Delivery evidence: quality ${team.delivery.evidence.completedQualityTasks}/${team.delivery.evidence.qualityTasks}, reviews ${team.delivery.evidence.reviewRounds}, host-verified commands ${team.delivery.evidence.hostVerifiedCommands}, attempts ${team.delivery.evidence.attempts}, duration ${Math.round(team.delivery.evidence.totalDurationMs / 1000)}s${team.delivery.evidence.unverifiedQualityTasks.length === 0 ? '' : `; unverified: ${team.delivery.evidence.unverifiedQualityTasks.join(', ')}`}`,
     ],
     ...(team.delivery?.warnings ?? []).length === 0 ? [] : [
       'Gate warnings (delivery is not blocked, but these recorded verdicts or generated work orders no longer describe the current bytes):',

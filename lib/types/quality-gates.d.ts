@@ -89,6 +89,17 @@ export interface CoverageRow {
     status: 'missing' | 'in_progress' | 'passed' | 'blocked';
     evidence?: string;
 }
+export interface DeliveryEvidence {
+    qualityTasks: number;
+    completedQualityTasks: number;
+    reviewRounds: number;
+    hostVerifiedCommands: number;
+    unverifiedQualityTasks: string[];
+    attempts: number;
+    totalDurationMs: number;
+    workTasks: number;
+    completedWorkTasks: number;
+}
 export interface DeliveryResult {
     ok: boolean;
     blockers: string[];
@@ -98,6 +109,8 @@ export interface DeliveryResult {
      * moved on. Delivery is still allowed, but never silently.
      */
     warnings: string[];
+    /** Machine-readable delivery counters for the status tool and report/UI. */
+    evidence: DeliveryEvidence;
 }
 /**
  * Current workspace bytes handed to the delivery check. The rules stay pure:
@@ -359,6 +372,8 @@ export interface WorkOrderWarning {
  */
 export declare function workOrderWarnings(team: TeamState, current: readonly ArtifactDigest[] | undefined): WorkOrderWarning[];
 export declare function canDeclareDelivery(team: TeamState, audit?: DeliveryAudit): DeliveryResult;
+/** Counters that let status/report distinguish a verified delivery from a claim. */
+export declare function buildDeliveryEvidence(team: TeamState): DeliveryEvidence;
 export declare function resumeTeamState(team: TeamState, reason: string): ResumeTeamResult;
 /**
  * The durable `findings[].line` contract, shared by the write-side parser
