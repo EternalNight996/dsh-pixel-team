@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11] - 2026-10-27
+
+### Changed
+- Delivery requires a passing independent review even for work-only graphs.
+- Research/docs/debate reviews become quality review tasks; fullstack keeps a
+  review gate without disjoint layers.
+
 ## [0.1.10] - 2026-10-27
 
 ### Added

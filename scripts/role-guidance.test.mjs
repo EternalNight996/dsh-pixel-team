@@ -105,6 +105,20 @@ test('profile seed tasks can declare quality contracts and review targets', () =
   }, 'broken', 8), /acceptance/)
 })
 
+test('work-only templates still end in a quality review gate', () => {
+  for (const template of ['research', 'docs', 'debate']) {
+    const plan = buildQuickStartPlan('goal', template)
+    const review = plan.tasks.find(task => task.id === 'review')
+    assert.equal(review?.kind, 'review', template)
+    assert.ok(review?.reviewedTaskId, template)
+  }
+  const fullstack = buildQuickStartPlan('goal', 'fullstack')
+  const review = fullstack.tasks.find(task => task.id === 'review')
+  assert.equal(review?.kind, 'review')
+  assert.equal(review?.reviewedTaskId, 'integrate')
+  for (const task of fullstack.tasks.filter(task => task.id !== 'review')) assert.equal(task.kind, undefined)
+})
+
 test('the fullstack template becomes a quality DAG when disjoint layers exist', () => {
   const delivery = {
     inScope: ['src/', 'web/', 'server/', 'package.json'],

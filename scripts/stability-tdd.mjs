@@ -32,11 +32,18 @@ await test('work, empty, staged, halted and escalated teams cannot falsely decla
   state.tasks[0].status = 'completed'
   assert.equal(canDeclareDelivery(state).ok, false, 'completed work without output is not deliverable')
   state.tasks[0].output = 'done'
+  assert.equal(canDeclareDelivery(state).ok, false, 'completed work without an independent review is not deliverable')
+  state.tasks.push({
+    id: 'r1', subject: 'Review', kind: 'review', status: 'completed', assignee: 'worker',
+    dependencies: ['t1'], attempt: 1, createdAt: 1, updatedAt: 2, verdict: 'pass',
+    reviewedTaskId: 't1', reviewedAttempt: 1, reviewedArtifacts: [],
+  })
   const completed = canDeclareDelivery(state)
   assert.equal(completed.ok, true)
   assert.equal(completed.evidence.workTasks, 1)
   assert.equal(completed.evidence.completedWorkTasks, 1)
   assert.equal(completed.evidence.hostVerifiedCommands, 0)
+  assert.equal(completed.evidence.reviewRounds, 1)
   for (const extra of [{ phase: 'staged' }, { halted: true }, { escalated: true }, { tasks: [] }]) assert.equal(canDeclareDelivery({ ...state, ...extra }).ok, false)
 
   const unverifiedQuality = canDeclareDelivery({

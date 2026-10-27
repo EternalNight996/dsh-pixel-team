@@ -1672,10 +1672,9 @@ export function canDeclareDelivery(team: TeamState, audit: DeliveryAudit = {}): 
     blockers.push(`${item.id} (${kind}) is not completed`)
   }
 
-  if (implementations.some((item) => item.status === 'completed') && !reviews.some((item) => item.status === 'completed' && item.verdict === 'pass')) {
-    if (!blockers.some((item) => item.includes('review'))) {
-      blockers.push('completed implementation has no passing review')
-    }
+  const hasCompletedTask = team.tasks.some((item) => item.status === 'completed')
+  if (hasCompletedTask && !reviews.some((item) => item.status === 'completed' && item.verdict === 'pass')) {
+    blockers.push('completed work has no passing independent review')
   }
 
   for (const item of implementations) {
