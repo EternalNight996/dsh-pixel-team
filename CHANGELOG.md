@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.13] - 2026-10-27
+
+### Added
+- Pre-rendered frame sheets for cultivators (sit / walk / ride / cast), six mount
+  families and eight skill sigils: one `drawImage` per figure per frame instead of
+  a few hundred `fillRect` calls.
+- Cast animation with sparks when a cultivator breaks through, swaps a mount or
+  equips an artifact.
+- Skill sigils now float beside an equipped cultivator.
+
+### Changed
+- Mounts animate a real four-frame gait; the rider keeps the saddle when the
+  mount hops.
+
+### Fixed
+- Quadruped mounts repeated the same two gait frames; all four frames now differ.
+- A hopping mount used to stay on the ground while its rider jumped alone.
+
 ## [0.1.12] - 2026-10-27
 
 ### Added
