@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.12] - 2026-10-27
+
+### Added
+- Activity panel cleanup button; dry-run preview, confirmation, inline result.
+
 ## [0.1.11] - 2026-10-27
 
 ### Changed

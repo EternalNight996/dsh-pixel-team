@@ -563,6 +563,41 @@
   outline-offset: 2px;
 }
 
+.cleanupButton {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  flex: none;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cleanupButton:hover {
+  border-color: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.cleanupButton:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.cleanupButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+.cleanupMessage {
+  min-width: 0;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
 .teamStopButton {
   display: grid;
   width: 26px;

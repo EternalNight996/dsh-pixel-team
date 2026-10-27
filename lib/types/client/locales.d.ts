@@ -41,6 +41,12 @@ export declare const zh: {
     'activity.dockRight': string;
     'activity.collapse': string;
     'activity.empty': string;
+    'team.cleanup': string;
+    'team.cleanupHint': string;
+    'team.cleanupEmpty': string;
+    'team.cleanupConfirm': string;
+    'team.cleanupDone': string;
+    'team.cleanupFailed': string;
     'team.report': string;
     'team.reportHint': string;
     'team.stop': string;
@@ -655,6 +661,12 @@ export declare const en: {
     'activity.dockRight': string;
     'activity.collapse': string;
     'activity.empty': string;
+    'team.cleanup': string;
+    'team.cleanupHint': string;
+    'team.cleanupEmpty': string;
+    'team.cleanupConfirm': string;
+    'team.cleanupDone': string;
+    'team.cleanupFailed': string;
     'team.report': string;
     'team.reportHint': string;
     'team.stop': string;

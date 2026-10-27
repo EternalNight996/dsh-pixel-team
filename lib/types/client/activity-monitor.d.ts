@@ -116,6 +116,8 @@ export declare const ACTIVITY_STATE_URL = "/plugins/dsh-pixel-team/state";
 export declare const ACTIVITY_HALT_URL = "/plugins/dsh-pixel-team/halt";
 /** Host route that resumes a halted team (same path as the captain tool). */
 export declare const ACTIVITY_RESUME_URL = "/plugins/dsh-pixel-team/resume";
+/** Host route that archives abandoned terminal teams. */
+export declare const ACTIVITY_CLEANUP_URL = "/plugins/dsh-pixel-team/cleanup";
 interface ActivityFetchResponse {
     readonly ok: boolean;
     json(): Promise<unknown>;

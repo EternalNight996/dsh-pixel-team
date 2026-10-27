@@ -61,6 +61,7 @@ import {
   usesParallelTaskGrid,
 } from './activity-model.ts'
 import {
+  ACTIVITY_CLEANUP_URL,
   ACTIVITY_HALT_URL,
   ACTIVITY_RESUME_URL,
   getActivityMonitorTargetsSnapshot,
@@ -573,6 +574,8 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
   const [stopOpen, setStopOpen] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [stopError, setStopError] = useState('')
+  const [cleanupBusy, setCleanupBusy] = useState(false)
+  const [cleanupMessage, setCleanupMessage] = useState('')
   const stopAnchorRef = useRef<HTMLDivElement>(null)
   const stopCancelRef = useRef<HTMLButtonElement>(null)
   // 浮标式确认：点外部或按 Esc 关闭；打开时把焦点放到「取消」，避免误触停止。
@@ -670,6 +673,36 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
       setStopping(false)
     }
   }
+  const cleanupTeams = async (): Promise<void> => {
+    if (cleanupBusy) return
+    setCleanupBusy(true)
+    setCleanupMessage('')
+    try {
+      const request = async (dryRun: boolean): Promise<{ candidates?: { id: string; name: string; age_days: number }[]; archived?: string[] }> => {
+        const response = await fetch(ACTIVITY_CLEANUP_URL, {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionId: team.captainSessionId, dry_run: dryRun }),
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return await response.json() as { candidates?: { id: string; name: string; age_days: number }[]; archived?: string[] }
+      }
+      const preview = await request(true)
+      const candidates = preview.candidates ?? []
+      if (candidates.length === 0) {
+        setCleanupMessage(t('team.cleanupEmpty'))
+        return
+      }
+      if (!window.confirm(t('team.cleanupConfirm', { count: candidates.length }))) return
+      const result = await request(false)
+      setCleanupMessage(t('team.cleanupDone', { count: (result.archived ?? []).length }))
+    } catch {
+      setCleanupMessage(t('team.cleanupFailed'))
+    } finally {
+      setCleanupBusy(false)
+    }
+  }
   return (
     <>
       <section className={css.team} data-team-id={team.teamId} data-workspace-team={workspace || undefined}>
@@ -700,6 +733,16 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
             <span data-stat="tasks">{t('team.stats.completed', { completed: completedCount, total: team.tasks.length })}</span>
             <span data-stat="messages">{t('team.stats.messages', { count: team.messageCount })}</span>
           </span>
+          <button
+            type="button"
+            className={css.cleanupButton}
+            disabled={cleanupBusy}
+            title={t('team.cleanupHint')}
+            onClick={() => { void cleanupTeams() }}
+          >
+            {cleanupBusy ? '…' : t('team.cleanup')}
+          </button>
+          {cleanupMessage !== '' && <span className={css.cleanupMessage} role="status">{cleanupMessage}</span>}
           {team.delivery?.ok === true && team.delivery.report !== undefined && (
             <button
               type="button"
