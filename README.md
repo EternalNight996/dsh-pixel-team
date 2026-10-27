@@ -73,7 +73,7 @@ It is a real team runtime in a pixel coat:
 ## ✨ Why you'll love it
 
 - 🏯 **A hall, not a dashboard** — six clickable facilities, a floor bar, and a living pixel scene. Click a cultivator to open their conversation; click the level badge to open gear.
-- 🧠 **Real team protocol** — persistent subagents, automatic task dispatch, mailbox, retries, cold recovery and independent review. These are real cards, not mockups.
+- 🧠 **Real team protocol** — persistent subagents, automatic task dispatch, mailbox, retries, cold recovery and independent review. Not a demo shell.
 - 🌱 **Cultivation that shows up** — tasks and idle time feed a shared 15-realm ladder; gear, mounts and skills are drawn into the hall; crossing a realm gets a longer breakthrough effect.
 - 📜 **封神榜 + 宗门志** — a sect roll, realm ladder, cultivation card, support/community/about and feedback in one place.
 - 🔒 **Local-first & MIT** — team state lives in your workspace. No cloud account, no hidden sync.
