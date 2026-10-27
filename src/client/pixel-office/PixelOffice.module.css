@@ -1,0 +1,147 @@
+/* Pixel-office view: the whole team tab (and the floater's office mode). */
+
+.office {
+  display: flex;
+  flex-direction: column;
+  /* Fill the dock pane, but stop growing at a comfortable hall height: an
+     endlessly tall canvas pushed the courtyard (and every idle cultivator) far
+     from the wall menu and made clicks and panels feel disconnected. */
+  flex: 1 1 auto;
+  height: 100%;
+  max-height: min(640px, 100%);
+  min-height: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.canvasHost {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 160px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1c2320;
+}
+
+.canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+/* Screen-reader-only live summary; the canvas carries the visual copy. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 90px;
+  max-width: 210px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-strong, rgba(160, 176, 200, 0.5));
+  background: rgba(18, 22, 30, 0.95);
+  color: #e8eef8;
+  font-size: 10px;
+  line-height: 1.45;
+  pointer-events: none;
+  transform: translate(-50%, -118%);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%);
+}
+
+.tooltip[data-placement='below'] {
+  transform: translate(-50%, 16%);
+}
+
+.tooltip strong {
+  font-size: 11px;
+}
+
+.tooltip span {
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+
+.tooltip span[data-activity='working'] {
+  color: #67d9a5;
+}
+
+.tooltip span[data-activity='idle'] {
+  color: #9fb0c8;
+}
+
+/* Keyboard/screen-reader duplicate of the wall facilities. It stays visually
+   hidden so it never covers the art; tabbing into it reveals a small rail. */
+.rail {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  display: flex;
+  gap: 3px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.rail:focus-within {
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid rgba(160, 176, 200, 0.35);
+  background: rgba(18, 22, 26, 0.92);
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%);
+}
+
+.railButton {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #d8c48a;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.railButton:hover {
+  color: #ffe9a8;
+  border-color: rgba(212, 175, 55, 0.55);
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.railButton[aria-pressed='true'] {
+  color: #241a08;
+  background: #d4af37;
+  border-color: #ffe9a8;
+}
+
+.railButton:focus-visible {
+  outline: 2px solid #d4af37;
+  outline-offset: 1px;
+}

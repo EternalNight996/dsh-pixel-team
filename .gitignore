@@ -1,0 +1,12 @@
+﻿node_modules/
+*.tsbuildinfo
+.DS_Store
+.agent-teams/
+
+# Local immutable candidate used by the Harness compatibility lab.
+/artifacts/harness-0.2.1-rc.1/
+*.tgz
+
+.dsh/*.log
+.dsh/check-locale.mjs
+

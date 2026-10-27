@@ -1,0 +1,427 @@
+.root {
+  --dsw-alias-state-business-primary: light-dark(#2866d7, #82b4ff);
+  position: relative;
+  container: team-workspace / inline-size;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--dsw-alias-label-primary);
+  background: color-mix(in srgb, var(--dsw-alias-bg-module-platform) 78%, var(--dsw-alias-bg-base));
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+/* Top panel: configuration and interaction. Sized to its content and capped,
+   so short content leaves the room to the pixel office instead of scrolling. */
+.content {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 10px 12px 12px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-secondary) 45%, transparent) transparent;
+}
+.content::-webkit-scrollbar { width: 9px; height: 9px; }
+.content::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-label-secondary) 42%, transparent);
+}
+.content::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--dsw-alias-label-secondary) 62%, transparent); }
+.content::-webkit-scrollbar-track { background: transparent; }
+/* The hall `is` the page: full height, no permanent chrome above it. */
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 8px 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Connection trouble floats over the hall instead of consuming page height. */
+.stageError {
+  position: absolute;
+  z-index: 7;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, var(--dsw-alias-border-l2));
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 92%, transparent);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 28%);
+}
+.stageError > span { flex: 1 1 160px; }
+.stageError button {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+}
+
+/* Staged plan: a single floating review button over the darkened hall. */
+.stagedRibbon {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-business-primary) 45%, var(--dsw-alias-border-l2));
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 94%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 32%);
+}
+.stagedRibbon button {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-state-business-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Sheet = one facility panel floating over the still-visible hall. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  padding: 0;
+  border: 0;
+  background: rgb(8 12 10 / 22%);
+  cursor: default;
+  animation: scrimIn 140ms ease-out;
+}
+
+@keyframes scrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Floating panel: centred near the top of the hall, draggable by its title bar
+   and resizable from the corner, so content size never fights the canvas size.
+   The hall stays visible behind it; the light scrim only separates focus. */
+.sheet {
+  /* 悬浮在整个 DSH 界面的右下角（portal 到 body，fixed 定位），
+     不属于右侧标签页，也不受标签页滚动/裁剪影响。 */
+  position: fixed;
+  z-index: 12000;
+  right: 16px;
+  bottom: 16px;
+  transform: translate(var(--sheet-dx, 0px), var(--sheet-dy, 0px));
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100% - 32px));
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 32px);
+  min-width: 280px;
+  min-height: 180px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 82%, transparent);
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: 0 22px 60px rgb(0 0 0 / 52%), 0 2px 0 rgb(255 255 255 / 4%) inset;
+  overflow: hidden;
+  resize: both;
+  animation: sheetFloatIn 160ms ease-out;
+}
+
+@keyframes sheetFloatIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.sheet:focus { outline: none; }
+
+/* 右下角的缩放把手：让「可改大小」看得见。 */
+.sheet::-webkit-resizer {
+  background:
+    linear-gradient(135deg, transparent 0 46%, var(--dsw-alias-label-tertiary) 46% 52%, transparent 52% 62%, var(--dsw-alias-label-tertiary) 62% 68%, transparent 68%);
+}
+.sheetHead {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  background: color-mix(in srgb, var(--dsw-alias-bg-module-platform) 65%, var(--dsw-alias-bg-layer-1));
+}
+.sheetGrip {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.sheetTitle { font-size: 12px; font-weight: 650; letter-spacing: -0.2px; white-space: nowrap; }
+.sheetMeta {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+}
+.sheetClose {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 15px;
+  line-height: 1;
+}
+.sheetClose:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.sheetBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px 14px;
+  scrollbar-width: thin;
+}
+.sheetSection { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.sheetHint { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 10.5px; line-height: 1.6; }
+.sheetEmpty { margin: 0; padding: 18px 4px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.7; }
+.sheetBack {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 5px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+}
+.sheetBack:hover { border-color: var(--dsw-alias-state-business-primary); }
+.teamList { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.teamRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  text-align: left;
+  font-size: 11.5px;
+}
+.teamRow:hover { border-color: var(--dsw-alias-state-business-primary); }
+.teamRow[data-current] {
+  border-color: var(--dsw-alias-state-business-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent);
+}
+.teamRowName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.teamRowState { color: var(--dsw-alias-label-secondary); font-size: 10.5px; }
+.teamRowCount { color: var(--dsw-alias-label-tertiary); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.inboxList { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.inboxRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: color-mix(in srgb, var(--dsw-alias-bg-module-platform) 40%, transparent);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.inboxFrom { color: var(--dsw-alias-state-business-primary); font-weight: 600; }
+.inboxText { color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
+/* 「暂无对话」提示：短暂浮在洞府底部。 */
+.officeHint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  z-index: 3;
+  max-width: 92%;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-business-primary) 55%, var(--dsw-alias-border-l2));
+  border-radius: 8px;
+  background: rgb(20 24 32 / 94%);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+  line-height: 16px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 35%);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: officeHintIn 160ms ease-out;
+}
+
+@keyframes officeHintIn {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* 常驻引导：一句小字提醒「什么可以点」，不挡画面、不误触。 */
+.hallHint {
+  position: absolute;
+  z-index: 4;
+  left: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 80%, transparent);
+  border-radius: 999px;
+  background: rgb(16 20 24 / 72%);
+  color: #cbd5e1;
+  font-size: 10px;
+  line-height: 15px;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+}
+
+/* First-visit coach line: one floating sentence, dismissed once. */
+.hallGuide {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 7px 8px 7px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #d4af37 45%, var(--dsw-alias-border-l2));
+  background: rgb(18 22 26 / 94%);
+  color: #e8eef8;
+  font-size: 11px;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 38%);
+  animation: officeHintIn 200ms ease-out;
+}
+.hallGuide span { flex: 1 1 auto; }
+.hallGuide button {
+  flex: none;
+  padding: 4px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  background: rgba(212, 175, 55, 0.14);
+  color: #ffe9a8;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.hallGuide button:hover { background: rgba(212, 175, 55, 0.26); }
+
+
+.heading { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 8px; }
+.heading img { width: 26px; height: 26px; object-fit: contain; }
+.heading h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.4px; }
+.heading > span { color: var(--dsw-alias-label-secondary); font-size: 11px; }
+/* Two pages above the fixed pixel office. */
+.viewTabs {
+  display: flex;
+  gap: 2px;
+  margin: 0 0 0 auto;
+  padding: 2px;
+  border-radius: 9px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 65%, var(--dsw-alias-bg-base));
+  width: fit-content;
+}
+.viewTabs button {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 11px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.viewTabs button:hover { color: var(--dsw-alias-label-primary); }
+.viewTabs button[aria-selected='true'] {
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+}
+.stagedNotice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 14px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.stagedNotice h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.stagedNotice p { margin: 0; font-size: 12px; line-height: 1.7; color: var(--dsw-alias-label-secondary); }
+.stagedNotice button { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-label-primary); font-size: 12px; }
+.stagedNotice button:hover { border-color: var(--dsw-alias-state-business-primary); }
+.teamPicker { display: inline-flex; align-items: center; gap: 6px; margin: 0; min-width: 0; }
+.teamPickerCaption { font-size: 10px; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.teamPickerSelect {
+  max-width: 230px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+}
+.teamPickerSelect:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+.root button { font-family: inherit; cursor: pointer; }
+.empty button, .error button { color: inherit; }
+.root button:active { transform: scale(.98); }
+.root button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 3px; }
+.empty { padding: 32px 24px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 18px; background: var(--dsw-alias-bg-layer-1); }
+.emptyMark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; font-size: 26px; color: var(--dsw-alias-state-business-primary); background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 8%, transparent); }
+.empty h3 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; }
+.empty p { max-width: 45ch; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.8; }
+.empty button, .error button { background: var(--dsw-alias-bg-module-platform); border: 1px solid var(--dsw-alias-border-l2); padding: 9px 13px; border-radius: 9px; font-size: 12px; }
+.empty button:hover, .error button:hover { border-color: var(--dsw-alias-state-business-primary); }
+.error { display: flex; flex-wrap: wrap; align-items: start; gap: 12px; padding: 14px; margin-bottom: 18px; border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 30%, var(--dsw-alias-border-l2)); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); font-size: 12px; line-height: 1.65; }
+.error > span { flex: 1 1 180px; }
+.error button { flex: none; }
+.skeleton { display: grid; gap: 14px; }
+.skeleton i { height: 130px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 16px; background: var(--dsw-alias-bg-layer-1); animation: breathe 1.8s ease-in-out infinite alternate; }
+.skeleton i:first-child { height: 74px; }
+.skeleton i:last-child { animation-delay: .3s; }
+@keyframes breathe { to { opacity: .45; } }
+@container team-workspace (min-width: 720px) { .content { padding: 24px 24px 32px; } .heading { margin-bottom: 24px; } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton i { animation: none; }
+  .root button { transition: none; }
+  .sheet, .scrim, .hallGuide { animation: none; }
+}
+
+.teamPickerSelect[data-current='true'] { color: #4ec98a; border-color: #4ec98a; background: color-mix(in srgb, #4ec98a 10%, var(--dsw-alias-bg-layer-1)); }
