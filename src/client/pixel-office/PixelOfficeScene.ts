@@ -120,11 +120,14 @@ export interface SceneHandle {
 
 import { roleVisual, type RoleVisual } from '../role-visuals.ts'
 import {
-  CHARACTER_DISPLAY_HEIGHT, CHARACTER_SCALE, SHOE_HEIGHT, TRAVEL_LIFT, characterRig, nextTravelForm, travelFormFor, type TravelForm,
+  CHARACTER_DISPLAY_HEIGHT, CHARACTER_SCALE, TRAVEL_LIFT, nextTravelForm, travelFormFor, type TravelForm,
 } from './travel.ts'
 import { FACILITIES, FACILITY_ORDER, WALL_HEIGHT, type FacilityRect, type SceneAction, type SceneHit } from './office-actions.ts'
 import { mountModelFor, toneForTier, weaponShapeFor, type EquipTone, type MountModel, type WeaponShape } from '../equipment-visuals.ts'
 import { realmPaletteForLevel } from '../realm-colors.ts'
+import { characterFrames, FRAME_H, FRAME_W } from './sprite/character-frames.ts'
+import { mountFrames, MOUNT_H, MOUNT_W } from './sprite/mount-frames.ts'
+import { skillIcon, SKILL_ICON_SIZE } from './sprite/skill-icons.ts'
 
 const WORLD_W = 520
 const WORLD_MIN_H = 300
@@ -223,6 +226,41 @@ export function createPixelScene(
   const zoom = options.zoom ?? 1
   // 双击弹跳：按成员 id 记录起跳帧时间（-1 表示刚请求）。
   const jumps = new Map<string, number>()
+  // 施法演出：换装 / 破境后短暂播放施法帧（毫秒时间戳）
+  const castUntil = new Map<string, number>()
+  const castSeen = new Map<string, boolean>()
+  // 施法迸出的灵屑：位置、速度、寿命
+  type CastSpark = { x: number; y: number; vx: number; vy: number; life: number; color: string }
+  let castSparks: CastSpark[] = []
+  let lastPaintAt = 0
+  function spawnCastSparks(x: number, y: number): void {
+    for (let i = 0; i < 14; i += 1) {
+      const angle = (i / 14) * Math.PI * 2
+      castSparks.push({ x, y, vx: Math.cos(angle) * (12 + (i % 3) * 6), vy: Math.sin(angle) * 12 - 10, life: 520 + (i % 4) * 90, color: i % 3 === 0 ? '#fff6d8' : '#f2c14e' })
+    }
+    if (castSparks.length > 120) castSparks = castSparks.slice(-120)
+  }
+  function stepCastSparks(deltaMs: number): void {
+    if (castSparks.length === 0) return
+    const keep: CastSpark[] = []
+    for (const spark of castSparks) {
+      spark.life -= deltaMs
+      if (spark.life <= 0) continue
+      spark.x += spark.vx * (deltaMs / 1000)
+      spark.y += spark.vy * (deltaMs / 1000)
+      spark.vy += 26 * (deltaMs / 1000)
+      keep.push(spark)
+    }
+    castSparks = keep
+  }
+  function drawCastSparks(): void {
+    for (const spark of castSparks) {
+      g.globalAlpha = Math.min(1, spark.life / 380)
+      g.fillStyle = spark.color
+      g.fillRect(Math.round(spark.x), Math.round(spark.y), 2, 2)
+    }
+    g.globalAlpha = 1
+  }
   // 出行形态（天机阁装备 / 双击切换）：默认步行，只有 sword/beast 才离地。
   const mountOverride = new Map<string, 'auto' | 'sword' | 'beast' | 'off'>()
   // 具体坐骑 id（灵兽/仙鹤/麒麟/龙/凤凰/道兽…），决定画哪套模型。
@@ -1250,203 +1288,40 @@ export function createPixelScene(
 
   /** mini 修士：整幅美术按 CHARACTER_SCALE 缩小，鞋底仍钉在 baseY。 */
   function paintCharacter(cx: number, baseY: number, member: SceneMember, time: number, walking = false): void {
+    const roleKey = member.isLeader === true ? 'captain' : member.role.trim().toLowerCase()
+    const frames = characterFrames(roleKey, roleVisual(roleKey), member.isLeader === true)
+    const form = travelForm(member)
+    const sitting = !walking && form === 'walk'
+    const key = member.id || member.name
+    const until = castUntil.get(key) ?? 0
+    const casting = until > time
+    if (casting && castSeen.get(key) !== true) {
+      castSeen.set(key, true)
+      spawnCastSparks(cx, baseY - 34)
+    } else if (!casting && castSeen.delete(key)) {
+      // 施法结束时清标记，下一次换装还能再触发
+    }
+    const pose = casting
+      ? frames.cast
+      : sitting ? frames.sit : form !== 'walk' ? frames.ride : frames.walk
+    const seed = hash(key)
+    const index = casting
+      ? Math.min(frames.cast.length - 1, Math.max(0, Math.floor((950 - (until - time)) / 220)))
+      : sitting
+        ? Math.floor(time / 720 + (seed % 5)) % pose.length
+        : pose === frames.walk
+          ? Math.floor(time / 110 + (seed % 7)) % pose.length
+          : Math.floor(time / 300 + (seed % 3)) % pose.length
+    const image = pose[index] ?? pose[0]
+    if (image === undefined) return
+    // 骑乘时整具身体下压：收起的双腿落在鞍面上，人不再浮在兽背上方。
+    const seatDrop = form === 'walk' ? 0 : form === 'beast' ? -14 : 0
     g.save()
-    g.translate(cx, baseY)
+    g.translate(cx, baseY + seatDrop)
     g.scale(CHARACTER_SCALE, CHARACTER_SCALE)
-    paintCharacterArt(0, 0, member, time, walking)
+    g.imageSmoothingEnabled = false
+    g.drawImage(image, -FRAME_W / 2, -FRAME_H)
     g.restore()
-  }
-
-  /** 修士美术：按 92px 完整身形作画（头顶 baseY−92、鞋底 baseY），外层再缩成 mini。 */
-  function paintCharacterArt(cx: number, baseY: number, member: SceneMember, time: number, walking = false): void {
-    const seed = hash(member.id || member.name)
-    const visual = roleVisual(member.isLeader === true ? 'captain' : member.role)
-    const skin = visual?.skin ?? pick(SKIN, seed)
-    const robe = visual?.robe ?? (member.isLeader ? COLORS.captain : pick(SHIRT, seed >> 3))
-    const trim = visual?.trim ?? '#e8eef8'
-    const hair = visual?.hair ?? '#2a2f3a'
-    const working = member.activity === 'working'
-    // 步态：走路时双腿交替、手臂反摆；静立/伏案只有呼吸。
-    const gait = walking ? Math.sin(time / 95 + (seed % 7)) : 0
-    const stride = Math.round(gait * 3)
-    const bob = walking
-      ? -Math.abs(Math.round(gait))
-      : working ? Math.round(Math.sin(time / 130 + seed % 7) * 1.5) : Math.round(Math.sin(time / 700 + seed % 5) * 1)
-
-    // 头顶、肩线、腰带、袍角、鞋面：整条身形都按 baseY 落地（脚不再悬空）。
-    const rig = characterRig(baseY)
-    const headY = rig.headY + bob
-    const bodyY = rig.bodyY + bob
-    const waistY = rig.waistY + bob
-    const hemY = rig.hemY + bob
-    const shoeY = rig.shoeY
-
-    // 灵气：以颜色常驻标示状态（修炼/静修/异常），修炼中带上升灵屑。
-    const tone = stateTone(member.activity)
-    const auraPulse = 0.5 + Math.abs(Math.sin(time / (working ? 420 : 900))) * 0.5
-    const auraY = bodyY + 14
-    const auraR = (member.isLeader ? 40 : 34) + auraPulse * 4
-    const aura = g.createRadialGradient(cx, auraY, 4, cx, auraY, auraR)
-    aura.addColorStop(0, rgba(tone, 0.26 + (working ? 0.1 : 0.02)))
-    aura.addColorStop(0.55, rgba(tone, 0.12))
-    aura.addColorStop(1, rgba(tone, 0))
-    g.fillStyle = aura
-    g.beginPath(); g.arc(cx, auraY, auraR, 0, Math.PI * 2); g.fill()
-    if (working) {
-      for (let i = 0; i < 3; i += 1) {
-        const phase = (time / 1200 + i / 3) % 1
-        g.fillStyle = rgba(tone, 0.75 * (1 - phase))
-        g.fillRect(cx - 16 + i * 12, Math.round(auraY + 14 - phase * 46), 2, 2)
-      }
-    }
-
-    // 腿与鞋：站立时踩在地面，走路时前后交替、前脚微抬。
-    const legLift = walking ? Math.max(0, Math.round(gait * 2)) : 0
-    const legs = [
-      { x: cx - 8 + stride, lift: walking ? Math.max(0, -Math.round(gait * 2)) : 0 },
-      { x: cx + 2 - stride, lift: legLift },
-    ]
-    for (const leg of legs) {
-      // 内袍与皂靴：靴底浅色、靴头上翘，遮住“西式长靴”的感觉。
-      g.fillStyle = visual?.robeDark ?? '#3a3128'
-      g.fillRect(leg.x, hemY - 2, 6, shoeY - (hemY - 2) - leg.lift)
-      g.fillStyle = '#241a12'
-      g.fillRect(leg.x - 1, shoeY - leg.lift, 8, SHOE_HEIGHT)
-      g.fillStyle = '#d8cfc0'
-      g.fillRect(leg.x - 1, shoeY - leg.lift + SHOE_HEIGHT - 1, 8, 1)
-      g.fillRect(leg.x + (leg.x < cx ? -2 : 7), shoeY - 2 - leg.lift, 2, 2)
-    }
-
-    // 下摆：遮住裤腿上半段，走路时轻轻摆动。
-    const hemSway = walking ? Math.round(gait * 1.5) : 0
-    g.fillStyle = '#1b1510'
-    g.fillRect(cx - 12, waistY + 1, 24, hemY - waistY)
-    g.fillStyle = robe
-    g.fillRect(cx - 11, waistY + 2, 22, hemY - waistY - 2)
-    g.fillStyle = visual?.robeDark ?? 'rgba(0, 0, 0, 0.22)'
-    g.fillRect(cx + 5 + hemSway, waistY + 2, 5, hemY - waistY - 2)
-    g.fillStyle = visual?.robeLight ?? 'rgba(255, 255, 255, 0.16)'
-    g.fillRect(cx - 11, waistY + 2, 3, hemY - waistY - 2)
-    g.fillStyle = trim
-    g.fillRect(cx - 11, hemY - 3, 22, 2)
-    g.fillStyle = 'rgba(0, 0, 0, 0.3)'
-    g.fillRect(cx - 1 + Math.round(hemSway / 2), waistY + 4, 2, hemY - waistY - 8)
-    // 两侧开衩与下摆云纹。
-    g.fillStyle = '#1b1510'
-    g.fillRect(cx - 13, hemY - 6, 2, 6)
-    g.fillRect(cx + 11, hemY - 6, 2, 6)
-    g.fillStyle = trim
-    g.fillRect(cx - 8, hemY - 8, 4, 1)
-    g.fillRect(cx + 5, hemY - 6, 3, 1)
-
-    // 躯干：暗描边 + 亮/中/暗三档道袍。
-    g.fillStyle = '#1b1510'
-    g.fillRect(cx - 11, bodyY - 1, 22, waistY - bodyY + 2)
-    g.fillStyle = robe
-    g.fillRect(cx - 9, bodyY, 18, waistY - bodyY)
-    g.fillStyle = visual?.robeLight ?? 'rgba(255, 255, 255, 0.16)'
-    g.fillRect(cx - 9, bodyY, 3, waistY - bodyY)
-    g.fillStyle = visual?.robeDark ?? 'rgba(0, 0, 0, 0.22)'
-    g.fillRect(cx + 5, bodyY, 4, waistY - bodyY)
-    // 交领右衽：内衬 + 两条斜襟；腰带、绦带与玉佩。
-    const innerCollar = visual?.robeLight ?? '#e8eef8'
-    g.fillStyle = innerCollar
-    g.beginPath(); g.moveTo(cx - 7, bodyY); g.lineTo(cx + 7, bodyY); g.lineTo(cx + 2, bodyY + 9); g.lineTo(cx - 2, bodyY + 9); g.closePath(); g.fill()
-    g.fillStyle = trim
-    g.beginPath(); g.moveTo(cx - 9, bodyY); g.lineTo(cx - 1, bodyY + 10); g.lineTo(cx - 4, bodyY + 11); g.lineTo(cx - 11, bodyY + 2); g.closePath(); g.fill()
-    g.beginPath(); g.moveTo(cx + 9, bodyY); g.lineTo(cx + 1, bodyY + 10); g.lineTo(cx + 4, bodyY + 11); g.lineTo(cx + 11, bodyY + 2); g.closePath(); g.fill()
-    g.fillStyle = 'rgba(0, 0, 0, 0.28)'
-    g.fillRect(cx - 1, bodyY + 10, 2, waistY - bodyY - 12)
-    g.fillStyle = '#6e2a24'
-    g.fillRect(cx - 11, waistY - 4, 22, 5)
-    g.fillStyle = trim
-    g.fillRect(cx - 11, waistY - 4, 22, 1)
-    g.fillStyle = '#f2c14e'
-    g.fillRect(cx - 3, waistY - 4, 6, 4)
-    g.fillStyle = '#a8433a'
-    g.fillRect(cx + 2, waistY + 1, 2, 12)
-    g.fillRect(cx + 6, waistY + 1, 2, 9)
-    g.fillStyle = '#7fd6c0'
-    g.fillRect(cx - 7, waistY + 2, 3, 3)
-    g.fillStyle = '#f2c14e'
-    g.fillRect(cx - 7, waistY + 1, 3, 1)
-
-    // 手臂：袖口 + 手，走路时与腿反向摆动。
-    const armSwing = walking ? -stride : 0
-    for (const side of [-1, 1] as const) {
-      const x = side < 0 ? cx - 16 : cx + 9
-      const y = bodyY + 3 + (side < 0 ? armSwing : -armSwing)
-      // 宽袖：袖身加宽，袖口一圈浅色镶边。
-      g.fillStyle = robe
-      g.fillRect(x, y, 7, 17)
-      g.fillStyle = visual?.robeDark ?? 'rgba(0, 0, 0, 0.22)'
-      g.fillRect(x + (side < 0 ? 0 : 5), y + 10, 2, 7)
-      g.fillStyle = trim
-      g.fillRect(x - 1, y + 14, 9, 2)
-      g.fillStyle = skin
-      g.fillRect(x + 1, y + 17, 5, 4)
-    }
-
-    // 头部与发式：不戴冠的修士默认披长发，只有束发角色才做发髻。
-    const tiedHair = visual?.hairStyle === 'topknot'
-    if (!tiedHair) {
-      // 先铺一层比脸宽的发幕，脸画上去后两侧自然露出长发。
-      g.fillStyle = hair
-      g.fillRect(cx - 9, headY + 2, 18, 20)
-    }
-    g.fillStyle = skin
-    g.fillRect(cx - 2, bodyY - 2, 4, 3)
-    g.fillRect(cx - 7, headY + 3, 14, 13)
-    g.fillStyle = hair
-    g.fillRect(cx - 7, headY, 14, 5)
-    if (tiedHair) {
-      g.fillRect(cx - 2, headY - 6, 4, 6)
-      g.fillStyle = trim
-      g.fillRect(cx - 1, headY - 8, 2, 2)
-    } else {
-      // 鬓发 + 肩后长发。
-      g.fillRect(cx - 9, headY + 5, 2, 17)
-      g.fillRect(cx + 7, headY + 5, 2, 17)
-      g.fillRect(cx - 10, bodyY - 1, 2, 9)
-      g.fillRect(cx + 8, bodyY - 1, 2, 9)
-    }
-    if (visual?.beard === true) {
-      g.fillStyle = '#d8d2c8'
-      g.fillRect(cx - 3, headY + 12, 6, 4)
-    }
-    // 发冠/发簪只给戴冠的掌门与束发修士，披发的人不戴头饰。
-    if (member.isLeader || tiedHair) {
-      g.fillStyle = '#f2c14e'
-      g.fillRect(cx - 5, headY - 2, 10, 2)
-      g.fillStyle = trim
-      g.fillRect(cx - 1, headY - 7, 2, 5)
-      g.fillStyle = '#f2c14e'
-      g.fillRect(cx + 3, headY - 8, 6, 1)
-      g.fillRect(cx + 8, headY - 8, 1, 2)
-    }
-    // 眼。
-    g.fillStyle = '#24303f'
-    g.fillRect(cx - 4, headY + 8, 2, 2)
-    g.fillRect(cx + 2, headY + 8, 2, 2)
-
-    if (member.isLeader) {
-      g.fillStyle = COLORS.captain
-      g.beginPath()
-      g.moveTo(cx - 8, headY - 3)
-      g.lineTo(cx - 8, headY - 9)
-      g.lineTo(cx - 4, headY - 5)
-      g.lineTo(cx, headY - 10)
-      g.lineTo(cx + 4, headY - 5)
-      g.lineTo(cx + 8, headY - 9)
-      g.lineTo(cx + 8, headY - 3)
-      g.closePath()
-      g.fill()
-    }
-    if (member.activity === 'idle' && !walking) {
-      g.fillStyle = 'rgba(232, 238, 248, 0.75)'
-      g.font = '8px monospace'
-      g.fillText('z', cx + 12, headY - 2 - Math.round(Math.sin(time / 500) * 3))
-    }
   }
 
   /** 工位家具：矮案、蒲团、香炉与本命法器；主人离开时仍留在原位。 */
@@ -1611,207 +1486,23 @@ export function createPixelScene(
     g.restore()
   }
 
-  /** 神兽：鞍座托着骑手、四足悬空，整只兽浮在案面上方。 */
-  function paintBeastMount(cx: number, feetY: number, time: number, variant?: string): void {
-    const kind = mountModelFor(variant)
-    if (kind !== 'beast') { paintSpecialMount(cx, feetY, time, kind); return }
-    const bob = Math.sin(time / 460) * 1.1
-    const body = '#3d5c52'
-    const bodyLit = '#4d7266'
-    const dark = '#2e4740'
-    const gold = '#f2c14e'
-    g.save()
-    g.translate(cx, feetY + bob)
-
-    // 四足与蹄：悬空而行，蹄底仍高于案面。
-    g.fillStyle = dark
-    g.fillRect(-11, 11, 3, 9)
-    g.fillRect(-4, 12, 3, 8)
-    g.fillRect(5, 11, 3, 9)
-    g.fillRect(12, 12, 3, 8)
-    g.fillStyle = '#1f2f2b'
-    g.fillRect(-12, 20, 5, 2)
-    g.fillRect(4, 20, 5, 2)
-
-    // 躯干与背线。
-    g.fillStyle = body
-    g.beginPath(); g.ellipse(0, 11, 17, 8, 0, 0, Math.PI * 2); g.fill()
-    g.fillStyle = bodyLit
-    g.beginPath(); g.ellipse(-2, 7, 13, 4, 0, 0, Math.PI * 2); g.fill()
-
-    // 鞍与鞯带：骑手脚尖正好踩在鞍面。
-    g.fillStyle = '#7a3f52'
-    g.fillRect(-6, 0, 12, 5)
-    g.fillStyle = gold
-    g.fillRect(-6, 0, 12, 1)
-    g.fillRect(-7, 5, 2, 5)
-    g.fillRect(5, 5, 2, 5)
-
-    // 颈、头、吻：抬头在前。
-    g.fillStyle = body
-    g.fillRect(12, -4, 7, 14)
-    g.beginPath(); g.ellipse(20, -7, 7, 5, 0, 0, Math.PI * 2); g.fill()
-    g.fillStyle = bodyLit
-    g.fillRect(24, -8, 4, 3)
-    // 角与耳。
-    g.fillStyle = gold
-    g.fillRect(17, -14, 2, 5)
-    g.fillRect(20, -12, 2, 4)
-    // 鬃毛。
-    for (let i = 0; i < 4; i += 1) {
-      g.fillStyle = i % 2 === 0 ? gold : '#e0a94a'
-      g.fillRect(11 + i, -10 + i * 2, 2, 2)
-    }
-    // 眼。
-    g.fillStyle = '#ffe9a8'
-    g.fillRect(21, -9, 2, 2)
-
-    // 尾：摆动的长尾。
-    const sway = Math.sin(time / 320) * 2
-    g.strokeStyle = body
-    g.lineWidth = 2
-    g.beginPath(); g.moveTo(-17, 6); g.quadraticCurveTo(-25, 8 + sway, -23, 15 + sway); g.stroke()
-    g.fillStyle = gold
-    g.fillRect(-25, 15 + sway, 3, 3)
-    g.restore()
-  }
-
-  /** 仙鹤/麒麟/凤凰/蛟龙/真龙/道兽：每种坐骑一套独立模型。 */
-  function paintSpecialMount(cx: number, feetY: number, time: number, kind: 'crane' | 'qilin' | 'phoenix' | 'dao' | 'jiao' | 'dragon'): void {
-    const bob = Math.sin(time / 430) * 1.2
-    g.save()
-    g.translate(cx, feetY + bob)
-    if (kind === 'crane') {
-      g.fillStyle = 'rgba(160, 220, 220, 0.18)'
-      g.beginPath(); g.ellipse(0, 8, 24, 8, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#f2f5f0'
-      g.beginPath(); g.ellipse(0, 9, 15, 7, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#dbe7e5'
-      g.beginPath(); g.ellipse(-7, 8, 9, 5, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#f2f5f0'
-      g.fillRect(9, -7, 3, 16)
-      g.beginPath(); g.ellipse(12, -9, 5, 4, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#f2c14e'
-      g.fillRect(16, -9, 5, 2)
-      g.fillStyle = '#d43a3a'
-      g.fillRect(10, -13, 3, 3)
-      g.fillStyle = '#2e4740'
-      g.fillRect(-9, 15, 2, 8)
-      g.fillRect(-4, 16, 2, 7)
-      g.fillStyle = '#7a3f52'
-      g.fillRect(-5, 1, 10, 4)
-      g.fillStyle = '#f2c14e'
-      g.fillRect(-5, 1, 10, 1)
-    } else if (kind === 'qilin') {
-      g.fillStyle = 'rgba(255, 160, 80, 0.16)'
-      g.beginPath(); g.ellipse(0, 10, 24, 8, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#c9a24a'
-      g.beginPath(); g.ellipse(0, 9, 17, 8, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#e8c46a'
-      g.beginPath(); g.ellipse(-2, 6, 12, 4, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#2e4740'
-      g.fillRect(-11, 15, 3, 8)
-      g.fillRect(-4, 16, 3, 7)
-      g.fillRect(5, 15, 3, 8)
-      g.fillRect(12, 16, 3, 7)
-      g.fillStyle = '#c9a24a'
-      g.fillRect(12, -3, 7, 13)
-      g.beginPath(); g.ellipse(19, -6, 7, 5, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#f2c14e'
-      g.fillRect(17, -14, 2, 7)
-      g.fillRect(21, -12, 2, 5)
-      g.fillStyle = '#d43a3a'
-      for (let i = 0; i < 5; i += 1) g.fillRect(9 + i, -9 + i * 2, 2, 2)
-      g.fillStyle = '#ffe9a8'
-      g.fillRect(21, -7, 2, 2)
-      g.fillStyle = '#d43a3a'
-      g.beginPath(); g.moveTo(-16, 4); g.quadraticCurveTo(-26, 2, -25, 12); g.quadraticCurveTo(-20, 8, -17, 8); g.closePath(); g.fill()
-      g.fillStyle = '#7a3f52'
-      g.fillRect(-5, 1, 10, 4)
-      g.fillStyle = '#f2c14e'
-      g.fillRect(-5, 1, 10, 1)
-    } else if (kind === 'phoenix') {
-      g.fillStyle = 'rgba(255, 120, 50, 0.2)'
-      g.beginPath(); g.ellipse(0, 8, 28, 10, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#e06a2a'
-      g.beginPath(); g.ellipse(0, 8, 15, 7, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#f2a23a'
-      g.beginPath(); g.ellipse(-3, 5, 11, 4, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#d43a3a'
-      g.beginPath(); g.moveTo(-6, 6); g.quadraticCurveTo(-26, -8, -30, 2); g.quadraticCurveTo(-20, 8, -8, 10); g.closePath(); g.fill()
-      g.beginPath(); g.moveTo(6, 6); g.quadraticCurveTo(24, -6, 28, 2); g.quadraticCurveTo(18, 8, 8, 10); g.closePath(); g.fill()
-      g.fillStyle = '#f2c14e'
-      for (let i = 0; i < 3; i += 1) {
-        const sway = Math.sin(time / 240 + i) * 2
-        g.fillRect(-22 + i * 3 + sway, 12, 2, 10)
-      }
-      g.fillStyle = '#e06a2a'
-      g.fillRect(11, -4, 6, 12)
-      g.beginPath(); g.ellipse(17, -7, 5, 4, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#f2c14e'
-      g.fillRect(20, -8, 5, 2)
-      g.fillRect(13, -12, 2, 4)
-      g.fillRect(17, -11, 2, 3)
-      g.fillStyle = '#7a3f52'
-      g.fillRect(-5, 1, 10, 4)
-      g.fillStyle = '#f2c14e'
-      g.fillRect(-5, 1, 10, 1)
-    } else if (kind === 'dao') {
-      const glow = g.createRadialGradient(0, 8, 3, 0, 8, 30)
-      glow.addColorStop(0, 'rgba(180, 160, 255, 0.35)')
-      glow.addColorStop(1, 'rgba(180, 160, 255, 0)')
-      g.fillStyle = glow
-      g.beginPath(); g.ellipse(0, 8, 30, 12, 0, 0, Math.PI * 2); g.fill()
-      g.fillStyle = '#cfc6ff'
-      g.beginPath(); g.ellipse(0, 9, 19, 7, 0, 0, Math.PI * 2); g.fill()
-      g.strokeStyle = '#f2c14e'
-      g.lineWidth = 1
-      g.beginPath(); g.ellipse(0, 9, 13, 4.5, 0, 0, Math.PI * 2); g.stroke()
-      g.fillStyle = '#9a8cff'
-      for (let i = 0; i < 4; i += 1) {
-        const angle = time / 900 + (i / 4) * Math.PI * 2
-        g.fillRect(Math.cos(angle) * 16 - 1, 9 + Math.sin(angle) * 6 - 1, 2, 2)
-      }
-      g.fillStyle = '#f2c14e'
-      g.beginPath(); g.ellipse(0, 2, 6, 3, 0, 0, Math.PI * 2); g.fill()
-    } else {
-      const dragon = kind === 'dragon'
-      const body = dragon ? '#8a6a2a' : '#2f6a6a'
-      const lit = dragon ? '#c9a24a' : '#4d9a8a'
-      g.strokeStyle = body
-      g.lineWidth = 6
-      g.beginPath(); g.moveTo(-22, 12); g.quadraticCurveTo(-10, -2, 0, 10); g.quadraticCurveTo(10, 18, 20, 4); g.stroke()
-      g.strokeStyle = lit
-      g.lineWidth = 2
-      g.beginPath(); g.moveTo(-20, 11); g.quadraticCurveTo(-10, 0, 0, 10); g.quadraticCurveTo(10, 17, 19, 4); g.stroke()
-      g.fillStyle = body
-      g.beginPath(); g.ellipse(21, 0, 8, 6, -0.2, 0, Math.PI * 2); g.fill()
-      g.fillStyle = lit
-      g.fillRect(25, 2, 6, 3)
-      g.fillStyle = '#f2c14e'
-      g.fillRect(18, -6, 2, 6)
-      g.fillRect(23, -5, 2, 4)
-      g.beginPath(); g.moveTo(26, 1); g.lineTo(34, -2); g.lineTo(30, 4); g.closePath(); g.fill()
-      g.fillStyle = '#ffe9a8'
-      g.fillRect(24, -1, 2, 2)
-      g.fillStyle = body
-      g.beginPath(); g.moveTo(-22, 12); g.quadraticCurveTo(-30, 18, -34, 14); g.quadraticCurveTo(-28, 22, -20, 16); g.closePath(); g.fill()
-      g.fillStyle = '#7a3f52'
-      g.fillRect(-5, 1, 10, 4)
-      g.fillStyle = '#f2c14e'
-      g.fillRect(-5, 1, 10, 1)
-    }
-    g.restore()
-  }
-
-  /** 坐骑按形态挂在骑手脚底：剑脊/鞍面就是脚线，人踩着飞。 */
   function paintMount(cx: number, feetY: number, form: TravelForm, time: number, variant?: string): void {
-    // 坐骑与 mini 修士同比例缩放，骑手与剑/兽的比例保持不变。
     g.save()
     g.translate(cx, feetY)
-    g.scale(CHARACTER_SCALE, CHARACTER_SCALE)
-    if (form === 'sword') paintSwordMount(0, 0, time)
-    else if (form === 'beast') paintBeastMount(0, 0, time, variant)
+    if (form === 'sword') {
+      g.scale(CHARACTER_SCALE, CHARACTER_SCALE)
+      paintSwordMount(0, 0, time)
+    } else {
+      // 神兽：帧图集 + 四帧步态，与骑手同比例缩放
+      const frames = mountFrames(mountModelFor(variant))
+      const image = frames[Math.floor(time / 130) % frames.length] ?? frames[0]
+      if (image !== undefined) {
+        const scale = CHARACTER_SCALE * 1.2
+        g.scale(scale, scale)
+        g.imageSmoothingEnabled = false
+        g.drawImage(image, -MOUNT_W / 2, -MOUNT_H)
+      }
+    }
     g.restore()
   }
 
@@ -1846,6 +1537,7 @@ export function createPixelScene(
       if (previous !== undefined && level > previous) {
         // 升级横幅抬高，避免和等级框/经验飘字叠在一起。
         cultivationFx.push({ x: spot.cx, y: spot.baseY - 96, groundY: spot.baseY, text: `Lv.${level}`, start: time, kind: 'level' })
+        castUntil.set(id, nowMs() + 1200)
         leveled = true
       }
       lastLevel.set(id, level)
@@ -2067,16 +1759,18 @@ export function createPixelScene(
     }
     if (skillTier !== undefined) {
       const color = toneForTier(skillTier).color
+      // 功法印：悬浮在修士身侧，随呼吸浮动
+      const icon = skillIcon(skillTier, color)
+      const bob = Math.round(Math.sin(time / 620) * 2)
+      g.globalAlpha = 0.95
+      g.drawImage(icon, Math.round(cx + 16), Math.round(baseY - 46 + bob), SKILL_ICON_SIZE, SKILL_ICON_SIZE)
+      g.globalAlpha = 1
+      // 灵环：功法等级的底色，淡一点，别和图标抢
       g.save()
-      g.globalAlpha = 0.5 + 0.15 * Math.sin(time / 480)
+      g.globalAlpha = 0.32 + 0.12 * Math.sin(time / 480)
       g.strokeStyle = color
-      g.lineWidth = 1.4
+      g.lineWidth = 1.2
       g.beginPath(); g.ellipse(cx, baseY - 2, 22, 8, 0, 0, Math.PI * 2); g.stroke()
-      for (let i = 0; i < 3; i += 1) {
-        const angle = time / 900 + (i / 3) * Math.PI * 2
-        g.fillStyle = color
-        g.fillRect(cx + Math.cos(angle) * 24 - 1.5, baseY - 2 + Math.sin(angle) * 8 - 1.5, 3, 3)
-      }
       g.restore()
     }
   }
@@ -2248,6 +1942,9 @@ export function createPixelScene(
   }
 
   function paint(time: number): void {
+    const deltaMs = lastPaintAt === 0 ? 0 : Math.min(50, time - lastPaintAt)
+    lastPaintAt = time
+    stepCastSparks(deltaMs)
     const members = model?.members ?? []
     // A wide, short pane (the right-side team tab) gains a lot from fewer rows:
     // pick the column count whose world fits the canvas with the largest scale.
@@ -2412,8 +2109,9 @@ export function createPixelScene(
       for (const spot of spots) {
         const form = travelForm(spot.member)
         const lift = TRAVEL_LIFT[form]
-        if (form !== 'walk') paintMount(spot.cx, spot.baseY - lift, form, time, mountVariant.get(spot.member.id || spot.member.name))
+        // 起跳时坐骑一起抬：只抬人会让骑手飞出鞍座。
         const hop = jumpHeight(spot.member.id || spot.member.name, time)
+        if (form !== 'walk') paintMount(spot.cx, spot.baseY - lift - hop, form, time, mountVariant.get(spot.member.id || spot.member.name))
         // 御剑/骑兽时双腿保持不动，只有步行才播步态。
         paintCharacter(spot.cx, spot.baseY - lift - hop, spot.member, time, spot.walking && form === 'walk')
         paintCultivationAura(spot.cx, spot.baseY - lift, spot.member, time)
@@ -2432,6 +2130,7 @@ export function createPixelScene(
         paintViewingBadge(spot.cx, spot.baseY - lift, spot.member, time)
       }
       drawCultivationFx(time)
+      drawCastSparks()
       // 鼠标停在修士上：四角描金，明确这是可点的会话入口。
       const hoveredMemberId = hovered?.kind === 'member' ? hovered.id : undefined
       if (hoveredMemberId !== undefined) {
@@ -2532,12 +2231,14 @@ export function createPixelScene(
       mountOverride.set(id, form)
       if (variant !== undefined) mountVariant.set(id, variant)
       if (label !== undefined) equipFlash.set(id, { at: nowMs(), text: label, kind: 'mount' })
+      castUntil.set(id, nowMs() + 950)
       jumps.set(id, -1)
     },
     setEquip(id, kind, tier, itemId, label) {
       if (kind === 'weapon') weaponEquip.set(id, { tier, itemId, label })
       else skillEquip.set(id, tier)
       if (label !== undefined) equipFlash.set(id, { at: nowMs(), text: label, kind })
+      castUntil.set(id, nowMs() + 950)
       jumps.set(id, -1)
     },
     dispose() {
