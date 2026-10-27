@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 *.tsbuildinfo
 .DS_Store
 .agent-teams/
@@ -10,3 +10,6 @@
 .dsh/*.log
 .dsh/check-locale.mjs
 
+# Local-only art experiments (never shipped, never committed)
+.art-lab/
+assets/local/
