@@ -4,8 +4,40 @@
  * memory-eternal is an optional sibling plugin; the endpoint is configurable
  * and every failure is returned as text so a member turn never crashes.
  */
-const DEFAULT_ENDPOINT = 'http://127.0.0.1:7999/memory-eternal/api/recall'
+export const DEFAULT_MEMORY_ENDPOINT = 'http://127.0.0.1:7999/memory-eternal/api/recall'
 const TIMEOUT_MS = 8_000
+const PROBE_TIMEOUT_MS = 3_000
+
+/** Resolve the configured endpoint, falling back to the local default. */
+export function resolveMemoryEndpoint(endpoint: string | undefined): string {
+  return (endpoint === undefined || endpoint.trim() === '') ? DEFAULT_MEMORY_ENDPOINT : endpoint.trim()
+}
+
+/**
+ * Is a memory brain reachable? A reachable recall endpoint (any 2xx) counts as
+ * installed; a missing plugin, dead server or timeout counts as missing.
+ */
+export async function probeMemory(endpoint?: string, signal?: AbortSignal): Promise<boolean> {
+  const url = resolveMemoryEndpoint(endpoint)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => { controller.abort() }, PROBE_TIMEOUT_MS)
+  const forwardAbort = (): void => { controller.abort() }
+  signal?.addEventListener('abort', forwardAbort, { once: true })
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query: '项目 约束', limit: 1 }),
+      signal: controller.signal,
+    })
+    return response.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener('abort', forwardAbort)
+  }
+}
 
 export interface MemoryRecallHit {
   readonly text: string
@@ -39,7 +71,7 @@ export async function recallMemory(
   limit: number,
   signal?: AbortSignal,
 ): Promise<MemoryRecallHit> {
-  const url = (endpoint === undefined || endpoint.trim() === '') ? DEFAULT_ENDPOINT : endpoint.trim()
+  const url = resolveMemoryEndpoint(endpoint)
   const controller = new AbortController()
   const timeout = setTimeout(() => { controller.abort() }, TIMEOUT_MS)
   const forwardAbort = (): void => { controller.abort() }

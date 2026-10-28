@@ -45,6 +45,7 @@ import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
 import { buildQuickStartPlan, quickStartDeliveryDefaults, stageQuickStartTeam } from './quick-start.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
+import { probeMemory } from './memory.ts'
 import { projectLibraryTeam } from './library-projection.ts'
 import { readTodayCost, resolveCostDecision } from './cost.ts'
 import { subscribeCostPrompt, subscribeLibraryChange } from './events-bus.ts'
@@ -777,6 +778,23 @@ export function apply(ctx: Context, config: Config): void {
         }
       },
     }), 'agent-teams: polish route')
+
+    // Whether the optional memory brain is reachable: the banner shows
+    // 已连接大脑 only when a real probe succeeds, otherwise the install hint.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/memory/status',
+      handler: async (req, res) => {
+        if (req.method !== 'GET') {
+          res.writeHead(405, { allow: 'GET', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        const connected = await probeMemory(config.memory?.endpoint)
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(JSON.stringify({ connected }))
+      },
+    }), 'agent-teams: memory status route')
 
 
     ctx.effect(() => webServer.register({

@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { projectLibraryTeam } from '../lib/library-projection.js'
 import { splitAcceptance, verifierOutputContract } from '../lib/verifier-script.js'
 import { appendCostLog, estimateCost, readTodayCost, resolveCostDecision } from '../lib/cost.js'
+import { DEFAULT_MEMORY_ENDPOINT, probeMemory, resolveMemoryEndpoint } from '../lib/memory.js'
 import { buildQuickStartPlan } from '../lib/quick-start.js'
 
 function teamFixture() {
@@ -78,4 +79,11 @@ test('cost estimates are positive and today cost sums the log', async () => {
   } finally {
     rmSync(workspace, { recursive: true, force: true })
   }
+})
+
+test('memory probe resolves the default and treats a dead endpoint as missing', async () => {
+  assert.equal(resolveMemoryEndpoint(undefined), DEFAULT_MEMORY_ENDPOINT)
+  assert.equal(resolveMemoryEndpoint('  '), DEFAULT_MEMORY_ENDPOINT)
+  assert.equal(resolveMemoryEndpoint(' http://127.0.0.1:9/recall '), 'http://127.0.0.1:9/recall')
+  assert.equal(await probeMemory('http://127.0.0.1:1/recall'), false)
 })

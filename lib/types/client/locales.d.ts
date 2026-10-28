@@ -437,6 +437,7 @@ export declare const zh: {
     'memory.banner': string;
     'memory.install': string;
     'memory.dismiss': string;
+    'memory.connected': string;
     'library.title': string;
     'library.back': string;
     'library.empty': string;
@@ -1115,6 +1116,7 @@ export declare const en: {
     'memory.banner': string;
     'memory.install': string;
     'memory.dismiss': string;
+    'memory.connected': string;
     'library.title': string;
     'library.back': string;
     'library.empty': string;

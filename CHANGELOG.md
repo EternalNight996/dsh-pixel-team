@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.20] - 2026-10-29
+
+### Changed
+- The memory-eternal banner probes the configured recall endpoint first: when a
+  brain is reachable it shows 「已连接大脑」, and only shows the install hint when
+  the probe fails. Probe result is cached for 60s; the new host route is
+  GET /plugins/dsh-pixel-team/memory/status.
+
 ## [0.1.19] - 2026-10-29
 
 ### Changed
