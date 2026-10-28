@@ -1040,6 +1040,7 @@ export function SectHallOverlay({
               <span className={css.titleText}>{APP_ICON === '' ? '⛩ ' : ''}{hall.name}</span>
             </span>
             <span className={css.meta}>{hasTeam ? `${done}/${total}` : t('office.hallNoTeam')}</span>
+            <span className={css.versionBadge} title={t('about.version')}>v{PLUGIN_VERSION}</span>
             <a
               className={css.starLink}
               href={`${PLUGIN_REPO}/stargazers`}

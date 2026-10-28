@@ -4,6 +4,7 @@ import css from './LibraryPanel.module.css'
 import { layoutLibrary, CARD_W, CARD_H } from './library-model.ts'
 import { useLibraryState } from './library-stream.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
+import { PLUGIN_VERSION } from './version.ts'
 
 const STATUS_KEY: Record<string, Parameters<AgentTeamsTranslate>[0]> = {
   pending: 'library.status.pending',
@@ -35,6 +36,7 @@ export function LibraryPanel({ sessionId, t }: {
         <span className={css.team}>{team.name}</span>
         <span className={css.scale}>{team.scale}</span>
         <span className={css.cost}>{t('library.todayCost', { cost: todayCostUsd.toFixed(4) })}</span>
+        <span className={css.version}>v{PLUGIN_VERSION}</span>
         <span className={connected ? css.live : css.offline}>{connected ? t('library.connected') : t('library.disconnected')}</span>
       </header>
       <div className={css.canvas} style={{ width: layout.width, height: layout.height }}>

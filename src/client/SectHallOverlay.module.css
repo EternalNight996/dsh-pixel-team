@@ -1218,3 +1218,5 @@
   overflow-wrap: anywhere;
 }
 
+.versionBadge { font-size: 11px; color: #9aa4b2; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.version { color: #9aa4b2; font-size: 11px; }

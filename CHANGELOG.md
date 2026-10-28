@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.18] - 2026-10-29
+
+### Added
+- The hall header and the 道通藏书阁 header show the running plugin version.
+
+### Fixed
+- Installing from the v0.1.17 GitHub release is now the documented path; the
+  0.1.17 tag already carried the clarification/constitution/library features.
+
 ## [0.1.17] - 2026-10-29
 
 ### Added

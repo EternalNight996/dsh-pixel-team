@@ -20,3 +20,4 @@
 .blocker { display: flex; gap: 8px; align-items: baseline; font-size: 12px; padding: 8px 10px; border-radius: 8px; border: 1px solid #2c3442; }
 .blocker[data-blocked='true'] { border-color: rgba(255,107,107,0.5); color: #ffb0b0; }
 .blockerTitle { color: #9aa4b2; }
+.version { color: #9aa4b2; font-size: 11px; }
