@@ -21,3 +21,5 @@
 .blocker[data-blocked='true'] { border-color: rgba(255,107,107,0.5); color: #ffb0b0; }
 .blockerTitle { color: #9aa4b2; }
 .version { color: #9aa4b2; font-size: 11px; }
+.mode { border: 1px solid; border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+.gate { color: #9aa4b2; font-size: 11px; }

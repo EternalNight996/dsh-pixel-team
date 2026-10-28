@@ -24,6 +24,8 @@ import { describeClarification, normalizeClarification } from './clarify.ts'
 import { hardwarePoolText } from './clarify-hardware.ts'
 import { buildConstitution, writeConstitution } from './constitution.ts'
 import { recallMemory } from './memory.ts'
+import { appendCostLog, requestCostDecision } from './cost.ts'
+import { DEFAULT_MODE, getModeSpec, isTeamMode } from './modes.ts'
 import {
   amendTaskContract,
   acknowledgeMailbox,
@@ -1736,6 +1738,41 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       const target = args.assignee.trim()
       if (target === '') throw new Error('reassignment assignee must not be empty')
 
+      // Module 4: a repeated retry of the same failed task is a dead-loop
+      // signal. At the mode's threshold, ask the user to triage before the
+      // reassignment is applied; terminate keeps the task failed.
+      const mode = isTeamMode(team.clarification?.mode) ? team.clarification.mode : DEFAULT_MODE
+      const spec = getModeSpec(mode)
+      const retriable = team.tasks.find(task => task.id === args.task_id)
+      const nextRetry = (retriable?.retryCount ?? 0) + 1
+      if (retriable !== undefined && retriable.status === 'failed' && nextRetry >= spec.budget.retryPromptAt) {
+        const decision = await requestCostDecision({
+          sessionId: captain.id,
+          teamId: team.id,
+          taskId: retriable.id,
+          memberName: target,
+          estimateUsd: 0,
+          thresholdUsd: 0,
+          reason: 'retry',
+          mode,
+          retryCount: nextRetry,
+        }, 180_000)
+        await appendCostLog(workspace, {
+          ts: Date.now(), sessionId: captain.id, teamId: team.id, taskId: retriable.id, memberName: target,
+          estimateUsd: 0, reason: 'retry', mode,
+          decision: decision === 'timeout' ? 'timeout' : decision,
+        })
+        if (decision === 'terminate') {
+          return {
+            task_id: retriable.id,
+            previous_assignee: retriable.assignee ?? '',
+            assignee: target,
+            status: retriable.status,
+            attempt: 0,
+          }
+        }
+      }
+
       const revoked = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
         const fresh = await requireFreshCaptainTeam(ctx, stateRoot, team.id, captain.id)
         const task = requireTask(fresh, args.task_id)
@@ -1762,11 +1799,13 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           }
         }
         const previousAssignee = task.assignee ?? ''
+        const wasFailed = task.status === 'failed'
         const previousMember = (task.status !== 'claimed' && task.status !== 'in_progress')
           || task.assignee === undefined || task.assignee === CAPTAIN_KEY
           ? undefined
           : fresh.members.find(member => member.name === task.assignee && member.status !== 'removed')
         invalidateTaskAttempt(task, target, true)
+        if (wasFailed) task.retryCount = (task.retryCount ?? 0) + 1
         if (previousMember !== undefined) {
           previousMember.stopping = true
           task.handoffFromMemberId = previousMember.id

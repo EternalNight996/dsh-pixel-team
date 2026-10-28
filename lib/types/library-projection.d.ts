@@ -36,6 +36,16 @@ export interface LibraryTeamView {
     readonly project: string;
     readonly scale: string;
     readonly type: string;
+    /** Development mode id/name/color for the header badge. */
+    readonly mode: string;
+    readonly modeName: string;
+    readonly modeColor: string;
+    /** Acceptance pass/fail totals across the whole DAG. */
+    readonly gate: {
+        readonly passed: number;
+        readonly failed: number;
+        readonly total: number;
+    };
     readonly todayCostUsd: number;
     readonly updatedAt: number;
     readonly tasks: readonly LibraryTaskView[];

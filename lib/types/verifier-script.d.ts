@@ -1,11 +1,5 @@
-/**
- * Verifier gate helpers (module 5).
- *
- * The constitution's acceptance list mixes executable checks with human
- * criteria. Executable lines become verify commands; prose criteria stay in the
- * task acceptance and block the reviewer until recorded.
- */
 import type { TeamConstitution } from './types.ts';
+import { type TeamMode } from './modes.ts';
 export interface AcceptanceSplit {
     readonly commands: string[];
     readonly criteria: string[];
@@ -21,9 +15,18 @@ export interface VerifierScript {
     readonly relativePath: string;
     readonly content: string;
 }
+/** Human description of the verifier strategy for the selected mode. */
+export declare function verifierStrategyText(mode?: TeamMode): string;
 /**
- * Generate the verifier smoke script from executable acceptance commands.
- * Running it prints 【PASS】/【FAIL】, writes the full log beside itself and exits
- * non-zero on the first failure set so the host gate can fail the task.
+ * Best-effort discovery of the project's legacy regression command. The legacy
+ * mode must not silently pass without one: when nothing is found the acceptance
+ * baseline still requires the user to declare it.
  */
-export declare function buildVerifierScript(commands: readonly string[], name: string): VerifierScript | undefined;
+export declare function detectLegacyRegressionCommand(workspace: string): string | undefined;
+/**
+ * Generate the verifier smoke script from executable acceptance commands plus
+ * the mode's strategy: compliance adds a dependency audit and a log-secret scan.
+ * Running it prints 【PASS】/【FAIL】, writes the full log beside itself and exits
+ * non-zero when any check fails, so the host gate fails the task.
+ */
+export declare function buildVerifierScript(commands: readonly string[], name: string, mode?: TeamMode): VerifierScript | undefined;

@@ -34,7 +34,9 @@ export function LibraryPanel({ sessionId, t }: {
     <div className={css.root} data-library>
       <header className={css.head}>
         <span className={css.team}>{team.name}</span>
+        <span className={css.mode} style={{ color: team.modeColor, borderColor: team.modeColor }}>{team.modeName}</span>
         <span className={css.scale}>{team.scale}</span>
+        <span className={css.gate}>{t('library.gate', { pass: team.gate.passed, total: team.gate.total })}</span>
         <span className={css.cost}>{t('library.todayCost', { cost: todayCostUsd.toFixed(4) })}</span>
         <span className={css.version}>v{PLUGIN_VERSION}</span>
         <span className={connected ? css.live : css.offline}>{connected ? t('library.connected') : t('library.disconnected')}</span>

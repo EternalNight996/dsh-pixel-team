@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.23] - 2026-10-29
+
+### Added
+- 道通藏书阁 shows the development mode as a colored badge and the whole-DAG
+  acceptance gate totals (passed/failed/total).
+- Cost budgets now follow the mode (draft/monetize $15/day, precision/legacy/
+  compliance $50/day) with the profile's cost config as an override; cost log
+  entries carry the mode.
+- Dead-loop gate: retrying the same failed task at the mode's threshold prompts
+  the user (介入人工排查 / 继续执行) and keeps the task failed when triaged.
+- Verifier strategies by mode: draft/monetize run smoke only; precision runs the
+  unit/network suite; legacy prepends the discovered old regression suite and
+  blocks on its first failure; compliance adds a dependency audit and a
+  plaintext password/token scan. The verification task description states the
+  mode strategy and the script prints 【PASS】/【FAIL】 plus its log path.
+
 ## [0.1.22] - 2026-10-29
 
 ### Added

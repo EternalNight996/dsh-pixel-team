@@ -4,6 +4,7 @@
  * SSE route and unit tests use the same view.
  */
 import type { TeamClarification, TeamState, TeamTask } from './types.ts'
+import { getModeSpec, isTeamMode } from './modes.ts'
 
 export interface LibraryAcceptance {
   readonly criterion: string
@@ -41,6 +42,12 @@ export interface LibraryTeamView {
   readonly project: string
   readonly scale: string
   readonly type: string
+  /** Development mode id/name/color for the header badge. */
+  readonly mode: string
+  readonly modeName: string
+  readonly modeColor: string
+  /** Acceptance pass/fail totals across the whole DAG. */
+  readonly gate: { readonly passed: number; readonly failed: number; readonly total: number }
   readonly todayCostUsd: number
   readonly updatedAt: number
   readonly tasks: readonly LibraryTaskView[]
@@ -121,6 +128,8 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
     }
   }
   const clarification: TeamClarification | undefined = team.clarification
+  const modeSpec = getModeSpec(isTeamMode(clarification?.mode) ? clarification.mode : undefined)
+  const allAcceptance = tasks.flatMap(task => task.acceptance)
   return {
     teamId: team.id,
     name: team.name,
@@ -128,6 +137,14 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
     project: clarification?.ui.reference ?? team.id,
     scale: SCALE_LABEL[clarification?.scale ?? 'small'] ?? '🟢 小改动',
     type: clarification?.type ?? 'software',
+    mode: modeSpec.id,
+    modeName: modeSpec.emoji + ' ' + modeSpec.name,
+    modeColor: modeSpec.color,
+    gate: {
+      passed: allAcceptance.filter(item => item.status === 'pass').length,
+      failed: allAcceptance.filter(item => item.status === 'fail').length,
+      total: allAcceptance.length,
+    },
     todayCostUsd: Math.round(todayCostUsd * 10000) / 10000,
     updatedAt: Math.max(team.createdAt, ...team.tasks.map(task => task.updatedAt)),
     tasks,

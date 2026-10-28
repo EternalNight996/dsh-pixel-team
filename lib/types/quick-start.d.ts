@@ -1,4 +1,5 @@
 import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts';
+import { type TeamMode } from './modes.ts';
 /** One built-in template: default roles and a small task DAG. */
 export declare const SECT_NAMES: Record<string, string>;
 export declare const ROLE_NAMES: Record<string, string>;
@@ -53,6 +54,8 @@ export interface QuickStartDelivery {
     verify: string[];
     /** Prose acceptance criteria from the constitution (merged into gate tasks). */
     acceptance?: string[];
+    /** Development mode for the verifier strategy note. */
+    mode?: TeamMode;
     /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
     layers?: {
         frontend: string[];

@@ -6,7 +6,11 @@ export interface CostPrompt {
     readonly memberName: string;
     readonly estimateUsd: number;
     readonly thresholdUsd: number;
-    readonly reason: 'task' | 'day';
+    readonly reason: 'task' | 'day' | 'retry';
+    /** Mode id, for the colored prompt. */
+    readonly mode?: string;
+    /** Retry count when reason is retry. */
+    readonly retryCount?: number;
 }
 /** Notify subscribers that a workspace's team state changed. */
 export declare function publishLibraryChange(stateRoot: string): void;

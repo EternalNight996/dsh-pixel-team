@@ -7,7 +7,9 @@ export interface CostPromptView {
     memberName: string;
     estimateUsd: number;
     thresholdUsd: number;
-    reason: 'task' | 'day';
+    reason: 'task' | 'day' | 'retry';
+    mode?: string;
+    retryCount?: number;
 }
 export interface LibraryState {
     readonly team: LibraryTeamView | null;

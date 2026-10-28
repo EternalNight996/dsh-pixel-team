@@ -46,12 +46,12 @@ import { buildQuickStartPlan, quickStartDeliveryDefaults, stageQuickStartTeam } 
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
 import { generateClarifyOptions } from './clarify-options.ts'
-import { DEFAULT_MODE, isTeamMode } from './modes.ts'
+import { DEFAULT_MODE, getModeSpec, isTeamMode } from './modes.ts'
 import { probeMemory } from './memory.ts'
 import { projectLibraryTeam } from './library-projection.ts'
 import { readTodayCost, resolveCostDecision } from './cost.ts'
 import { subscribeCostPrompt, subscribeLibraryChange } from './events-bus.ts'
-import { buildVerifierScript, splitAcceptance } from './verifier-script.ts'
+import { buildVerifierScript, detectLegacyRegressionCommand, splitAcceptance } from './verifier-script.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
 import { installTeamCapabilities } from './capabilities.ts'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
@@ -686,14 +686,24 @@ export function apply(ctx: Context, config: Config): void {
         // Module 5: executable acceptance lines become verifier commands; the
         // prose criteria stay on the verification/review tasks.
         const acceptance = splitAcceptance(clarification.acceptance)
+        const modeSpec = getModeSpec(clarification.mode)
         const delivery = quickStartDeliveryDefaults(workspace)
         delivery.verify = [...delivery.verify, ...acceptance.commands]
-        // Module 5: materialize the executable acceptance as a smoke script the
-        // host runs when the verification task completes; its FAIL fails the task
-        // and therefore blocks the reviewer.
+        delivery.mode = clarification.mode
+        // Mode acceptance baseline + constitution prose criteria land on the gates.
+        delivery.acceptance = [...acceptance.criteria, ...modeSpec.acceptanceDefaults]
+        // Module 5: materialize the verifier as a script the host runs when the
+        // verification task completes. Legacy prepends the discovered old
+        // regression suite; compliance adds the dependency/secret audit.
+        const scriptCommands = [...acceptance.commands]
+        if (clarification.mode === 'legacy') {
+          const legacyCommand = detectLegacyRegressionCommand(workspace)
+          if (legacyCommand !== undefined) scriptCommands.unshift(legacyCommand)
+        }
         const verifierScript = buildVerifierScript(
-          acceptance.commands,
+          scriptCommands,
           'verify-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+          clarification.mode,
         )
         if (verifierScript !== undefined) {
           const scriptPath = join(workspace, verifierScript.relativePath)
@@ -701,7 +711,7 @@ export function apply(ctx: Context, config: Config): void {
           await writeFile(scriptPath, verifierScript.content, 'utf8')
           delivery.verify = [...delivery.verify, 'node ' + verifierScript.relativePath]
         }
-        const plan = buildQuickStartPlan(goal, template, roles, { ...delivery, acceptance: acceptance.criteria })
+        const plan = buildQuickStartPlan(goal, template, roles, delivery)
         const replace = payload.replace === true
         const abort = new AbortController()
         const timeout = setTimeout(() => { abort.abort() }, 30_000)

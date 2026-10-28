@@ -177,6 +177,8 @@ export interface TeamTask {
   dependencies: string[]
   /** The worker's written result, set when the task completes or fails. */
   output?: string
+  /** Explicit retry count; the mode's retry gate prompts human triage at its threshold. */
+  retryCount?: number
   /** Monotonic execution generation. Reassignment/retry invalidates every older attempt. */
   attempt?: number
   /** Capability for the current claimed/in-progress attempt. Members must present it when updating. */

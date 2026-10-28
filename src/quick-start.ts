@@ -8,7 +8,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts'
-import { verifierOutputContract } from './verifier-script.ts'
+import { verifierOutputContract, verifierStrategyText } from './verifier-script.ts'
+import { getModeSpec, type TeamMode } from './modes.ts'
 
 /** One built-in template: default roles and a small task DAG. */
 export const SECT_NAMES: Record<string, string> = {
@@ -197,6 +198,8 @@ export interface QuickStartDelivery {
   verify: string[]
   /** Prose acceptance criteria from the constitution (merged into gate tasks). */
   acceptance?: string[]
+  /** Development mode for the verifier strategy note. */
+  mode?: TeamMode
   /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
   layers?: { frontend: string[]; backend: string[] }
 }
@@ -268,7 +271,10 @@ export function buildQuickStartPlan(
     const extraAcceptance = (kind === 'verification' || kind === 'integration' || kind === 'review')
       ? [...(delivery?.acceptance ?? [])]
       : []
-    const contractNote = kind === 'verification' ? '\n\n' + verifierOutputContract() : ''
+    const contractNote = kind === 'verification'
+      ? '\n\n' + verifierOutputContract()
+        + '\n\n开发模式（' + getModeSpec(delivery?.mode).name + '）验证策略：' + verifierStrategyText(delivery?.mode)
+      : ''
     return {
       id: task.id,
       subject: `${task.subject}：${shortGoal(goal, 40)}`,

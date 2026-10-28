@@ -470,6 +470,7 @@ export declare const zh: {
     'library.status.completed': string;
     'library.status.failed': string;
     'library.acceptance': string;
+    'library.gate': string;
     'cost.title': string;
     'cost.body': string;
     'cost.task': string;
@@ -477,6 +478,10 @@ export declare const zh: {
     'cost.continue': string;
     'cost.terminate': string;
     'cost.note': string;
+    'cost.retryTitle': string;
+    'cost.retryBody': string;
+    'cost.retryNote': string;
+    'cost.retryStop': string;
     'quickstart.doctrineHint': string;
     'quickstart.vowHint': string;
     'quickstart.sectHint': string;
@@ -1166,6 +1171,7 @@ export declare const en: {
     'library.status.completed': string;
     'library.status.failed': string;
     'library.acceptance': string;
+    'library.gate': string;
     'cost.title': string;
     'cost.body': string;
     'cost.task': string;
@@ -1173,6 +1179,10 @@ export declare const en: {
     'cost.continue': string;
     'cost.terminate': string;
     'cost.note': string;
+    'cost.retryTitle': string;
+    'cost.retryBody': string;
+    'cost.retryNote': string;
+    'cost.retryStop': string;
     'quickstart.doctrineHint': string;
     'quickstart.vowHint': string;
     'quickstart.sectHint': string;

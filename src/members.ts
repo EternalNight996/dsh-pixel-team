@@ -27,7 +27,7 @@ import { nearestLiveLead } from './lineage.ts'
 import { roleGuidance } from './role-guidance.ts'
 import { constitutionPreamble } from './constitution.ts'
 import { appendTeamEvent, captainSessionOf } from './events.ts'
-import { appendCostLog, estimateCost, readTodayCost, requestCostDecision } from './cost.ts'
+import { appendCostLog, estimateCost, readTodayCost, requestCostDecision, resolveModeBudget } from './cost.ts'
 import { DEFAULT_MODE, isTeamMode, modePhilosophyText, type TeamMode } from './modes.ts'
 import type { MemberToolFilter } from './tool-policies.ts'
 import { TERMINAL_TASK_STATUSES, type TeamMember, type TeamState, type TeamTask } from './types.ts'
@@ -968,24 +968,25 @@ export async function spawnMember(
   // terminate decision cancels exactly this spawn; nothing else is paused.
   if (config.cost?.enabled !== false) {
     const workspace = dirname(stateDir)
-    const perTask = config.cost?.perTaskUsd ?? 2
-    const perDay = config.cost?.perDayUsd ?? 35
+    const mode = isTeamMode(team.clarification?.mode) ? team.clarification.mode : DEFAULT_MODE
+    // Mode budget, optionally overridden by the profile's cost config.
+    const budget = resolveModeBudget(mode, config.cost)
     const estimate = estimateCost((team.description ?? '').length + (member.executionPrompt ?? '').length + member.name.length * 4)
     const today = await readTodayCost(workspace).catch(() => 0)
-    const reason = estimate > perTask ? 'task' as const : today + estimate > perDay ? 'day' as const : undefined
+    const reason = estimate > budget.perTaskUsd ? 'task' as const : today + estimate > budget.perDayUsd ? 'day' as const : undefined
     if (reason === undefined) {
       await appendCostLog(workspace, {
-        ts: Date.now(), sessionId: captain.id, teamId: team.id, memberName: member.name, estimateUsd: estimate, decision: 'auto-continue',
+        ts: Date.now(), sessionId: captain.id, teamId: team.id, memberName: member.name, estimateUsd: estimate, mode, decision: 'auto-continue',
       })
     } else {
-      const threshold = reason === 'task' ? perTask : perDay
+      const threshold = reason === 'task' ? budget.perTaskUsd : budget.perDayUsd
       const decision = await requestCostDecision({
         sessionId: captain.id, teamId: team.id, memberName: member.name,
-        estimateUsd: estimate, thresholdUsd: threshold, reason,
+        estimateUsd: estimate, thresholdUsd: threshold, reason, mode,
       })
       await appendCostLog(workspace, {
         ts: Date.now(), sessionId: captain.id, teamId: team.id, memberName: member.name,
-        estimateUsd: estimate, thresholdUsd: threshold, reason,
+        estimateUsd: estimate, thresholdUsd: threshold, reason, mode,
         decision: decision === 'timeout' ? 'timeout' : decision,
       })
       if (decision === 'terminate') {

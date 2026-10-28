@@ -1,4 +1,5 @@
 import { type CostPrompt } from './events-bus.ts';
+import { type TeamMode } from './modes.ts';
 export interface CostConfig {
     enabled?: boolean;
     perTaskUsd?: number;
@@ -12,9 +13,16 @@ export interface CostLogEntry {
     memberName: string;
     estimateUsd: number;
     thresholdUsd?: number;
-    reason?: 'task' | 'day';
+    reason?: 'task' | 'day' | 'retry';
+    mode?: TeamMode;
     decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout';
 }
+/** The mode's budget, with an optional owner override from the plugin config. */
+export declare function resolveModeBudget(mode: TeamMode | undefined, override?: CostConfig): {
+    perTaskUsd: number;
+    perDayUsd: number;
+    retryPromptAt: number;
+};
 /** Estimate one spawn: prompt chars in, a conservative completion budget out. */
 export declare function estimateCost(textChars: number): number;
 export declare function costLogPath(workspace: string): string;

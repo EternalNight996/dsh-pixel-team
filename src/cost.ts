@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto'
 import { appendFile, mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { publishCostPrompt, type CostPrompt } from './events-bus.ts'
+import { getModeSpec, type TeamMode } from './modes.ts'
 
 export interface CostConfig {
   enabled?: boolean
@@ -23,7 +24,8 @@ export interface CostLogEntry {
   memberName: string
   estimateUsd: number
   thresholdUsd?: number
-  reason?: 'task' | 'day'
+  reason?: 'task' | 'day' | 'retry'
+  mode?: TeamMode
   decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout'
 }
 
@@ -35,6 +37,16 @@ const PRICE_OUTPUT_PER_1K = 0.0015
 const DEFAULT_TIMEOUT_MS = 180_000
 
 const pending = new Map<string, (decision: 'continue' | 'terminate') => void>()
+
+/** The mode's budget, with an optional owner override from the plugin config. */
+export function resolveModeBudget(mode: TeamMode | undefined, override?: CostConfig): { perTaskUsd: number; perDayUsd: number; retryPromptAt: number } {
+  const spec = getModeSpec(mode)
+  return {
+    perTaskUsd: override?.perTaskUsd ?? spec.budget.perTaskUsd,
+    perDayUsd: override?.perDayUsd ?? spec.budget.perDayUsd,
+    retryPromptAt: spec.budget.retryPromptAt,
+  }
+}
 
 /** Estimate one spawn: prompt chars in, a conservative completion budget out. */
 export function estimateCost(textChars: number): number {
