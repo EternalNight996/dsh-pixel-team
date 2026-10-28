@@ -613,3 +613,6 @@
 .modeChip { border: 1px solid #2c3442; background: transparent; color: inherit; border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
 .modeChip[data-active='true'] { border-color: #f2c14e; color: #f2c14e; background: rgba(242,193,78,0.10); }
 .modeChip:disabled { opacity: 0.55; cursor: default; }
+.replaceBubble { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 0; padding: 10px 12px; border: 1px solid rgba(242,193,78,0.55); background: rgba(242,193,78,0.08); border-radius: 10px; }
+.replaceText { margin: 0; font-size: 12px; line-height: 1.5; color: #f2c14e; }
+.replaceActions { display: flex; justify-content: flex-end; gap: 8px; }

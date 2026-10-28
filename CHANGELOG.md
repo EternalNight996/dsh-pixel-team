@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.27] - 2026-10-29
+
+### Changed
+- With an unfinished sect, clicking 立誓开宗 now opens a confirmation bubble
+  directly above the submit button ("结束旧宗门并立即开新宗，是否确认？") with
+  取消 / 结束并开新宗 actions, instead of firing the request and showing an error.
+
 ## [0.1.26] - 2026-10-29
 
 ### Fixed

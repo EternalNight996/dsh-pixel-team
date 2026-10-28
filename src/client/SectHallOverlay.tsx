@@ -798,6 +798,7 @@ export function SectHallOverlay({
               ? <p className={css.settingsHint}>{t('workspace.emptyTitle')}</p>
               : <QuickStartWizard
                   sessionId={sessionId}
+                  existingTeam={hasTeam}
                   t={t}
                   onDone={() => { setSheet(undefined) }}
                   onFounded={() => { setPendingReview(true) }}

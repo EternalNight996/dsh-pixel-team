@@ -599,6 +599,7 @@ export declare const zh: {
     'quickstart.desc.docs': string;
     'quickstart.desc.debate': string;
     'quickstart.replaceHint': string;
+    'quickstart.replaceConfirm': string;
     'quickstart.replace': string;
     'quickstart.rolesEmpty': string;
     'quickstart.customRole': string;
@@ -1311,6 +1312,7 @@ export declare const en: {
     'quickstart.desc.docs': string;
     'quickstart.desc.debate': string;
     'quickstart.replaceHint': string;
+    'quickstart.replaceConfirm': string;
     'quickstart.replace': string;
     'quickstart.rolesEmpty': string;
     'quickstart.customRole': string;

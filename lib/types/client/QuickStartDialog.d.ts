@@ -1,8 +1,10 @@
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots';
 import type { SessionId } from '@deepseek-ai/dsh-session/types';
 import type { AgentTeamsTranslate } from './locales.ts';
-export declare function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
+export declare function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded }: {
     readonly sessionId: SessionId;
+    /** The hall already knows a sect exists: confirm before replacing it. */
+    readonly existingTeam?: boolean;
     readonly t: AgentTeamsTranslate;
     readonly onDone?: () => void;
     readonly onFounded?: () => void;

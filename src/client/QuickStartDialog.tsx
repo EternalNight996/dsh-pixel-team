@@ -79,8 +79,10 @@ function templateOf(id: string): QuickTemplate {
   return TEMPLATES.find(entry => entry.id === id) ?? TEMPLATES[0] as QuickTemplate
 }
 
-export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
+export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded }: {
   readonly sessionId: SessionId
+  /** The hall already knows a sect exists: confirm before replacing it. */
+  readonly existingTeam?: boolean
   readonly t: AgentTeamsTranslate
   readonly onDone?: () => void
   readonly onFounded?: () => void
@@ -254,6 +256,9 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
 
   const submit = async (replace: boolean): Promise<void> => {
     if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(1); return }
+    // An unfinished sect is confirmed in place, above the submit button, before
+    // any request is sent or any old team is touched.
+    if (!replace && existingTeam === true) { setBlocked(true); return }
     setBusy(true)
     setError('')
     try {
@@ -293,14 +298,21 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
       if (!response.ok || body?.ok !== true) {
         const raw = body?.error ?? ('HTTP ' + response.status)
         const existing = /already lead team/i.test(raw)
-        setBlocked(existing)
-        throw new Error(existing ? t('quickstart.teamExists') : raw)
+        if (existing) {
+          // The server confirms the same condition: show the confirm bubble and
+          // do not report it as a red error.
+          setBlocked(true)
+          setError('')
+          return
+        }
+        throw new Error(raw)
       }
       setCreated(t('quickstart.created', {
         team: body.teamName ?? body.teamId ?? '',
         sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
       }))
       if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId } }))
+      setBlocked(false)
       setGoal('')
       foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 1400)
     } catch (cause) {
@@ -545,10 +557,13 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
 
           {error !== '' && <p className={css.error} role="alert">{error}</p>}
           {blocked && (
-            <p className={css.replaceRow}>
-              <span>{t('quickstart.replaceHint')}</span>
-              <button type="button" disabled={busy} onClick={() => { void submit(true) }}>{t('quickstart.replace')}</button>
-            </p>
+            <div className={css.replaceBubble} role="alertdialog" aria-label={t('quickstart.replaceConfirm')}>
+              <p className={css.replaceText}>{t('quickstart.replaceConfirm')}</p>
+              <div className={css.replaceActions}>
+                <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
+                <button type="button" data-primary disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
+              </div>
+            </div>
           )}
           {created !== undefined && <p className={css.success} role="status">{created}</p>}
       </div>
