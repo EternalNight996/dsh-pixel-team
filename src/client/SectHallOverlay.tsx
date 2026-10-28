@@ -28,6 +28,7 @@ import { realmPaletteForLevel } from './realm-colors.ts'
 import { PLUGIN_REPO, buildAgentPrompt, buildIssueUrl, collectDiagnostics } from './feedback.ts'
 import { PLUGIN_VERSION } from './version.ts'
 import { hallSheetPlacement, hallYieldWidth } from './hall-geometry.ts'
+import { SnakeGame } from './snake-game/SnakeGame.tsx'
 import css from './SectHallOverlay.module.css'
 
 /** 交流群 / 赞助码由宿主插件路由提供（assets/support）。 */
@@ -142,7 +143,7 @@ function writePanelRect(rect: PanelRect): void {
   try { window.localStorage.setItem(PANEL_RECT_KEY, JSON.stringify(rect)) } catch { /* private mode */ }
 }
 
-type SheetKind = HallSheetAction | 'character' | 'library'
+type SheetKind = HallSheetAction | 'character' | 'library' | 'snake'
 
 /** 「宗门志」里的四个页签（赞助排第一）。 */
 type AboutTab = 'sponsor' | 'group' | 'about' | 'feedback'
@@ -587,6 +588,7 @@ export function SectHallOverlay({
               : sheet === 'teams' ? t('office.facility.teams')
                 : sheet === 'board' ? t('workspace.tabBoard')
                   : sheet === 'library' ? t('library.title')
+                    : sheet === 'snake' ? '贪吃蛇大作战'
                     : sheet === 'config' && hasTeam && !staged ? t('library.title')
                       : t('workspace.tabConfig')
     return createPortal((
@@ -984,6 +986,8 @@ export function SectHallOverlay({
                 </div>
               )}
             </div>
+          ) : sheet === 'snake' ? (
+            <SnakeGame />
           ) : (
             !hasTeam
               ? noTeamHint
@@ -1088,6 +1092,7 @@ export function SectHallOverlay({
                     sheet === 'character' ? 'gear'
                       : sheet === 'settings' || sheet === 'start' ? null
                         : sheet === 'library' ? 'board'
+                          : sheet === 'snake' ? null
                           : sheet ?? null
                   }
                   onAction={(action) => {
@@ -1126,6 +1131,9 @@ export function SectHallOverlay({
                 </button>
                 <button type="button" className={css.floorButton} data-control="hall-ranks" data-active={sheet === 'ranks' || undefined} onClick={() => { toggleSheet('ranks') }}>
                   <span aria-hidden>榜</span>{t('office.floorRanks')}
+                </button>
+                <button type="button" className={css.floorButton} data-control="hall-snake" data-active={sheet === 'snake' || undefined} onClick={() => { toggleSheet('snake') }}>
+                  <span aria-hidden>🐍</span>贪吃蛇
                 </button>
                 <button type="button" className={css.floorButton} data-control="hall-roster" data-active={sheet === 'teams' || undefined} onClick={() => { toggleSheet('teams') }}>
                   <span aria-hidden>山</span>{t('office.roster')}

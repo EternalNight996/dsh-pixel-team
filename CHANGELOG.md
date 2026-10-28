@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.31] - 2026-10-29
+
+### Added
+- 洞府「🐍 贪吃蛇大作战」面板：Canvas 320×320，键盘方向键 + 右下四向虚拟键，
+  暂停/重开（Space 或按钮），食物 +10 分，撞墙/撞自身结束，卸载清理计时器与
+  键盘监听；挂在 SectHallOverlay 的 sheet 与底部入口。
+- scripts/snake-game.test.mjs（3 条回归）接入 verify:web-routes。
+
+### Fixed
+- 同 tick 内 180° 双转向瞬死：turnAllowed 以已提交方向拒绝掉头，stepGame 兜底。
+- 输入框/可编辑区获得焦点时不再被面板键盘拦截。
+- 虚拟方向键移出棋盘，不再遮挡右下角格子。
+
 ## [0.1.30] - 2026-10-29
 
 ### Added

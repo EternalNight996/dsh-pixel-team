@@ -1,0 +1,24 @@
+.root { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 4px 2px 8px; overflow: auto; }
+.bar { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 320px; flex-wrap: wrap; font-size: 12px; }
+.scoreLabel { opacity: 0.65; }
+.score { font-weight: 700; color: #f2c14e; font-variant-numeric: tabular-nums; min-width: 2ch; }
+.meta { opacity: 0.6; font-variant-numeric: tabular-nums; }
+.spacer { flex: 1; }
+.button { border: 1px solid rgba(242, 193, 78, 0.45); background: rgba(242, 193, 78, 0.1); color: inherit; border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 12px; line-height: 1.4; cursor: pointer; }
+.button:hover:not(:disabled) { background: rgba(242, 193, 78, 0.22); }
+.button:disabled { opacity: 0.4; cursor: default; }
+.button[data-state='paused'] { border-color: rgba(127, 214, 168, 0.55); background: rgba(127, 214, 168, 0.16); }
+.stage { position: relative; flex: none; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 4px; background: #0d131c; }
+.canvas { display: block; width: 320px; height: 320px; image-rendering: pixelated; }
+.pad { display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px); gap: 2px; touch-action: none; }
+.padButton { border: 1px solid rgba(127, 214, 168, 0.4); background: rgba(13, 19, 28, 0.6); color: rgba(233, 240, 247, 0.85); border-radius: 6px; padding: 0; font: inherit; font-size: 14px; line-height: 1; cursor: pointer; touch-action: none; user-select: none; }
+.padButton:active { background: rgba(127, 214, 168, 0.28); }
+.padUp { grid-area: 1 / 2; }
+.padLeft { grid-area: 2 / 1; }
+.padDown { grid-area: 3 / 2; }
+.padRight { grid-area: 2 / 3; }
+.overlay { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px; text-align: center; background: rgba(8, 12, 18, 0.78); }
+.overlayText { font-size: 14px; font-weight: 700; color: #f2c14e; }
+.overlay[data-state='over'] .overlayText { color: #e0563f; }
+.overlayHint { font-size: 11px; opacity: 0.7; }
+.hint { margin: 0; font-size: 11px; opacity: 0.55; }
