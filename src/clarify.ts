@@ -13,6 +13,27 @@ export const CLARIFY_UI_STYLES = ['工业极简', '桌面端传统', '移动端�
 export const CLARIFY_UI_REFERENCES = ['指定项目/网站', '沿用上次记忆项目', '无参照'] as const
 export const DEFAULT_EXCLUDED = ['不改 MES 接口', '不升级操作系统', '不引入云服务'] as const
 
+/**
+ * AI-proposed answers for the clarification form. The section structure stays
+ * fixed; these lists are tailored to the requirement by the model.
+ */
+export interface ClarifyOptions {
+  readonly source: 'ai' | 'fallback'
+  readonly type: 'hardware' | 'software'
+  readonly scale: 'small' | 'medium' | 'fullstack'
+  readonly ui: {
+    readonly references: string[]
+    readonly styles: string[]
+    readonly notes: string[]
+  }
+  readonly platforms: string[]
+  readonly hardware: string[]
+  readonly constraints: string[]
+  readonly excluded: string[]
+  readonly acceptance: string[]
+  readonly memoryHints: string[]
+}
+
 const SCALE_LABEL: Record<TeamClarification['scale'], string> = {
   small: '🟢 小改动/单点突破（1-3 天）',
   medium: '🟡 多模块联动（1-2 周）',

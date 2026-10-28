@@ -1,6 +1,6 @@
 # Release checklist (dsh-pixel-team)
 
-Date: 2026-10-29 (v0.1.20). Automated gates are reproducible; manual gates are
+Date: 2026-10-29 (v0.1.21). Automated gates are reproducible; manual gates are
 still required before a public release.
 
 ## Automated (green)
@@ -26,8 +26,8 @@ pnpm verify:release runs npm pack --dry-run and asserts:
   (compatibility, doctor, legacy-session-source-repair) are included;
 - tarball is non-trivial and under the 8 MB budget.
 
-Current artifact (dry-run): dsh-pixel-team-0.1.20.tgz, ~7.2 MB packed,
-~9.8 MB unpacked, 324 files.
+Current artifact (dry-run): dsh-pixel-team-0.1.21.tgz, ~7.2 MB packed,
+~9.8 MB unpacked, 325 files.
 
 ## Manual gates (not yet run for this build)
 
@@ -46,6 +46,6 @@ Current artifact (dry-run): dsh-pixel-team-0.1.20.tgz, ~7.2 MB packed,
 
 ## Deploy note
 
-v0.1.20 is a GitHub-only release: npm `latest` intentionally stays on 0.1.16.
+v0.1.21 is a GitHub-only release: npm `latest` intentionally stays on 0.1.16.
 The desktop profile is on 0.1.16 from npm; install 0.1.17 from the GitHub tag or
 a local checkout until the npm line advances.

@@ -10,6 +10,7 @@ import { TEAM_CREATED_EVENT } from './team-reveal.ts'
 import { ROLE_META } from './role-labels.ts'
 import { SECT_PRESETS, randomSect, sectPreset } from './sects.ts'
 import { ClarifySheet, DEFAULT_CLARIFY_DRAFT, clarificationPayload, linesOf, type ClarifyDraft } from './ClarifySheet.tsx'
+import type { ClarifyOptions } from '../clarify.ts'
 import { PolishPreview } from './PolishPreview.tsx'
 
 type TplKey = 'quickstart.tplFix' | 'quickstart.tplFeat' | 'quickstart.tplResearch' | 'quickstart.tplAudit' | 'quickstart.tplFullstack'
@@ -23,8 +24,9 @@ interface QuickTemplate {
 }
 
 const TEMPLATES: readonly QuickTemplate[] = [
-  { id: 'fix', labelKey: 'quickstart.tplFix', descKey: 'quickstart.desc.fix', roles: ['implementer', 'verifier', 'reviewer'] },
+  // 开山立业 is the default founding intent: it leads the doctrine list.
   { id: 'feat', labelKey: 'quickstart.tplFeat', descKey: 'quickstart.desc.feat', roles: ['planner', 'implementer', 'verifier', 'reviewer'] },
+  { id: 'fix', labelKey: 'quickstart.tplFix', descKey: 'quickstart.desc.fix', roles: ['implementer', 'verifier', 'reviewer'] },
   { id: 'research', labelKey: 'quickstart.tplResearch', descKey: 'quickstart.desc.research', roles: ['researcher', 'analyst', 'writer', 'reviewer'] },
   { id: 'fullstack', labelKey: 'quickstart.tplFullstack', descKey: 'quickstart.desc.fullstack', roles: ['integrator', 'frontend', 'backend', 'verifier', 'reviewer'] },
   { id: 'hardening', labelKey: 'quickstart.tplHardening', descKey: 'quickstart.desc.hardening', roles: ['auditor', 'security', 'verifier', 'reviewer'] },
@@ -35,7 +37,7 @@ const TEMPLATES: readonly QuickTemplate[] = [
   { id: 'debate', labelKey: 'quickstart.tplDebate', descKey: 'quickstart.desc.debate', roles: ['researcher', 'analyst', 'reviewer'] },
 ]
 
-/** 开宗四步：道统 → 立派之志 → 宗门 → 立誓。 */
+/** 开宗五步：道统 → 立派之志 → 澄清 → 宗门 → 立誓。 */
 const STEPS = ['doctrine', 'vow', 'clarify', 'sect', 'oath'] as const
 type Step = typeof STEPS[number]
 const STEP_LABEL: Record<Step, 'quickstart.stepDoctrine' | 'quickstart.stepVow' | 'quickstart.stepClarify' | 'quickstart.stepSect' | 'quickstart.stepOath'> = {
@@ -79,6 +81,9 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
   const [selectedConditions, setSelectedConditions] = useState<string[]>([])
   const [requirement, setRequirement] = useState<{ original: string; expanded: string; conditions: string[] } | undefined>()
   const [clarify, setClarify] = useState<ClarifyDraft>(DEFAULT_CLARIFY_DRAFT)
+  // Module 1: the option lists are proposed by the model from this requirement.
+  const [clarifyOptions, setClarifyOptions] = useState<ClarifyOptions | undefined>()
+  const [clarifyState, setClarifyState] = useState<'loading' | 'ready' | 'fallback'>('loading')
   const multiRef = useRef<HTMLDivElement | null>(null)
   const goalRef = useRef<HTMLTextAreaElement | null>(null)
   const foundedTimer = useRef<number | undefined>(undefined)
@@ -184,6 +189,52 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
     setRequirement({ original: goalTrimmed, expanded, conditions: selectedConditions })
     setPolishOpen(false)
   }
+
+  // Fetch requirement-specific clarification options when the step opens (or
+  // when the confirmed polish changes the requirement). Falls back to the static
+  // menu only when the host/model is unavailable.
+  useEffect(() => {
+    if (STEPS[step] !== 'clarify' || goalTrimmed === '') return
+    const controller = new AbortController()
+    setClarifyState('loading')
+    void (async () => {
+      try {
+        const response = await fetch('/plugins/dsh-pixel-team/clarify/options', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            requirement: {
+              original: goalTrimmed,
+              expanded: requirement?.expanded ?? '',
+              conditions: requirement?.conditions ?? [],
+            },
+          }),
+          signal: controller.signal,
+        })
+        const body = await response.json().catch(() => null) as { ok?: boolean; options?: ClarifyOptions; error?: string } | null
+        if (!response.ok || body?.ok !== true || body.options === undefined) {
+          throw new Error(body?.error ?? ('HTTP ' + response.status))
+        }
+        const options = body.options
+        setClarifyOptions(options)
+        setClarifyState(options.source === 'fallback' ? 'fallback' : 'ready')
+        setClarify((prev) => ({
+          ...prev,
+          type: prev.type === DEFAULT_CLARIFY_DRAFT.type ? options.type : prev.type,
+          scale: prev.scale === DEFAULT_CLARIFY_DRAFT.scale ? options.scale : prev.scale,
+          platforms: prev.platforms.length === 0 ? [...options.platforms] : prev.platforms,
+          acceptanceText: linesOf(prev.acceptanceText).length === 0 ? options.acceptance.slice(0, 3).join('\n') : prev.acceptanceText,
+          memoryHintsText: prev.memoryHintsText.trim() === '' ? options.memoryHints.slice(0, 4).join('，') : prev.memoryHintsText,
+        }))
+      } catch {
+        if (controller.signal.aborted) return
+        setClarifyOptions(undefined)
+        setClarifyState('fallback')
+      }
+    })()
+    return () => { controller.abort() }
+  }, [step, goalTrimmed, sessionId, requirement])
   const currentStep: Step = STEPS[step] ?? STEPS[0] as Step
   const canAdvance = useMemo(() => {
     if (busy) return false
@@ -356,7 +407,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
           {currentStep === 'clarify' && (
             <section className={css.stepPane} data-step="clarify">
               <p className={css.hint}>{t('clarify.hint')}</p>
-              <ClarifySheet value={clarify} onChange={setClarify} disabled={busy} t={t} />
+              <ClarifySheet value={clarify} onChange={setClarify} options={clarifyOptions} state={clarifyState} disabled={busy} t={t} />
             </section>
           )}
 

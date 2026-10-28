@@ -45,6 +45,7 @@ import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
 import { buildQuickStartPlan, quickStartDeliveryDefaults, stageQuickStartTeam } from './quick-start.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
+import { generateClarifyOptions } from './clarify-options.ts'
 import { probeMemory } from './memory.ts'
 import { projectLibraryTeam } from './library-projection.ts'
 import { readTodayCost, resolveCostDecision } from './cost.ts'
@@ -778,6 +779,67 @@ export function apply(ctx: Context, config: Config): void {
         }
       },
     }), 'agent-teams: polish route')
+
+    // Module 1: AI-generated clarification options. The static lists are only
+    // the degraded fallback; the normal path tailors every section to the request.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/clarify/options',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const raw = typeof payload.requirement === 'object' && payload.requirement !== null
+          ? payload.requirement as Record<string, unknown>
+          : undefined
+        const original = raw !== undefined && typeof raw['original'] === 'string' ? raw['original'].trim() : ''
+        if (sessionId === '' || original === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId and requirement.original are required' }))
+          return
+        }
+        const requirement = {
+          original,
+          expanded: raw !== undefined && typeof raw['expanded'] === 'string' ? raw['expanded'].trim() : '',
+          conditions: raw !== undefined && Array.isArray(raw['conditions'])
+            ? raw['conditions'].filter((item): item is string => typeof item === 'string')
+            : [],
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const facts = await describeWorkspaceFacts(workspace)
+        const abort = new AbortController()
+        const timeout = setTimeout(() => { abort.abort() }, 30_000)
+        try {
+          const options = await generateClarifyOptions(ctx, captain, { requirement, workspaceFacts: facts }, abort.signal)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ ok: true, options }))
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          ctx.logger.warn('agent-teams: clarify options failed: ' + message)
+          res.writeHead(422, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: message }))
+        } finally {
+          clearTimeout(timeout)
+        }
+      },
+    }), 'agent-teams: clarify options route')
 
     // Whether the optional memory brain is reachable: the banner shows
     // 已连接大脑 only when a real probe succeeds, otherwise the install hint.

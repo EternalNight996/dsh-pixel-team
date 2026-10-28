@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.21] - 2026-10-29
+
+### Added
+- Clarification options are now AI-generated per requirement: the host proposes
+  type/scale, UI references and styles, platforms, hardware candidates,
+  constraints, exclusions, acceptance assertions and memory hints for this exact
+  request (POST /plugins/dsh-pixel-team/clarify/options). The static menu is only
+  the degraded fallback when the model route is unavailable.
+
+### Changed
+- 开山立业 (feat) now leads the doctrine list in the founding wizard and is the
+  default selection, including its four-role roster.
+
 ## [0.1.20] - 2026-10-29
 
 ### Changed

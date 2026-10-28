@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { normalizeClarification, describeClarification, DEFAULT_EXCLUDED } from '../lib/clarify.js'
 import { buildConstitution, writeConstitution, readConstitution } from '../lib/constitution.js'
 import { parsePolishOutput } from '../lib/polish.js'
+import { fallbackClarifyOptions, parseClarifyOptions } from '../lib/clarify-options.js'
 
 const base = {
   type: 'hardware',
@@ -75,4 +76,25 @@ test('polish output parsing tolerates prose around JSON and rejects junk', () =>
   assert.throws(() => parsePolishOutput('no json here'), /JSON/)
   const long = parsePolishOutput(JSON.stringify({ expanded: 'x'.repeat(500), hiddenConditions: [] }))
   assert.equal(long.expanded.length, 200)
+})
+
+test('clarify options are AI-shaped with a per-section fallback', () => {
+  const parsed = parseClarifyOptions('前言 {"type":"hardware","scale":"medium","ui":{"references":["MVCheck"],"styles":["工业极简"],"notes":[]},"platforms":["Windows"],"hardware":["海康 MV-CS016"],"constraints":["产线不停机"],"excluded":["不改 MES"],"acceptance":["连续72h无崩溃","检测错误率<1%"],"memoryHints":["MES"]} 后记')
+  assert.equal(parsed.source, 'ai')
+  assert.equal(parsed.type, 'hardware')
+  assert.equal(parsed.scale, 'medium')
+  assert.deepEqual(parsed.platforms, ['Windows'])
+  assert.deepEqual(parsed.acceptance, ['连续72h无崩溃', '检测错误率<1%'])
+  assert.deepEqual(parsed.hardware, ['海康 MV-CS016'])
+  assert.deepEqual(parsed.ui.styles, ['工业极简'])
+  const fallback = fallbackClarifyOptions()
+  assert.equal(fallback.source, 'fallback')
+  assert.ok(fallback.platforms.length > 0)
+  assert.ok(fallback.hardware.length > 0)
+  // Missing sections must not leave the form empty.
+  const partial = parseClarifyOptions('{"type":"software","platforms":[],"acceptance":[]}')
+  assert.ok(partial.platforms.length > 0)
+  assert.ok(partial.acceptance.length > 0)
+  assert.equal(partial.source, 'ai')
+  assert.throws(() => parseClarifyOptions('no json here'), /JSON/)
 })

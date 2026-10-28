@@ -404,6 +404,11 @@ export declare const zh: {
     'quickstart.stepOath': string;
     'quickstart.stepClarify': string;
     'clarify.hint': string;
+    'clarify.aiLoading': string;
+    'clarify.aiOptions': string;
+    'clarify.aiFallback': string;
+    'clarify.customPlaceholder': string;
+    'clarify.constraints': string;
     'clarify.type': string;
     'clarify.hardwareDev': string;
     'clarify.softwareDev': string;
@@ -1083,6 +1088,11 @@ export declare const en: {
     'quickstart.stepOath': string;
     'quickstart.stepClarify': string;
     'clarify.hint': string;
+    'clarify.aiLoading': string;
+    'clarify.aiOptions': string;
+    'clarify.aiFallback': string;
+    'clarify.customPlaceholder': string;
+    'clarify.constraints': string;
     'clarify.type': string;
     'clarify.hardwareDev': string;
     'clarify.softwareDev': string;
