@@ -13,4 +13,7 @@ node_modules/
 # Local-only art experiments (never shipped, never committed)
 .art-lab/
 assets/local/
-`n# AgentTeams project constitution / cost logs (runtime artifacts)`n.pixel-team/
+
+# AgentTeams project constitution / cost logs (runtime artifacts)
+.pixel-team/
+
