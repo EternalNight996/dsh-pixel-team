@@ -19,6 +19,8 @@ export interface PolishResult {
   readonly hiddenConditions: readonly string[]
   /** True when the model route was unavailable and the original text is returned. */
   readonly degraded: boolean
+  /** Why the call degraded (shown to the user, never silently swallowed). */
+  readonly error?: string
   readonly model?: string
 }
 
@@ -83,7 +85,9 @@ export async function polishRequirement(
         content: [{ type: 'text', text: prompts.user }],
         source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
       })],
-      maxTokens: 500,
+      // Reasoning models spend output tokens before the JSON answer; give the
+      // completion enough headroom or text-delta stays empty.
+      maxTokens: 2000,
       temperature: 0.3,
       ...signal === undefined ? {} : { signal },
     })
@@ -94,7 +98,8 @@ export async function polishRequirement(
     const parsed = parsePolishOutput(text)
     return { ...parsed, degraded: false, model: selection.model }
   } catch (error: unknown) {
-    ctx.logger.warn('agent-teams: polish degraded: ' + (error instanceof Error ? error.message : String(error)))
-    return { expanded: requirement.slice(0, POLISH_MAX_CHARS), hiddenConditions: [], degraded: true }
+    const detail = error instanceof Error ? error.message : String(error)
+    ctx.logger.warn('agent-teams: polish degraded: ' + detail)
+    return { expanded: requirement.slice(0, POLISH_MAX_CHARS), hiddenConditions: [], degraded: true, error: detail }
   }
 }

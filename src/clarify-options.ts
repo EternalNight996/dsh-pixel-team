@@ -160,7 +160,7 @@ export async function generateClarifyOptions(
         content: [{ type: 'text', text: prompts.user }],
         source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
       })],
-      maxTokens: 1400,
+      maxTokens: 2200,
       temperature: 0.4,
       ...signal === undefined ? {} : { signal },
     })

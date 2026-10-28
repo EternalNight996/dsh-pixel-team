@@ -14,6 +14,8 @@ export interface PolishResult {
     readonly hiddenConditions: readonly string[];
     /** True when the model route was unavailable and the original text is returned. */
     readonly degraded: boolean;
+    /** Why the call degraded (shown to the user, never silently swallowed). */
+    readonly error?: string;
     readonly model?: string;
 }
 export declare function buildPolishPrompts(requirement: string, workspaceFacts: string, mode?: TeamMode): {

@@ -800,6 +800,7 @@ export function apply(ctx: Context, config: Config): void {
             expanded: result.expanded,
             hidden_conditions: [...result.hiddenConditions],
             degraded: result.degraded,
+            ...result.error === undefined ? {} : { error: result.error },
             ...result.model === undefined ? {} : { model: result.model },
           }))
         } catch (error: unknown) {

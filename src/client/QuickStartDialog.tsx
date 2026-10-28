@@ -192,11 +192,17 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
         body: JSON.stringify({ sessionId, requirement: goalTrimmed, mode }),
       })
       const body = await response.json().catch(() => null) as {
-        ok?: boolean; expanded?: string; error?: string
+        ok?: boolean; expanded?: string; degraded?: boolean; error?: string
       } | null
       if (!response.ok || body?.ok !== true) throw new Error(body?.error ?? ('HTTP ' + response.status))
       // Insert the polished text into the input; the user decides the next step.
-      setGoal((body.expanded ?? goalTrimmed).trim())
+      const expanded = (body.expanded ?? goalTrimmed).trim()
+      setGoal(expanded)
+      if (body.degraded === true) {
+        setPolishError(t('polish.degradedDetail', { error: body.error ?? t('polish.degraded') }))
+      } else if (expanded === goalTrimmed) {
+        setPolishError(t('polish.unchanged'))
+      }
     } catch (cause) {
       setPolishError(cause instanceof Error ? cause.message : String(cause))
     } finally {

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.26] - 2026-10-29
+
+### Fixed
+- AI polish no longer fails silently: the completion budget was raised for
+  reasoning models (text-delta could stay empty at 500 tokens), and any degraded
+  call now shows the concrete reason under the button instead of leaving the
+  textarea unchanged with no feedback.
+- Clarification options and interview generation use the same larger budget.
+
 ## [0.1.25] - 2026-10-29
 
 ### Changed

@@ -460,6 +460,8 @@ export declare const zh: {
     'polish.confirm': string;
     'polish.cancel': string;
     'polish.degraded': string;
+    'polish.degradedDetail': string;
+    'polish.unchanged': string;
     'memory.banner': string;
     'memory.install': string;
     'memory.dismiss': string;
@@ -1170,6 +1172,8 @@ export declare const en: {
     'polish.confirm': string;
     'polish.cancel': string;
     'polish.degraded': string;
+    'polish.degradedDetail': string;
+    'polish.unchanged': string;
     'memory.banner': string;
     'memory.install': string;
     'memory.dismiss': string;

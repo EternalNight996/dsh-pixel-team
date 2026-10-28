@@ -93,7 +93,7 @@ export async function generateInterviewQuestions(
         content: [{ type: 'text', text: prompts.user }],
         source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
       })],
-      maxTokens: 1200,
+      maxTokens: 2200,
       temperature: 0.4,
       ...signal === undefined ? {} : { signal },
     })
@@ -177,7 +177,7 @@ export async function generateClarificationFromAnswers(
         content: [{ type: 'text', text: prompts.user }],
         source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
       })],
-      maxTokens: 1200,
+      maxTokens: 2200,
       temperature: 0.3,
       ...signal === undefined ? {} : { signal },
     })
