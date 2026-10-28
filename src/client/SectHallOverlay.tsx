@@ -587,7 +587,8 @@ export function SectHallOverlay({
               : sheet === 'teams' ? t('office.facility.teams')
                 : sheet === 'board' ? t('workspace.tabBoard')
                   : sheet === 'library' ? t('library.title')
-                    : t('workspace.tabConfig')
+                    : sheet === 'config' && hasTeam && !staged ? t('library.title')
+                      : t('workspace.tabConfig')
     return createPortal((
       <aside
         className={css.sheet}
@@ -896,8 +897,13 @@ export function SectHallOverlay({
             !hasTeam
               ? noTeamHint
               : staged && sessionId !== undefined
+                // Approval still needs the plan editor: a staged plan must stay reviewable.
                 ? <StagingPlanEditor team={hall} modelDirectory={modelDirectories.directoryFor(sessionId)} onContinuePlanning={() => { setSheet(undefined) }} onDiscarded={() => { setSheet(undefined) }} t={t} />
-                : <TeamConfigPanel team={hall} t={t} />
+                // The running 藏经阁 is the live library view (replaces the
+                // static member/contract panel the user asked to drop).
+                : sessionId !== undefined
+                  ? <LibraryPanel sessionId={sessionId} t={t} />
+                  : <TeamConfigPanel team={hall} t={t} />
           ) : sheet === 'teams' ? (
             <div className={css.history}>
               {/* 已开宗并跑过任务后，山门→名册仍然保留开宗入口；已有宗门时向导会提示替换。 */}

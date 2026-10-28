@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19] - 2026-10-29
+
+### Changed
+- The running 藏经阁 sheet now renders the live 道通藏书阁 projection (swimlanes,
+  edges, acceptance, blocker bar) instead of the static member/contract panel.
+  A staged plan still opens the plan editor so approval is never lost.
+
 ## [0.1.18] - 2026-10-29
 
 ### Added
