@@ -15,6 +15,8 @@ export interface LibraryTaskView {
     readonly status: string;
     readonly assignee: string;
     readonly depth: number;
+    readonly description: string;
+    readonly dependencies: string[];
     readonly acceptance: LibraryAcceptance[];
 }
 export interface LibraryEdgeView {

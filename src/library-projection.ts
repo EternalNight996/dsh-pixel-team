@@ -18,6 +18,8 @@ export interface LibraryTaskView {
   readonly status: string
   readonly assignee: string
   readonly depth: number
+  readonly description: string
+  readonly dependencies: string[]
   readonly acceptance: LibraryAcceptance[]
 }
 
@@ -116,6 +118,8 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
       status: task.status,
       assignee: task.assignee ?? '',
       depth: depthOf(task, byId, memo),
+      description: task.description ?? '',
+      dependencies: [...task.dependencies],
       acceptance: acceptanceOf(task),
     }))
     .sort((left, right) => left.depth - right.depth || left.id.localeCompare(right.id))

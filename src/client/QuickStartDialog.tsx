@@ -566,7 +566,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
             <p className={css.confirmFloatText}>{t('quickstart.replaceConfirm')}</p>
             <div className={css.confirmFloatActions}>
               <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
-              <button type="button" data-primary disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
+              <button type="button" data-primary data-danger disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
             </div>
             <span className={css.confirmFloatTail} aria-hidden />
           </div>

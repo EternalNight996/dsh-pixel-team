@@ -23,3 +23,11 @@
 .version { color: #9aa4b2; font-size: 11px; }
 .mode { border: 1px solid; border-radius: 999px; padding: 1px 8px; font-size: 11px; }
 .gate { color: #9aa4b2; font-size: 11px; }
+.stop { position: absolute; top: 6px; right: 6px; border: 1px solid rgba(255,107,107,0.7); background: rgba(255,107,107,0.14); color: #ff9a9a; border-radius: 999px; padding: 1px 7px; font-size: 10px; cursor: pointer; }
+.stop:disabled { opacity: 0.6; cursor: default; }
+.details { margin-top: 4px; font-size: 12px; color: #9aa4b2; }
+.details summary { cursor: pointer; }
+.detailList { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.detailId { color: #6fb6ff; margin-right: 6px; }
+.detailMeta { display: block; color: #9aa4b2; font-size: 11px; margin-top: 2px; }
+.detailDesc { display: block; color: #c9d1dc; font-size: 11px; margin-top: 2px; white-space: pre-wrap; }

@@ -2,6 +2,7 @@
 import css from './CostDialog.module.css'
 import { decideCost, useLibraryState } from './library-stream.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
+import { usdToCny } from '../currency.ts'
 
 export function CostDialog({ sessionId, t }: {
   readonly sessionId: string | undefined
@@ -19,8 +20,8 @@ export function CostDialog({ sessionId, t }: {
           ? <p className={css.body}>{t('cost.retryBody', { count: String(costPrompt.retryCount ?? 0) })}</p>
           : <p className={css.body}>{t('cost.body', {
             member: costPrompt.memberName,
-            estimate: costPrompt.estimateUsd.toFixed(4),
-            threshold: costPrompt.thresholdUsd.toFixed(2),
+            estimate: usdToCny(costPrompt.estimateUsd).toFixed(2),
+            threshold: usdToCny(costPrompt.thresholdUsd).toFixed(2),
             reason,
           })}</p>}
         <p className={css.note}>{retry ? t('cost.retryNote') : t('cost.note')}</p>

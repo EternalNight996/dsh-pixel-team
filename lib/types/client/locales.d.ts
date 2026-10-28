@@ -482,6 +482,13 @@ export declare const zh: {
     'library.status.failed': string;
     'library.acceptance': string;
     'library.gate': string;
+    'library.stop': string;
+    'library.stopping': string;
+    'library.stopConfirm': string;
+    'library.details': string;
+    'library.deps': string;
+    'library.noDeps': string;
+    'library.description': string;
     'cost.title': string;
     'cost.body': string;
     'cost.task': string;
@@ -1195,6 +1202,13 @@ export declare const en: {
     'library.status.failed': string;
     'library.acceptance': string;
     'library.gate': string;
+    'library.stop': string;
+    'library.stopping': string;
+    'library.stopConfirm': string;
+    'library.details': string;
+    'library.deps': string;
+    'library.noDeps': string;
+    'library.description': string;
     'cost.title': string;
     'cost.body': string;
     'cost.task': string;

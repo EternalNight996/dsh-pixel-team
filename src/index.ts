@@ -30,6 +30,7 @@ import {
   haltTeamWork,
   stagedPlanApprovedContext,
   registerAgentTeamsTools,
+  teamLockKey,
   type StagedPlanMutation,
   type ToolsConfig,
 } from './tools.ts'
@@ -38,11 +39,12 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
-import { archiveTeamDir, findTeamByCaptain, readTeam } from './state.ts'
+import { archiveTeamDir, findTeamByCaptain, invalidateTaskAttempt, readTeam, withTeamLock, writeTeam } from './state.ts'
 import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
-import { buildQuickStartPlan, quickStartDeliveryDefaults, stageQuickStartTeam } from './quick-start.ts'
+import { buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, stageQuickStartTeam } from './quick-start.ts'
+import { generatePlanSpecs } from './plan-generator.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
 import { generateClarifyOptions } from './clarify-options.ts'
@@ -424,6 +426,67 @@ export function apply(ctx: Context, config: Config): void {
       },
     }), 'agent-teams: cost decision route')
 
+    // Library "stop task": revoke the current attempt and mark the task failed
+    // so the scheduler and downstream gates see a terminal stop.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/task/stop',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const taskId = typeof payload.taskId === 'string' ? payload.taskId.trim() : ''
+        if (sessionId === '' || taskId === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId and taskId are required' }))
+          return
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const stateRoot = join(workspace, config.stateDir ?? '.agent-teams')
+        const team = await findTeamByCaptain(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
+        if (team === undefined) {
+          res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'no active team for this session' }))
+          return
+        }
+        let stopped = false
+        await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+          const fresh = await readTeam(stateRoot, team.id)
+          if (fresh === undefined) return
+          const task = fresh.tasks.find(item => item.id === taskId)
+          if (task === undefined) return
+          if (task.status === 'completed' || task.status === 'failed') return
+          const assignee = task.assignee
+          invalidateTaskAttempt(task)
+          task.assignee = assignee
+          task.status = 'failed'
+          task.output = '用户从道通藏书阁停止该任务'
+          task.updatedAt = Date.now()
+          await writeTeam(stateRoot, fresh)
+          stopped = true
+        })
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(JSON.stringify({ ok: true, stopped }))
+      },
+    }), 'agent-teams: stop task route')
+
     ctx.effect(() => webServer.register({
       kind: 'exact',
       path: '/plugins/dsh-pixel-team/halt',
@@ -712,7 +775,27 @@ export function apply(ctx: Context, config: Config): void {
           await writeFile(scriptPath, verifierScript.content, 'utf8')
           delivery.verify = [...delivery.verify, 'node ' + verifierScript.relativePath]
         }
-        const plan = buildQuickStartPlan(goal, template, roles, delivery)
+        // Derive the DAG from the real goal + interview answers + mode; the
+        // fixed template is only the fallback when generation is unusable.
+        const planRoles = quickStartRoles(template, roles)
+        const planFacts = await describeWorkspaceFacts(workspace)
+        const planAbort = new AbortController()
+        const planTimeout = setTimeout(() => { planAbort.abort() }, 60_000)
+        let planSpecs
+        try {
+          planSpecs = await generatePlanSpecs(ctx, captain, {
+            goal,
+            mode: clarification.mode,
+            clarification,
+            roles: planRoles.map(role => ({ role, name: ROLE_NAMES[role] ?? role })),
+            workspaceFacts: planFacts,
+          }, planAbort.signal)
+        } finally {
+          clearTimeout(planTimeout)
+        }
+        const plan = planSpecs !== undefined
+          ? buildPlanFromSpecs(goal, template, planRoles, planSpecs, delivery)
+          : buildQuickStartPlan(goal, template, roles, delivery)
         const replace = payload.replace === true
         const abort = new AbortController()
         const timeout = setTimeout(() => { abort.abort() }, 30_000)

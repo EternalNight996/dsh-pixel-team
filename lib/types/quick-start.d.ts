@@ -1,5 +1,6 @@
 import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts';
 import { type TeamMode } from './modes.ts';
+import type { PlanTaskSpec } from './plan-generator.ts';
 /** One built-in template: default roles and a small task DAG. */
 export declare const SECT_NAMES: Record<string, string>;
 export declare const ROLE_NAMES: Record<string, string>;
@@ -122,3 +123,7 @@ export declare function stageQuickStartTeam(plan: QuickStartPlan, goal: string, 
     teamName?: string;
     phase?: string;
 }>;
+/** Effective roles for a founding plan (requested, else template defaults). */
+export declare function quickStartRoles(templateId: string, requestedRoles?: readonly string[]): string[];
+/** Build the staged plan from AI-generated task specs instead of the template. */
+export declare function buildPlanFromSpecs(goal: string, templateId: string, requestedRoles: readonly string[] | undefined, specs: readonly PlanTaskSpec[], delivery?: QuickStartDelivery): QuickStartPlan;

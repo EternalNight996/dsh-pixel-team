@@ -100,6 +100,8 @@ export interface AgentTeamsRuntime {
         teamId: string;
     }>;
 }
+/** Process-local lock key scoped by workspace state root and team id. */
+export declare function teamLockKey(stateRoot: string, teamId: string): string;
 export declare function haltTeamWork(input: {
     ctx: Context;
     stateRoot: string;

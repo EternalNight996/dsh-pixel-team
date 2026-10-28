@@ -193,7 +193,7 @@ function stateRootOf(workspace: string, config: ToolsConfig): string {
 }
 
 /** Process-local lock key scoped by workspace state root and team id. */
-function teamLockKey(stateRoot: string, teamId: string): string {
+export function teamLockKey(stateRoot: string, teamId: string): string {
   return `team:${stateRoot}:${teamId}`
 }
 
