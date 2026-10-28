@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.30] - 2026-10-29
+
+### Added
+- Solo captain mode: the 宗门 step has a "单掌门模式（不派修士）" toggle; the
+  staged plan has no roster and every task is assigned to the captain, so no
+  member resources are spent. The captain executes the tasks itself in chat.
+- Mode chips state their direction: 极速草稿（产量优先）, 工业精工（质量交付）,
+  屎山抢救（存量维护）, 严格合规（审计优先）, 交付变现（交付优先）.
+
 ## [0.1.29] - 2026-10-29
 
 ### Added

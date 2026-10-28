@@ -43,7 +43,7 @@ import { archiveTeamDir, findTeamByCaptain, invalidateTaskAttempt, readTeam, wit
 import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
-import { buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, stageQuickStartTeam } from './quick-start.ts'
+import { buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
 import { generatePlanSpecs } from './plan-generator.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
@@ -793,9 +793,11 @@ export function apply(ctx: Context, config: Config): void {
         } finally {
           clearTimeout(planTimeout)
         }
-        const plan = planSpecs !== undefined
+        const basePlan = planSpecs !== undefined
           ? buildPlanFromSpecs(goal, template, planRoles, planSpecs, delivery)
           : buildQuickStartPlan(goal, template, roles, delivery)
+        // Solo run: no members are created; every task is assigned to the captain.
+        const plan = payload.solo === true ? soloPlan(basePlan) : basePlan
         const replace = payload.replace === true
         const abort = new AbortController()
         const timeout = setTimeout(() => { abort.abort() }, 30_000)

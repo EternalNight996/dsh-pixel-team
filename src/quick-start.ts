@@ -475,3 +475,12 @@ export function buildPlanFromSpecs(
   })
   return { teamName: (SECT_NAMES[template.id] ?? '修仙宗') + '·' + stamp.slice(8), template: template.id, members, tasks }
 }
+
+/** Captain-only plan: drop the roster and route every task to the captain. */
+export function soloPlan(plan: QuickStartPlan): QuickStartPlan {
+  return {
+    ...plan,
+    members: [],
+    tasks: plan.tasks.map(task => ({ ...task, assignee: 'captain' })),
+  }
+}

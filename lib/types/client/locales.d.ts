@@ -503,6 +503,8 @@ export declare const zh: {
     'quickstart.doctrineHint': string;
     'quickstart.vowHint': string;
     'quickstart.sectHint': string;
+    'quickstart.solo': string;
+    'quickstart.soloHint': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;
     'quickstart.back': string;
@@ -1223,6 +1225,8 @@ export declare const en: {
     'quickstart.doctrineHint': string;
     'quickstart.vowHint': string;
     'quickstart.sectHint': string;
+    'quickstart.solo': string;
+    'quickstart.soloHint': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;
     'quickstart.back': string;

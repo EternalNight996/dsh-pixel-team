@@ -98,6 +98,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const [rolledSect, setRolledSect] = useState<string>(() => randomSect().id)
   const [customRole, setCustomRole] = useState('')
   const [rolesOpen, setRolesOpen] = useState(false)
+  // Solo run: no members are spawned; the captain executes every task itself.
+  const [solo, setSolo] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [blocked, setBlocked] = useState(false)
@@ -251,10 +253,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     switch (currentStep) {
       case 'vow': return goalTrimmed.length >= 2
       case 'interview': return interviewState !== 'loading' && interviewQuestions.length > 0
-      case 'sect': return sectMode !== 'custom' || sectRoles.length > 0
+      case 'sect': return solo || sectMode !== 'custom' || sectRoles.length > 0
       default: return true
     }
-  }, [busy, polishBusy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length])
+  }, [busy, polishBusy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length, solo])
 
   const submit = async (replace: boolean): Promise<void> => {
     if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(1); return }
@@ -291,7 +293,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           mode,
           goal: goalTrimmed,
           template,
-          roles: sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
+          roles: solo ? [] : sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
+          solo,
           replace,
           clarification,
         }),
@@ -455,6 +458,18 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           {currentStep === 'sect' && (
             <section className={css.stepPane} data-step="sect">
               <p className={css.hint}>{t('quickstart.sectHint')}</p>
+              <p className={css.soloRow}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={solo}
+                    disabled={busy}
+                    onChange={(event) => { setSolo(event.target.checked) }}
+                  />
+                  {t('quickstart.solo')}
+                </label>
+                <small>{t('quickstart.soloHint')}</small>
+              </p>
               <div className={css.field}>
                 <span>{t('quickstart.sect')}</span>
                 <div className={css.sectRow}>

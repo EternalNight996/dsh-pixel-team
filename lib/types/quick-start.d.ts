@@ -127,3 +127,5 @@ export declare function stageQuickStartTeam(plan: QuickStartPlan, goal: string, 
 export declare function quickStartRoles(templateId: string, requestedRoles?: readonly string[]): string[];
 /** Build the staged plan from AI-generated task specs instead of the template. */
 export declare function buildPlanFromSpecs(goal: string, templateId: string, requestedRoles: readonly string[] | undefined, specs: readonly PlanTaskSpec[], delivery?: QuickStartDelivery): QuickStartPlan;
+/** Captain-only plan: drop the roster and route every task to the captain. */
+export declare function soloPlan(plan: QuickStartPlan): QuickStartPlan;

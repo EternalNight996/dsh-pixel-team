@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { parsePlanSpecs } from '../lib/plan-generator.js'
-import { buildPlanFromSpecs, quickStartRoles } from '../lib/quick-start.js'
+import { buildPlanFromSpecs, quickStartRoles, soloPlan } from '../lib/quick-start.js'
 
 const roles = ['planner', 'implementer', 'verifier', 'reviewer']
 const valid = {
@@ -35,4 +35,13 @@ test('invalid plans fall back (no review, cycle, missing acceptance)', () => {
   assert.equal(parsePlanSpecs(JSON.stringify(cyclic), roles), undefined)
   const noAcceptance = { tasks: valid.tasks.map(task => task.id === 'b' ? { ...task, acceptance: [] } : task) }
   assert.equal(parsePlanSpecs(JSON.stringify(noAcceptance), roles), undefined)
+})
+
+test('solo plan drops members and routes every task to the captain', () => {
+  const specs = parsePlanSpecs(JSON.stringify(valid), roles)
+  const plan = buildPlanFromSpecs('×ö¸öÌ°³ÔÉß', 'feat', roles, specs)
+  const solo = soloPlan(plan)
+  assert.deepEqual(solo.members, [])
+  assert.equal(solo.tasks.length, plan.tasks.length)
+  assert.ok(solo.tasks.every(task => task.assignee === 'captain'))
 })
