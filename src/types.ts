@@ -9,6 +9,7 @@
  */
 
 import type { MemberToolFilter } from './tool-policies.ts'
+import type { TeamMode } from './modes.ts'
 
 /** Task lifecycle statuses in progression order. */
 export type TaskStatus =
@@ -411,6 +412,8 @@ export type ClarifyScale = 'small' | 'medium' | 'fullstack'
 export interface TeamClarification {
   type: ClarifyType
   scale: ClarifyScale
+  /** Development mode; drives philosophy, boundaries, verifier and budget. */
+  mode: TeamMode
   ui: { reference?: string; styles: string[]; notes?: string }
   platforms: string[]
   hardwareList: string[]
@@ -425,6 +428,7 @@ export interface TeamConstitution {
   project: string
   type: ClarifyType
   scale: ClarifyScale
+  mode: TeamMode
   ui: { reference?: string; styles: string[]; notes?: string }
   platforms: string[]
   hardware_list: string[]

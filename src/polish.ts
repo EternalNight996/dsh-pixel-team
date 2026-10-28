@@ -10,6 +10,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
 import { resolveMemberLlmSelection } from './members.ts'
+import { getModeSpec, type TeamMode } from './modes.ts'
 
 export const POLISH_MAX_CHARS = 200
 
@@ -23,7 +24,8 @@ export interface PolishResult {
 
 const MAX_HIDDEN = 6
 
-export function buildPolishPrompts(requirement: string, workspaceFacts: string): { system: string; user: string } {
+export function buildPolishPrompts(requirement: string, workspaceFacts: string, mode?: TeamMode): { system: string; user: string } {
+  const spec = getModeSpec(mode)
   const system = [
     '你是制造业软件项目的资深售前架构师，任务是把用户一句口语化需求扩写成可评审的短需求。',
     '规则：',
@@ -31,6 +33,8 @@ export function buildPolishPrompts(requirement: string, workspaceFacts: string):
     '2. 结构：{"expanded": string, "hiddenConditions": string[]}。',
     '3. expanded 不超过 ' + POLISH_MAX_CHARS + ' 字，补全可执行的技术术语、目标平台倾向、核心功能点，禁止编造用户没说的事实。',
     '4. hiddenConditions 是 0-6 条用户可能忽略的隐含约束，例如"兼容 Win7""需对接 MES""车间强光环境"，每条不超过 20 字。',
+    '5. 当前开发模式：' + spec.emoji + ' ' + spec.name + '。' + spec.philosophy,
+    '6. 扩写必须同时符合该模式的禁止边界（' + spec.defaultExcluded.join('；') + '），并把该模式的验收基线（' + spec.acceptanceDefaults.join('；') + '）落入 hiddenConditions 或扩写。',
   ].join('\n')
   const user = [
     '原始需求：' + requirement,
@@ -63,12 +67,12 @@ export function parsePolishOutput(raw: string): { expanded: string; hiddenCondit
 export async function polishRequirement(
   ctx: Context,
   captain: Agent,
-  input: { requirement: string; workspaceFacts: string },
+  input: { requirement: string; workspaceFacts: string; mode?: TeamMode },
   signal?: AbortSignal,
 ): Promise<PolishResult> {
   const requirement = input.requirement.trim()
   if (requirement === '') throw new Error('requirement must not be empty')
-  const prompts = buildPolishPrompts(requirement, input.workspaceFacts)
+  const prompts = buildPolishPrompts(requirement, input.workspaceFacts, input.mode)
   try {
     const selection = await resolveMemberLlmSelection(ctx, captain, {}, signal)
     const stream = ctx.llm.stream({

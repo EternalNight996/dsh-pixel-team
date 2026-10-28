@@ -28,6 +28,7 @@ import { roleGuidance } from './role-guidance.ts'
 import { constitutionPreamble } from './constitution.ts'
 import { appendTeamEvent, captainSessionOf } from './events.ts'
 import { appendCostLog, estimateCost, readTodayCost, requestCostDecision } from './cost.ts'
+import { DEFAULT_MODE, isTeamMode, modePhilosophyText, type TeamMode } from './modes.ts'
 import type { MemberToolFilter } from './tool-policies.ts'
 import { TERMINAL_TASK_STATUSES, type TeamMember, type TeamState, type TeamTask } from './types.ts'
 
@@ -872,18 +873,21 @@ Working rules:
 8. Do not start a teammate's assigned task. Do not privately tell the next-stage member to start; the scheduler assigns unlocked work after you become idle.
 9. You are a worker: do not create or delete teams, reassign tasks, or add/remove members — that is the captain's job.
 10. Quality-gate kinds carry a contract (kind, objective, inScope, acceptance, verify). Stay inside inScope. Do not mark your own implementation as review pass. Review/requirements complete only with verdict=pass; needs_revision/reject must fail with findings. Mail is not a formal next review. Completed work must not be repeated to attach late evidence: call update_task on the original task with its attempt_id and acceptanceResults/commandsRun/evidence_note; supplements are append-only and cannot change its verdict.`
-  return withConstitution(team, stateDir, basePersona)
+  const mode = isTeamMode(team.clarification?.mode) ? team.clarification.mode : DEFAULT_MODE
+  return withConstitution(team, stateDir, basePersona, mode)
 }
 
-/** Prepend the read-only constitution to a member persona (highest priority). */
-function withConstitution(team: TeamState, stateDir: string, persona: string): string {
+/** Prepend the mode philosophy and the read-only constitution (highest priority). */
+function withConstitution(team: TeamState, stateDir: string, persona: string, mode: TeamMode): string {
   const relative = team.constitution?.path
-  if (relative === undefined) return persona
+  if (relative === undefined) return modePhilosophyText(mode) + '\n\n' + persona
   try {
     const text = readFileSync(join(dirname(stateDir), relative), 'utf8')
-    return constitutionPreamble(text) + '\n' + persona
+    const parsed = JSON.parse(text) as { mode?: unknown }
+    const effective: TeamMode = isTeamMode(parsed.mode) ? parsed.mode : mode
+    return constitutionPreamble(text, effective) + '\n' + persona
   } catch {
-    return persona
+    return modePhilosophyText(mode) + '\n\n' + persona
   }
 }
 

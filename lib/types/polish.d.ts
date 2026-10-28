@@ -7,6 +7,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
+import { type TeamMode } from './modes.ts';
 export declare const POLISH_MAX_CHARS = 200;
 export interface PolishResult {
     readonly expanded: string;
@@ -15,7 +16,7 @@ export interface PolishResult {
     readonly degraded: boolean;
     readonly model?: string;
 }
-export declare function buildPolishPrompts(requirement: string, workspaceFacts: string): {
+export declare function buildPolishPrompts(requirement: string, workspaceFacts: string, mode?: TeamMode): {
     system: string;
     user: string;
 };
@@ -31,4 +32,5 @@ export declare function parsePolishOutput(raw: string): {
 export declare function polishRequirement(ctx: Context, captain: Agent, input: {
     requirement: string;
     workspaceFacts: string;
+    mode?: TeamMode;
 }, signal?: AbortSignal): Promise<PolishResult>;

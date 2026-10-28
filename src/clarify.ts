@@ -6,6 +6,7 @@
  * complete and confirmed by the user.
  */
 import type { TeamClarification } from './types.ts'
+import { DEFAULT_MODE, getModeSpec, isTeamMode, modeLabel } from './modes.ts'
 
 export const CLARIFY_SCALES = ['small', 'medium', 'fullstack'] as const
 export const CLARIFY_PLATFORMS = ['Windows', 'Linux (UOS/麒麟)', 'macOS', 'Android', 'iOS'] as const
@@ -64,6 +65,8 @@ function optionalString(value: unknown, field: string): string | undefined {
 export function normalizeClarification(value: unknown): TeamClarification {
   if (typeof value !== 'object' || value === null) throw new Error('clarification must be an object')
   const raw = value as Record<string, unknown>
+  // Legacy payloads have no mode: precision is the safe default.
+  const mode = isTeamMode(raw['mode']) ? raw['mode'] : DEFAULT_MODE
   const type = raw['type']
   if (type !== 'hardware' && type !== 'software') throw new Error('clarification.type must be "hardware" or "software"')
   const scale = raw['scale']
@@ -82,9 +85,12 @@ export function normalizeClarification(value: unknown): TeamClarification {
   const excluded = stringArray(raw['excluded'] ?? [], 'clarification.excluded')
   const hardwareList = stringArray(raw['hardwareList'] ?? [], 'clarification.hardwareList')
   const memoryHints = stringArray(raw['memoryHints'] ?? [], 'clarification.memoryHints')
+  const modeSpec = getModeSpec(mode)
+  const excludedMerged = excluded.length > 0 ? excluded : [...modeSpec.defaultExcluded]
   return {
     type,
     scale,
+    mode,
     ui: {
       ...optionalString(ui['reference'], 'clarification.ui.reference') === undefined
         ? {}
@@ -96,8 +102,8 @@ export function normalizeClarification(value: unknown): TeamClarification {
     },
     platforms,
     hardwareList,
-    constraints: constraints.length > 0 ? constraints : [...DEFAULT_EXCLUDED].filter(() => false),
-    excluded: excluded.length > 0 ? excluded : [...DEFAULT_EXCLUDED],
+    constraints,
+    excluded: excludedMerged,
     acceptance,
     memoryHints,
   }
@@ -114,6 +120,7 @@ export function isClarificationComplete(value: TeamClarification | undefined): v
 /** Render the fixed seven-section clarification form the user confirmed. */
 export function describeClarification(clarification: TeamClarification): string {
   const lines: string[] = []
+  lines.push('【开发模式】' + modeLabel(clarification.mode) + ' ' + getModeSpec(clarification.mode).name)
   lines.push('【类型】' + TYPE_LABEL[clarification.type])
   lines.push('【项目规模】' + SCALE_LABEL[clarification.scale])
   const reference = clarification.ui.reference === undefined ? '无参照' : clarification.ui.reference

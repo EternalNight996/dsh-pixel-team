@@ -11,6 +11,7 @@ import { ROLE_META } from './role-labels.ts'
 import { SECT_PRESETS, randomSect, sectPreset } from './sects.ts'
 import { ClarifySheet, DEFAULT_CLARIFY_DRAFT, clarificationPayload, linesOf, type ClarifyDraft } from './ClarifySheet.tsx'
 import type { ClarifyOptions } from '../clarify.ts'
+import { DEFAULT_MODE, TEAM_MODES, getModeSpec, type TeamMode } from '../modes.ts'
 import { PolishPreview } from './PolishPreview.tsx'
 
 type TplKey = 'quickstart.tplFix' | 'quickstart.tplFeat' | 'quickstart.tplResearch' | 'quickstart.tplAudit' | 'quickstart.tplFullstack'
@@ -59,6 +60,8 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
   readonly onFounded?: () => void
 }) {
   const [step, setStep] = useState(0)
+  // Development mode drives polish, options, constitution and the member persona.
+  const [mode, setMode] = useState<TeamMode>(DEFAULT_MODE)
   const [goal, setGoal] = useState('')
   const [template, setTemplate] = useState<string>(TEMPLATES[0]?.id ?? 'fix')
   const [roles, setRoles] = useState<string[]>([...(TEMPLATES[0]?.roles ?? [])])
@@ -165,7 +168,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
       const response = await fetch('/plugins/dsh-pixel-team/polish', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sessionId, requirement: goalTrimmed }),
+        body: JSON.stringify({ sessionId, requirement: goalTrimmed, mode }),
       })
       const body = await response.json().catch(() => null) as {
         ok?: boolean; expanded?: string; hidden_conditions?: string[]; degraded?: boolean; error?: string
@@ -197,6 +200,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
     if (STEPS[step] !== 'clarify' || goalTrimmed === '') return
     const controller = new AbortController()
     setClarifyState('loading')
+    setClarifyOptions(undefined)
     void (async () => {
       try {
         const response = await fetch('/plugins/dsh-pixel-team/clarify/options', {
@@ -204,6 +208,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             sessionId,
+            mode,
             requirement: {
               original: goalTrimmed,
               expanded: requirement?.expanded ?? '',
@@ -234,7 +239,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
       }
     })()
     return () => { controller.abort() }
-  }, [step, goalTrimmed, sessionId, requirement])
+  }, [step, goalTrimmed, sessionId, requirement, mode])
   const currentStep: Step = STEPS[step] ?? STEPS[0] as Step
   const canAdvance = useMemo(() => {
     if (busy) return false
@@ -256,6 +261,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           sessionId,
+          mode,
           goal: effectiveGoal,
           template,
           roles: sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
@@ -369,6 +375,25 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
                 <span>{t('quickstart.goalLength', { count: goalTrimmed.length })}</span>
                 <span>{t('quickstart.goalShortcut')}</span>
               </p>
+              <div className={css.modeRow}>
+                <span className={css.modeLabel}>{t('mode.select')}</span>
+                {TEAM_MODES.map(item => {
+                  const spec = getModeSpec(item)
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      className={css.modeChip}
+                      data-active={mode === item || undefined}
+                      disabled={busy}
+                      title={t(('mode.desc.' + item) as Parameters<typeof t>[0])}
+                      onClick={() => { setMode(item); setClarifyOptions(undefined); setClarifyState('loading') }}
+                    >
+                      {spec.emoji} {t(spec.labelKey as Parameters<typeof t>[0])}
+                    </button>
+                  )
+                })}
+              </div>
               <div className={css.polishRow}>
                 <button
                   type="button"
@@ -407,7 +432,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
           {currentStep === 'clarify' && (
             <section className={css.stepPane} data-step="clarify">
               <p className={css.hint}>{t('clarify.hint')}</p>
-              <ClarifySheet value={clarify} onChange={setClarify} options={clarifyOptions} state={clarifyState} disabled={busy} t={t} />
+              <ClarifySheet value={clarify} onChange={setClarify} options={clarifyOptions} state={clarifyState} mode={mode} disabled={busy} t={t} />
             </section>
           )}
 
@@ -506,6 +531,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
             <section className={css.stepPane} data-step="oath">
               <p className={css.hint}>{t('quickstart.oathHint')}</p>
               <dl className={css.summary}>
+                <div className={css.summaryRow}><dt>{t('mode.select')}</dt><dd>{getModeSpec(mode).emoji} {t(getModeSpec(mode).labelKey as Parameters<typeof t>[0])}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryDoctrine')}</dt><dd>{doctrineName}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summarySect')}</dt><dd>{sectName}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryRoster')}</dt><dd><span className={css.chips}>{roster.map(personChip)}</span></dd></div>

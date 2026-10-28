@@ -3,6 +3,7 @@ import css from './ClarifySheet.module.css'
 import { ACCESSORY_CANDIDATES, CAMERA_CANDIDATES, LIGHT_CANDIDATES } from '../clarify-hardware.ts'
 import { CLARIFY_PLATFORMS, CLARIFY_SCALES, CLARIFY_UI_STYLES, DEFAULT_EXCLUDED, type ClarifyOptions } from '../clarify.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
+import { getModeSpec, type TeamMode } from '../modes.ts'
 
 export interface ClarifyDraft {
   type: 'hardware' | 'software'
@@ -36,22 +37,25 @@ export const DEFAULT_CLARIFY_DRAFT: ClarifyDraft = {
   memoryHintsText: '',
 }
 
-/** Static menu, used only when the model route is unavailable. */
-export const FALLBACK_CLARIFY_OPTIONS: ClarifyOptions = {
-  source: 'fallback',
-  type: 'software',
-  scale: 'small',
-  ui: {
-    references: ['指定项目/网站', '沿用上次记忆项目', '无参照'],
-    styles: [...CLARIFY_UI_STYLES],
-    notes: [],
-  },
-  platforms: [...CLARIFY_PLATFORMS],
-  hardware: [...CAMERA_CANDIDATES, ...LIGHT_CANDIDATES, ...ACCESSORY_CANDIDATES].map(item => item.name),
-  constraints: [],
-  excluded: [...DEFAULT_EXCLUDED],
-  acceptance: ['可启动并跑通主流程', '关键路径有自动化测试', '无阻塞性报错'],
-  memoryHints: [],
+/** Static menu for the current mode, used only when the model route is unavailable. */
+export function fallbackOptionsFor(mode?: TeamMode): ClarifyOptions {
+  const spec = getModeSpec(mode)
+  return {
+    source: 'fallback',
+    type: 'software',
+    scale: 'small',
+    ui: {
+      references: ['指定项目/网站', '沿用上次记忆项目', '无参照'],
+      styles: [...CLARIFY_UI_STYLES],
+      notes: [],
+    },
+    platforms: [...CLARIFY_PLATFORMS],
+    hardware: [...CAMERA_CANDIDATES, ...LIGHT_CANDIDATES, ...ACCESSORY_CANDIDATES].map(item => item.name),
+    constraints: [],
+    excluded: [...spec.defaultExcluded],
+    acceptance: [...spec.acceptanceDefaults],
+    memoryHints: [],
+  }
 }
 
 const SCALE_KEYS = {
@@ -111,15 +115,17 @@ function toggle(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter(item => item !== value) : [...list, value]
 }
 
-export function ClarifySheet({ value, onChange, options, state, disabled, t }: {
+export function ClarifySheet({ value, onChange, options, state, mode, disabled, t }: {
   readonly value: ClarifyDraft
   readonly onChange: (next: ClarifyDraft) => void
   readonly options?: ClarifyOptions
   readonly state: 'loading' | 'ready' | 'fallback'
+  readonly mode: TeamMode
   readonly disabled?: boolean
   readonly t: AgentTeamsTranslate
 }) {
-  const lists = options ?? FALLBACK_CLARIFY_OPTIONS
+  const lists = options ?? fallbackOptionsFor(mode)
+  const modeSpec = getModeSpec(mode)
   const patch = (next: Partial<ClarifyDraft>): void => { onChange({ ...value, ...next }) }
   const status = state === 'loading'
     ? t('clarify.aiLoading')
@@ -128,7 +134,11 @@ export function ClarifySheet({ value, onChange, options, state, disabled, t }: {
       : t('clarify.aiOptions')
   return (
     <div className={css.root} data-step="clarify">
+      <p className={css.modeBadge} style={{ color: modeSpec.color, borderColor: modeSpec.color }}>
+        {modeSpec.emoji} {t(modeSpec.labelKey as Parameters<typeof t>[0])}
+      </p>
       <p className={css.aiNote} data-state={state}>{status}</p>
+      <p className={css.confirmHint}>{t('clarify.confirmHint')}</p>
 
       <section className={css.block}>
         <span className={css.label}>{t('clarify.type')}</span>

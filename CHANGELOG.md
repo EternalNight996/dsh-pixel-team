@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.22] - 2026-10-29
+
+### Added
+- Five development modes (draft / precision / legacy / compliance / monetize)
+  with a single source of truth (src/modes.ts): philosophy, default boundaries,
+  acceptance baseline, verifier strategy, failure limit and budget.
+- Mode selector in the founding wizard; polish and AI clarification options are
+  generated for the selected mode, and the mode is persisted on the clarification
+  and in the read-only constitution.
+- Every member persona now starts with the mode philosophy block (and the
+  constitution when present), so a cold resume keeps the same execution stance.
+
+### Changed
+- Constitution JSON and clarification carry mode; legacy records default to
+  precision.
+- AI clarification options always include the mode's mandatory boundaries and
+  acceptance baseline.
+
 ## [0.1.21] - 2026-10-29
 
 ### Added

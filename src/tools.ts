@@ -986,6 +986,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         properties: {
           type: { type: 'string', required: true, enum: ['hardware', 'software'] },
           scale: { type: 'string', required: true, enum: ['small', 'medium', 'fullstack'] },
+          mode: { type: 'string', enum: ['draft', 'precision', 'legacy', 'compliance', 'monetize'], description: 'Development mode; defaults to precision when omitted.' },
           ui: {
             type: 'object', additionalProperties: false, required: true,
             properties: {
@@ -2769,6 +2770,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
     parameters: {
       type: { type: 'string', required: true, enum: ['hardware', 'software'], description: '软硬开发 or 纯软件开发.' },
       scale: { type: 'string', required: true, enum: ['small', 'medium', 'fullstack'], description: 'Plain-language scale: small (1-3d), medium (1-2w), fullstack (months).' },
+      mode: { type: 'string', enum: ['draft', 'precision', 'legacy', 'compliance', 'monetize'], description: 'Development mode: draft | precision | legacy | compliance | monetize; defaults to precision.' },
       ui: {
         type: 'object', additionalProperties: false, required: true,
         description: 'UI reference, styles and free-text notes.',

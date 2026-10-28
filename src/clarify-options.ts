@@ -10,7 +10,8 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
 import { resolveMemberLlmSelection } from './members.ts'
-import { CLARIFY_PLATFORMS, CLARIFY_SCALES, CLARIFY_UI_STYLES, DEFAULT_EXCLUDED } from './clarify.ts'
+import { CLARIFY_PLATFORMS, CLARIFY_SCALES, CLARIFY_UI_STYLES } from './clarify.ts'
+import { getModeSpec, type TeamMode } from './modes.ts'
 import { ACCESSORY_CANDIDATES, CAMERA_CANDIDATES, LIGHT_CANDIDATES } from './clarify-hardware.ts'
 import type { ClarifyOptions } from './clarify.ts'
 import type { TeamRequirement } from './types.ts'
@@ -32,8 +33,22 @@ function stringList(value: unknown, max = MAX_OPTIONS): string[] {
   return out
 }
 
-/** Static menu used only when the model cannot answer. */
-export function fallbackClarifyOptions(): ClarifyOptions {
+/** Merge mode-mandatory items first, then the model/user list (deduplicated). */
+function mergeMandatory(required: readonly string[], provided: readonly string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const item of [...required, ...provided]) {
+    const text = item.trim()
+    if (text === '' || seen.has(text)) continue
+    seen.add(text)
+    out.push(text)
+  }
+  return out
+}
+
+/** Static menu used only when the model cannot answer; still mode-shaped. */
+export function fallbackClarifyOptions(mode?: TeamMode): ClarifyOptions {
+  const spec = getModeSpec(mode)
   return {
     source: 'fallback',
     type: 'software',
@@ -46,13 +61,14 @@ export function fallbackClarifyOptions(): ClarifyOptions {
     platforms: [...CLARIFY_PLATFORMS],
     hardware: [...CAMERA_CANDIDATES, ...LIGHT_CANDIDATES, ...ACCESSORY_CANDIDATES].map(item => item.name),
     constraints: [],
-    excluded: [...DEFAULT_EXCLUDED],
-    acceptance: ['可启动并跑通主流程', '关键路径有自动化测试', '无阻塞性报错'],
+    excluded: [...spec.defaultExcluded],
+    acceptance: [...spec.acceptanceDefaults],
     memoryHints: [],
   }
 }
 
-export function buildClarifyOptionsPrompts(requirement: TeamRequirement, workspaceFacts: string): { system: string; user: string } {
+export function buildClarifyOptionsPrompts(requirement: TeamRequirement, workspaceFacts: string, mode?: TeamMode): { system: string; user: string } {
+  const spec = getModeSpec(mode)
   const system = [
     '你是制造业软件项目的资深售前架构师，要根据用户需求生成"开宗澄清"的可选答案。',
     '规则：',
@@ -64,6 +80,9 @@ export function buildClarifyOptionsPrompts(requirement: TeamRequirement, workspa
     '6. acceptance 是可直接执行或验证的验收断言（含时间、精度、稳定性等量化指标），不要写空话。',
     '7. excluded 是本需求明确不该碰的边界，constraints 是必须遵守的限制，memoryHints 是值得从记忆库召回的关键词。',
     '8. 禁止编造用户未提供的事实；不确定的项给保守候选项，不要重复同一条。',
+    '9. 当前开发模式：' + spec.emoji + ' ' + spec.name + '。' + spec.philosophy,
+    '10. 该模式的验收基线必须出现在 acceptance（可改写措辞但不得缺失）：' + spec.acceptanceDefaults.join('；') + '。',
+    '11. 该模式的默认禁止边界必须出现在 excluded（可补充同类项）：' + spec.defaultExcluded.join('；') + '。',
   ].join('\n')
   const user = [
     '原始需求：' + requirement.original,
@@ -77,7 +96,7 @@ export function buildClarifyOptionsPrompts(requirement: TeamRequirement, workspa
 }
 
 /** Parse a model reply into options; throws when it is not usable JSON. */
-export function parseClarifyOptions(raw: string): ClarifyOptions {
+export function parseClarifyOptions(raw: string, mode?: TeamMode): ClarifyOptions {
   const text = raw.trim()
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
@@ -102,12 +121,15 @@ export function parseClarifyOptions(raw: string): ClarifyOptions {
     acceptance: stringList(parsed.acceptance),
     memoryHints: stringList(parsed.memoryHints),
   }
-  // A missing section must not empty the form: fall back per section.
-  const fallback = fallbackClarifyOptions()
+  // A missing section must not empty the form: fall back per section, and the
+  // mode's mandatory boundaries/acceptance are always present.
+  const spec = getModeSpec(mode)
+  const fallback = fallbackClarifyOptions(mode)
   return {
     ...options,
     platforms: options.platforms.length === 0 ? fallback.platforms : options.platforms,
-    acceptance: options.acceptance.length === 0 ? fallback.acceptance : options.acceptance,
+    acceptance: mergeMandatory(spec.acceptanceDefaults, options.acceptance.length === 0 ? fallback.acceptance : options.acceptance),
+    excluded: mergeMandatory(spec.defaultExcluded, options.excluded.length === 0 ? fallback.excluded : options.excluded),
     ui: {
       references: options.ui.references.length === 0 ? fallback.ui.references : options.ui.references,
       styles: options.ui.styles.length === 0 ? fallback.ui.styles : options.ui.styles,
@@ -123,11 +145,11 @@ export function parseClarifyOptions(raw: string): ClarifyOptions {
 export async function generateClarifyOptions(
   ctx: Context,
   captain: Agent,
-  input: { requirement: TeamRequirement; workspaceFacts: string },
+  input: { requirement: TeamRequirement; workspaceFacts: string; mode?: TeamMode },
   signal?: AbortSignal,
 ): Promise<ClarifyOptions> {
   if (input.requirement.original.trim() === '') throw new Error('requirement must not be empty')
-  const prompts = buildClarifyOptionsPrompts(input.requirement, input.workspaceFacts)
+  const prompts = buildClarifyOptionsPrompts(input.requirement, input.workspaceFacts, input.mode)
   try {
     const selection = await resolveMemberLlmSelection(ctx, captain, {}, signal)
     const stream = ctx.llm.stream({
@@ -146,9 +168,9 @@ export async function generateClarifyOptions(
     for await (const chunk of stream) {
       if (chunk.type === 'text-delta') text += chunk.text
     }
-    return parseClarifyOptions(text)
+    return parseClarifyOptions(text, input.mode)
   } catch (error: unknown) {
     ctx.logger.warn('agent-teams: clarify options degraded: ' + (error instanceof Error ? error.message : String(error)))
-    return fallbackClarifyOptions()
+    return fallbackClarifyOptions(input.mode)
   }
 }

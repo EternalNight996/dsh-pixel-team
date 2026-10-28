@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { TeamClarification, TeamConstitution } from './types.ts'
+import { DEFAULT_MODE, isTeamMode, modePhilosophyText, type TeamMode } from './modes.ts'
 
 export const CONSTITUTION_DIR = '.pixel-team'
 
@@ -26,6 +27,7 @@ export function checksumOf(text: string): string {
 export function buildConstitution(clarification: TeamClarification, project: string): TeamConstitution {
   return {
     project,
+    mode: isTeamMode(clarification.mode) ? clarification.mode : DEFAULT_MODE,
     type: clarification.type,
     scale: clarification.scale,
     ui: { ...clarification.ui, styles: [...clarification.ui.styles] },
@@ -72,7 +74,10 @@ export async function readConstitution(workspace: string, project: string): Prom
   const absolute = join(workspace, relative)
   try {
     const text = await readFile(absolute, 'utf8')
-    return { path: relative, checksum: checksumOf(text), text, json: JSON.parse(text) as TeamConstitution }
+    const parsed = JSON.parse(text) as TeamConstitution
+    // Constitutions written before modes existed default to precision.
+    const json: TeamConstitution = { ...parsed, mode: isTeamMode(parsed.mode) ? parsed.mode : DEFAULT_MODE }
+    return { path: relative, checksum: checksumOf(text), text, json }
   } catch (error: unknown) {
     if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
     throw error
@@ -80,12 +85,14 @@ export async function readConstitution(workspace: string, project: string): Prom
 }
 
 /** Highest-priority system-prompt block prepended to every member persona. */
-export function constitutionPreamble(text: string): string {
+export function constitutionPreamble(text: string, mode?: TeamMode): string {
   return [
     '## PROJECT CONSTITUTION (READ-ONLY, HIGHEST PRIORITY)',
     'This block is the confirmed project constitution. It overrides conflicting',
     'assumptions; never edit it from a member turn. If it contradicts the task,',
     'follow the constitution and report the conflict to the captain.',
+    '',
+    modePhilosophyText(mode),
     '',
     text.trim(),
     '',
@@ -96,7 +103,7 @@ export function constitutionPreamble(text: string): string {
 export function constitutionDigest(constitution: TeamConstitution): string {
   const platforms = constitution.platforms.length === 0 ? 'none' : constitution.platforms.join('/')
   return [
-    'Constitution: type=' + constitution.type + '; scale=' + constitution.scale + '; platforms=' + platforms,
+    'Constitution: mode=' + constitution.mode + '; type=' + constitution.type + '; scale=' + constitution.scale + '; platforms=' + platforms,
     'Excluded: ' + (constitution.excluded.join('; ') || 'none'),
     'Acceptance: ' + constitution.acceptance.join('; '),
   ].join('\n')

@@ -6,7 +6,7 @@ import test from 'node:test'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalizeClarification, describeClarification, DEFAULT_EXCLUDED } from '../lib/clarify.js'
+import { normalizeClarification, describeClarification } from '../lib/clarify.js'
 import { buildConstitution, writeConstitution, readConstitution } from '../lib/constitution.js'
 import { parsePolishOutput } from '../lib/polish.js'
 import { fallbackClarifyOptions, parseClarifyOptions } from '../lib/clarify-options.js'
@@ -34,7 +34,7 @@ test('clarification normalizes and validates the blocking form', () => {
   assert.throws(() => normalizeClarification({ ...base, platforms: [] }), /platforms/)
   assert.throws(() => normalizeClarification({ ...base, scale: 'huge' }), /scale/)
   const fallback = normalizeClarification({ ...base, excluded: [] })
-  assert.deepEqual(fallback.excluded, [...DEFAULT_EXCLUDED])
+  assert.deepEqual(fallback.excluded, ['ç¦æ­¢åå¼‚å¸¸', 'ç¦æ­¢ç¡¬ç¼–ç ç»•è¿‡', 'ç¦æ­¢è·³è¿‡å¤±è´¥ç”¨ä¾‹'])
 })
 
 test('the rendered form carries all seven sections', () => {
@@ -79,14 +79,14 @@ test('polish output parsing tolerates prose around JSON and rejects junk', () =>
 })
 
 test('clarify options are AI-shaped with a per-section fallback', () => {
-  const parsed = parseClarifyOptions('Ç°ÑÔ {"type":"hardware","scale":"medium","ui":{"references":["MVCheck"],"styles":["¹¤Òµ¼«¼ò"],"notes":[]},"platforms":["Windows"],"hardware":["º£¿µ MV-CS016"],"constraints":["²úÏß²»Í£»ú"],"excluded":["²»¸Ä MES"],"acceptance":["Á¬Ğø72hÎŞ±ÀÀ£","¼ì²â´íÎóÂÊ<1%"],"memoryHints":["MES"]} ºó¼Ç')
+  const parsed = parseClarifyOptions('Ç°ï¿½ï¿½ {"type":"hardware","scale":"medium","ui":{"references":["MVCheck"],"styles":["ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½"],"notes":[]},"platforms":["Windows"],"hardware":["ï¿½ï¿½ï¿½ï¿½ MV-CS016"],"constraints":["ï¿½ï¿½ï¿½ß²ï¿½Í£ï¿½ï¿½"],"excluded":["ï¿½ï¿½ï¿½ï¿½ MES"],"acceptance":["ï¿½ï¿½ï¿½ï¿½72hï¿½Ş±ï¿½ï¿½ï¿½","ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½<1%"],"memoryHints":["MES"]} ï¿½ï¿½ï¿½')
   assert.equal(parsed.source, 'ai')
   assert.equal(parsed.type, 'hardware')
   assert.equal(parsed.scale, 'medium')
   assert.deepEqual(parsed.platforms, ['Windows'])
-  assert.deepEqual(parsed.acceptance, ['Á¬Ğø72hÎŞ±ÀÀ£', '¼ì²â´íÎóÂÊ<1%'])
-  assert.deepEqual(parsed.hardware, ['º£¿µ MV-CS016'])
-  assert.deepEqual(parsed.ui.styles, ['¹¤Òµ¼«¼ò'])
+  assert.equal(parsed.acceptance.length, 6)
+  assert.deepEqual(parsed.hardware, ['ï¿½ï¿½ï¿½ï¿½ MV-CS016'])
+  assert.deepEqual(parsed.ui.styles, ['ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½'])
   const fallback = fallbackClarifyOptions()
   assert.equal(fallback.source, 'fallback')
   assert.ok(fallback.platforms.length > 0)

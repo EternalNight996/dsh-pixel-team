@@ -1,4 +1,5 @@
 import type { TeamClarification, TeamConstitution } from './types.ts';
+import { type TeamMode } from './modes.ts';
 export declare const CONSTITUTION_DIR = ".pixel-team";
 /** Relative POSIX path for one project's constitution. */
 export declare function constitutionRelativePath(project: string): string;
@@ -23,6 +24,6 @@ export declare function readConstitution(workspace: string, project: string): Pr
     json: TeamConstitution;
 } | undefined>;
 /** Highest-priority system-prompt block prepended to every member persona. */
-export declare function constitutionPreamble(text: string): string;
+export declare function constitutionPreamble(text: string, mode?: TeamMode): string;
 /** Compact digest appended to task dispatch prompts. */
 export declare function constitutionDigest(constitution: TeamConstitution): string;
