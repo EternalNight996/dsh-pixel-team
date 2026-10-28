@@ -46,6 +46,7 @@ import { buildQuickStartPlan, quickStartDeliveryDefaults, stageQuickStartTeam } 
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
 import { generateClarifyOptions } from './clarify-options.ts'
+import { generateClarificationFromAnswers, generateInterviewQuestions } from './interview.ts'
 import { DEFAULT_MODE, getModeSpec, isTeamMode } from './modes.ts'
 import { probeMemory } from './memory.ts'
 import { projectLibraryTeam } from './library-projection.ts'
@@ -873,6 +874,116 @@ export function apply(ctx: Context, config: Config): void {
         }
       },
     }), 'agent-teams: clarify options route')
+
+    // Dynamic interview: the model asks its own template-like questions instead
+    // of the fixed clarification form, then turns the answers into the object
+    // the founding flow consumes.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/interview/questions',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const requirement = typeof payload.requirement === 'string' ? payload.requirement.trim() : ''
+        if (sessionId === '' || requirement === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId and requirement are required' }))
+          return
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const mode = isTeamMode(payload.mode) ? payload.mode : DEFAULT_MODE
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const facts = await describeWorkspaceFacts(workspace)
+        const abort = new AbortController()
+        const timeout = setTimeout(() => { abort.abort() }, 30_000)
+        try {
+          const questions = await generateInterviewQuestions(ctx, captain, { requirement, mode, workspaceFacts: facts }, abort.signal)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ ok: true, questions }))
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          ctx.logger.warn('agent-teams: interview questions failed: ' + message)
+          res.writeHead(422, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: message }))
+        } finally {
+          clearTimeout(timeout)
+        }
+      },
+    }), 'agent-teams: interview questions route')
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/interview/answers',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const requirement = typeof payload.requirement === 'string' ? payload.requirement.trim() : ''
+        if (sessionId === '' || requirement === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId and requirement are required' }))
+          return
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const rawAnswers = Array.isArray(payload.answers) ? payload.answers : []
+        const answers = rawAnswers.flatMap(item => {
+          if (typeof item !== 'object' || item === null) return []
+          const record = item as Record<string, unknown>
+          const question = typeof record.question === 'string' ? record.question : ''
+          const answer = Array.isArray(record.answer) ? record.answer.filter((value): value is string => typeof value === 'string') : []
+          if (question === '') return []
+          return [{ question, answer }]
+        })
+        const mode = isTeamMode(payload.mode) ? payload.mode : DEFAULT_MODE
+        const abort = new AbortController()
+        const timeout = setTimeout(() => { abort.abort() }, 30_000)
+        try {
+          const clarification = await generateClarificationFromAnswers(ctx, captain, { requirement, mode, answers }, abort.signal)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ ok: true, clarification }))
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          ctx.logger.warn('agent-teams: interview answers failed: ' + message)
+          res.writeHead(422, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: message }))
+        } finally {
+          clearTimeout(timeout)
+        }
+      },
+    }), 'agent-teams: interview answers route')
 
     // Whether the optional memory brain is reachable: the banner shows
     // 已连接大脑 only when a real probe succeeds, otherwise the install hint.

@@ -9,8 +9,7 @@ import type { AgentTeamsTranslate } from './locales.ts'
 import { TEAM_CREATED_EVENT } from './team-reveal.ts'
 import { ROLE_META } from './role-labels.ts'
 import { SECT_PRESETS, randomSect, sectPreset } from './sects.ts'
-import { ClarifySheet, DEFAULT_CLARIFY_DRAFT, clarificationPayload, linesOf, type ClarifyDraft } from './ClarifySheet.tsx'
-import type { ClarifyOptions } from '../clarify.ts'
+import { InterviewSheet, type InterviewQuestionView } from './InterviewSheet.tsx'
 import { DEFAULT_MODE, TEAM_MODES, getModeSpec, type TeamMode } from '../modes.ts'
 
 
@@ -38,15 +37,42 @@ const TEMPLATES: readonly QuickTemplate[] = [
   { id: 'debate', labelKey: 'quickstart.tplDebate', descKey: 'quickstart.desc.debate', roles: ['researcher', 'analyst', 'reviewer'] },
 ]
 
-/** 开宗五步：道统 → 立派之志 → 澄清 → 宗门 → 立誓。 */
-const STEPS = ['doctrine', 'vow', 'clarify', 'sect', 'oath'] as const
+/** 开宗五步：道统 → 立派之志 → AI 访谈 → 宗门 → 立誓。 */
+const STEPS = ['doctrine', 'vow', 'interview', 'sect', 'oath'] as const
 type Step = typeof STEPS[number]
-const STEP_LABEL: Record<Step, 'quickstart.stepDoctrine' | 'quickstart.stepVow' | 'quickstart.stepClarify' | 'quickstart.stepSect' | 'quickstart.stepOath'> = {
+const STEP_LABEL: Record<Step, 'quickstart.stepDoctrine' | 'quickstart.stepVow' | 'quickstart.stepInterview' | 'quickstart.stepSect' | 'quickstart.stepOath'> = {
   doctrine: 'quickstart.stepDoctrine',
   vow: 'quickstart.stepVow',
-  clarify: 'quickstart.stepClarify',
+  interview: 'quickstart.stepInterview',
   sect: 'quickstart.stepSect',
   oath: 'quickstart.stepOath',
+}
+
+/** Template questions used only when the host/model cannot answer. */
+function fallbackInterviewQuestions(mode: TeamMode): InterviewQuestionView[] {
+  const spec = getModeSpec(mode)
+  return [
+    { id: 'platform', prompt: '目标运行平台？', multi: true, options: ['Windows', 'Linux (UOS/麒麟)', 'macOS', 'Android', 'iOS'] },
+    { id: 'acceptance', prompt: '验收以哪条为准？', multi: true, options: [...spec.acceptanceDefaults] },
+    { id: 'excluded', prompt: '哪些事情明确不做？', multi: true, options: [...spec.defaultExcluded] },
+  ]
+}
+
+/** Minimum valid clarification when the answer route is unavailable. */
+function fallbackClarification(mode: TeamMode): Record<string, unknown> {
+  const spec = getModeSpec(mode)
+  return {
+    type: 'software',
+    scale: 'small',
+    mode,
+    ui: { styles: [] },
+    platforms: ['Windows'],
+    hardwareList: [],
+    constraints: [],
+    excluded: [...spec.defaultExcluded],
+    acceptance: [...spec.acceptanceDefaults],
+    memoryHints: [],
+  }
 }
 
 function templateOf(id: string): QuickTemplate {
@@ -77,10 +103,12 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
   // Module 0: AI polish writes straight back into the goal textarea.
   const [polishBusy, setPolishBusy] = useState(false)
   const [polishError, setPolishError] = useState('')
-  const [clarify, setClarify] = useState<ClarifyDraft>(DEFAULT_CLARIFY_DRAFT)
-  // Module 1: the option lists are proposed by the model from this requirement.
-  const [clarifyOptions, setClarifyOptions] = useState<ClarifyOptions | undefined>()
-  const [clarifyState, setClarifyState] = useState<'loading' | 'ready' | 'fallback'>('loading')
+  // Module 1: the model generates its own questions from this requirement.
+  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestionView[]>([])
+  const [interviewAnswers, setInterviewAnswers] = useState<Record<string, string[]>>({})
+  const [interviewState, setInterviewState] = useState<'loading' | 'ready' | 'fallback'>('loading')
+  const [interviewError, setInterviewError] = useState('')
+  const [interviewNonce, setInterviewNonce] = useState(0)
   const multiRef = useRef<HTMLDivElement | null>(null)
   const goalRef = useRef<HTMLTextAreaElement | null>(null)
   const foundedTimer = useRef<number | undefined>(undefined)
@@ -176,65 +204,72 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
     }
   }
 
-  // Fetch requirement-specific clarification options when the step opens (or
-  // when the confirmed polish changes the requirement). Falls back to the static
-  // menu only when the host/model is unavailable.
+  // Ask the model for template-like questions when the interview step opens.
   useEffect(() => {
-    if (STEPS[step] !== 'clarify' || goalTrimmed === '') return
+    if (STEPS[step] !== 'interview' || goalTrimmed === '') return
     const controller = new AbortController()
-    setClarifyState('loading')
-    setClarifyOptions(undefined)
+    setInterviewState('loading')
+    setInterviewError('')
+    setInterviewQuestions([])
     void (async () => {
       try {
-        const response = await fetch('/plugins/dsh-pixel-team/clarify/options', {
+        const response = await fetch('/plugins/dsh-pixel-team/interview/questions', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            sessionId,
-            mode,
-            requirement: { original: goalTrimmed },
-          }),
+          body: JSON.stringify({ sessionId, mode, requirement: goalTrimmed }),
           signal: controller.signal,
         })
-        const body = await response.json().catch(() => null) as { ok?: boolean; options?: ClarifyOptions; error?: string } | null
-        if (!response.ok || body?.ok !== true || body.options === undefined) {
+        const body = await response.json().catch(() => null) as { ok?: boolean; questions?: InterviewQuestionView[]; error?: string } | null
+        if (!response.ok || body?.ok !== true || !Array.isArray(body.questions)) {
           throw new Error(body?.error ?? ('HTTP ' + response.status))
         }
-        const options = body.options
-        setClarifyOptions(options)
-        setClarifyState(options.source === 'fallback' ? 'fallback' : 'ready')
-        setClarify((prev) => ({
-          ...prev,
-          type: prev.type === DEFAULT_CLARIFY_DRAFT.type ? options.type : prev.type,
-          scale: prev.scale === DEFAULT_CLARIFY_DRAFT.scale ? options.scale : prev.scale,
-          platforms: prev.platforms.length === 0 ? [...options.platforms] : prev.platforms,
-          acceptanceText: linesOf(prev.acceptanceText).length === 0 ? options.acceptance.slice(0, 3).join('\n') : prev.acceptanceText,
-          memoryHintsText: prev.memoryHintsText.trim() === '' ? options.memoryHints.slice(0, 4).join('，') : prev.memoryHintsText,
-        }))
-      } catch {
+        setInterviewQuestions(body.questions)
+        setInterviewAnswers({})
+        setInterviewState('ready')
+      } catch (cause) {
         if (controller.signal.aborted) return
-        setClarifyOptions(undefined)
-        setClarifyState('fallback')
+        setInterviewError(cause instanceof Error ? cause.message : String(cause))
+        setInterviewQuestions(fallbackInterviewQuestions(mode))
+        setInterviewState('fallback')
       }
     })()
     return () => { controller.abort() }
-  }, [step, goalTrimmed, sessionId, mode])
+  }, [step, goalTrimmed, sessionId, mode, interviewNonce])
   const currentStep: Step = STEPS[step] ?? STEPS[0] as Step
   const canAdvance = useMemo(() => {
     if (busy) return false
     switch (currentStep) {
       case 'vow': return goalTrimmed.length >= 2
-      case 'clarify': return clarify.platforms.length > 0 && linesOf(clarify.acceptanceText).length > 0
+      case 'interview': return interviewState !== 'loading' && interviewQuestions.length > 0
       case 'sect': return sectMode !== 'custom' || sectRoles.length > 0
       default: return true
     }
-  }, [busy, currentStep, goalTrimmed, clarify.platforms.length, clarify.acceptanceText, sectMode, sectRoles.length])
+  }, [busy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length])
 
   const submit = async (replace: boolean): Promise<void> => {
     if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(1); return }
     setBusy(true)
     setError('')
     try {
+      // Turn the interview answers into the clarification object (AI); on
+      // failure fall back to the mode's constraints/acceptance baseline.
+      let clarification: Record<string, unknown> = fallbackClarification(mode)
+      if (interviewQuestions.length > 0) {
+        const answers = interviewQuestions
+          .map(question => ({ question: question.prompt, answer: interviewAnswers[question.id] ?? [] }))
+          .filter(item => item.answer.length > 0)
+        try {
+          const answerResponse = await fetch('/plugins/dsh-pixel-team/interview/answers', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sessionId, mode, requirement: goalTrimmed, answers }),
+          })
+          const answerBody = await answerResponse.json().catch(() => null) as { ok?: boolean; clarification?: Record<string, unknown> } | null
+          if (answerResponse.ok && answerBody?.ok === true && answerBody.clarification !== undefined) {
+            clarification = answerBody.clarification
+          }
+        } catch { /* keep the fallback */ }
+      }
       const response = await fetch('/plugins/dsh-pixel-team/quick-start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -245,7 +280,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
           template,
           roles: sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
           replace,
-          clarification: clarificationPayload(clarify),
+          clarification,
         }),
       })
       const body = await response.json().catch(() => null) as { ok?: boolean; teamId?: string; teamName?: string; error?: string } | null
@@ -360,7 +395,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
                       data-active={mode === item || undefined}
                       disabled={busy}
                       title={t(('mode.desc.' + item) as Parameters<typeof t>[0])}
-                      onClick={() => { setMode(item); setClarifyOptions(undefined); setClarifyState('loading') }}
+                      onClick={() => { setMode(item); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
                     >
                       {spec.emoji} {t(spec.labelKey as Parameters<typeof t>[0])}
                     </button>
@@ -381,10 +416,19 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
             </section>
           )}
 
-          {currentStep === 'clarify' && (
-            <section className={css.stepPane} data-step="clarify">
-              <p className={css.hint}>{t('clarify.hint')}</p>
-              <ClarifySheet value={clarify} onChange={setClarify} options={clarifyOptions} state={clarifyState} mode={mode} disabled={busy} t={t} />
+          {currentStep === 'interview' && (
+            <section className={css.stepPane} data-step="interview">
+              <InterviewSheet
+                questions={interviewQuestions}
+                answers={interviewAnswers}
+                onChange={setInterviewAnswers}
+                state={interviewState}
+                error={interviewError}
+                mode={mode}
+                disabled={busy}
+                onRetry={() => { setInterviewState('loading'); setInterviewNonce((value) => value + 1) }}
+                t={t}
+              />
             </section>
           )}
 

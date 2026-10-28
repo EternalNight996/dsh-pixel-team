@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.25] - 2026-10-29
+
+### Changed
+- The fixed clarification form is removed from the founding wizard. The model
+  now generates its own template-like questions (with choices) from the task
+  requirement and mode; the answers are converted by the model into the
+  clarification object the founding flow consumes. Skipping questions falls back
+  to the mode's boundaries/acceptance baseline.
+- New host routes: POST /plugins/dsh-pixel-team/interview/questions and
+  POST /plugins/dsh-pixel-team/interview/answers.
+
 ## [0.1.24] - 2026-10-29
 
 ### Changed
