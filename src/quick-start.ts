@@ -270,3 +270,67 @@ export function buildQuickStartPlan(
   })
   return { teamName: `${SECT_NAMES[template.id] ?? '修仙宗'}·${stamp.slice(8)}`, template: template.id, members, tasks }
 }
+/** Order tasks so every dependency is staged before its dependents (stable). */
+export function orderQuickStartTasks(tasks: QuickStartPlan['tasks']): QuickStartPlan['tasks'] {
+  const byId = new Map(tasks.map(task => [task.id, task]))
+  const ordered: QuickStartPlan['tasks'][number][] = []
+  const done = new Set<string>()
+  const visiting = new Set<string>()
+  const visit = (task: QuickStartPlan['tasks'][number]): void => {
+    if (done.has(task.id) || visiting.has(task.id)) return
+    visiting.add(task.id)
+    for (const dependency of task.dependencies) {
+      const next = byId.get(dependency)
+      if (next !== undefined) visit(next)
+    }
+    visiting.delete(task.id)
+    done.add(task.id)
+    ordered.push(task)
+  }
+  for (const task of tasks) visit(task)
+  return ordered
+}
+
+/** One create-task call a quick-start plan stages once the team exists. */
+export interface QuickStartTaskCall {
+  readonly seedId: string
+  readonly input: {
+    readonly subject: string
+    readonly description: string
+    readonly assignee: string
+    /** Seed ids; the route maps them to durable task ids before calling the tool. */
+    readonly dependencies: readonly string[]
+    readonly kind?: TaskKind
+    readonly objective?: string
+    readonly acceptance?: readonly string[]
+    readonly inScope?: readonly string[]
+    readonly verify?: readonly string[]
+    readonly coverageOf?: readonly string[]
+    /** Seed id of the implementation this review judges. */
+    readonly reviewedTaskId?: string
+  }
+}
+
+/**
+ * The host plan schema only carries ordinary task fields, so quality contracts
+ * are staged one create-task call at a time after the team exists.
+ */
+export function quickStartTaskCalls(plan: QuickStartPlan): QuickStartTaskCall[] {
+  return orderQuickStartTasks(plan.tasks).map((task) => ({
+    seedId: task.id,
+    input: {
+      subject: task.subject,
+      description: task.description,
+      assignee: task.assignee,
+      dependencies: [...task.dependencies],
+      ...task.kind === undefined ? {} : { kind: task.kind },
+      ...task.objective === undefined ? {} : { objective: task.objective },
+      ...task.acceptance === undefined ? {} : { acceptance: [...task.acceptance] },
+      ...task.inScope === undefined ? {} : { inScope: [...task.inScope] },
+      ...task.verify === undefined ? {} : { verify: [...task.verify] },
+      ...task.coverageOf === undefined ? {} : { coverageOf: [...task.coverageOf] },
+      ...task.reviewedTaskId === undefined ? {} : { reviewedTaskId: task.reviewedTaskId },
+    },
+  }))
+}
+

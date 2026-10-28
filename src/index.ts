@@ -42,7 +42,7 @@ import { archiveTeamDir, findTeamByCaptain, readTeam } from './state.ts'
 import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
-import { buildQuickStartPlan, quickStartDeliveryDefaults } from './quick-start.ts'
+import { buildQuickStartPlan, quickStartDeliveryDefaults, quickStartTaskCalls } from './quick-start.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
 import { installTeamCapabilities } from './capabilities.ts'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
@@ -509,9 +509,10 @@ export function apply(ctx: Context, config: Config): void {
         }
         const tools = ctx.get('tools') as { get?: (name: string) => { execute?: (args: unknown, exec: unknown) => Promise<unknown> } | undefined } | undefined
         const definition = tools?.get?.('agent_teams_create')
-        if (definition?.execute === undefined) {
+        const taskDefinition = tools?.get?.('agent_teams_create_task')
+        if (definition?.execute === undefined || taskDefinition?.execute === undefined) {
           res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-          res.end(JSON.stringify({ error: 'team creation tool is unavailable' }))
+          res.end(JSON.stringify({ error: 'team creation tools are unavailable' }))
           return
         }
         const workspace = captain.session.header.cwd ?? process.cwd()
@@ -520,6 +521,7 @@ export function apply(ctx: Context, config: Config): void {
         const abort = new AbortController()
         const timeout = setTimeout(() => { abort.abort() }, 30_000)
         const run = { agent: captain, signal: abort.signal, deferContext() {}, concludeTurn() {} }
+        let createdTeamId: string | undefined
         try {
           if (replace) {
             // Explicit user choice (red "结束旧宗门并开新宗" button): end the
@@ -533,16 +535,40 @@ export function apply(ctx: Context, config: Config): void {
               // The current team may already be gone; creation decides the real outcome.
             }
           }
+          // The create tool's plan schema only carries ordinary task fields, so
+          // stage the roster first and add every task — with its quality
+          // contract — through create_task, exactly like the captain does in chat.
           const value = await definition.execute({
             name: plan.teamName,
             description: goal,
             approval: 'required',
-            plan: { members: plan.members, tasks: plan.tasks },
+            plan: { members: plan.members, tasks: [] },
           }, run) as { team_id?: string; phase?: string; team_name?: string }
+          createdTeamId = value.team_id
+          const seedToTaskId = new Map<string, string>()
+          const liveIdOf = (seedId: string): string => seedToTaskId.get(seedId) ?? seedId
+          for (const call of quickStartTaskCalls(plan)) {
+            const staged = await taskDefinition.execute({
+              ...call.input,
+              dependencies: call.input.dependencies.map(liveIdOf),
+              ...call.input.reviewedTaskId === undefined ? {} : { reviewedTaskId: liveIdOf(call.input.reviewedTaskId) },
+            }, run) as { task_id?: string }
+            if (staged.task_id === undefined) throw new Error(`quick-start task "${call.seedId}" was not staged`)
+            seedToTaskId.set(call.seedId, staged.task_id)
+          }
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ ok: true, teamId: value.team_id, teamName: value.team_name, phase: value.phase, template: plan.template, tasks: plan.tasks.length }))
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error)
+          // A half-staged team would make the next attempt fail with "already
+          // lead team", so roll back only the team this request just created.
+          if (createdTeamId !== undefined) {
+            try {
+              await tools?.get?.('agent_teams_delete')?.execute?.({}, run)
+            } catch {
+              // Cleanup is best effort; the original error is what the user needs.
+            }
+          }
           // Never auto-delete an existing team here: the client asks the user to
           // confirm replace, so a plain "found a new sect" cannot wipe the current
           // run (and its conversation trail) by surprise.

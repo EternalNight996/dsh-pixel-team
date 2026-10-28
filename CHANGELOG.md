@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.14] - 2026-10-28
+
+### Fixed
+- 「立誓开宗」/ quick-start failed with `plan.tasks[0].kind is not a declared
+  property`: the create tool's plan schema only carries ordinary task fields, so
+  quality contracts are now staged through `agent_teams_create_task` after the
+  roster exists.
+- A half-staged team is rolled back when a task fails to stage, instead of
+  blocking the next attempt with "already lead team".
+
+### Tests
+- Quick-start staging regression: dependency order, quality contracts through
+  create_task, and no undeclared create-plan fields.
+
 ## [0.1.13] - 2026-10-27
 
 ### Added

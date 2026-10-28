@@ -65,3 +65,29 @@ export interface QuickStartDelivery {
 export declare function quickStartDeliveryDefaults(workspace: string): QuickStartDelivery;
 /** Build the staged plan a quick-start request turns into. */
 export declare function buildQuickStartPlan(goal: string, templateId: string, requestedRoles?: readonly string[], delivery?: QuickStartDelivery): QuickStartPlan;
+/** Order tasks so every dependency is staged before its dependents (stable). */
+export declare function orderQuickStartTasks(tasks: QuickStartPlan['tasks']): QuickStartPlan['tasks'];
+/** One create-task call a quick-start plan stages once the team exists. */
+export interface QuickStartTaskCall {
+    readonly seedId: string;
+    readonly input: {
+        readonly subject: string;
+        readonly description: string;
+        readonly assignee: string;
+        /** Seed ids; the route maps them to durable task ids before calling the tool. */
+        readonly dependencies: readonly string[];
+        readonly kind?: TaskKind;
+        readonly objective?: string;
+        readonly acceptance?: readonly string[];
+        readonly inScope?: readonly string[];
+        readonly verify?: readonly string[];
+        readonly coverageOf?: readonly string[];
+        /** Seed id of the implementation this review judges. */
+        readonly reviewedTaskId?: string;
+    };
+}
+/**
+ * The host plan schema only carries ordinary task fields, so quality contracts
+ * are staged one create-task call at a time after the team exists.
+ */
+export declare function quickStartTaskCalls(plan: QuickStartPlan): QuickStartTaskCall[];
