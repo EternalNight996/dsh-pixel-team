@@ -1,4 +1,4 @@
-import type { TaskKind } from './types.ts';
+import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts';
 /** One built-in template: default roles and a small task DAG. */
 export declare const SECT_NAMES: Record<string, string>;
 export declare const ROLE_NAMES: Record<string, string>;
@@ -106,7 +106,13 @@ export interface QuickStartTeamTools {
  * fields, and a half-staged team would block the next attempt, so a failure
  * after creation rolls the team back before rethrowing.
  */
-export declare function stageQuickStartTeam(plan: QuickStartPlan, goal: string, run: unknown, tools: QuickStartTeamTools): Promise<{
+export interface StageQuickStartOptions {
+    /** Confirmed blocking clarification; required by the web route. */
+    readonly clarification?: TeamClarification;
+    /** User-confirmed requirement text (original + optional polish). */
+    readonly requirement?: TeamRequirement;
+}
+export declare function stageQuickStartTeam(plan: QuickStartPlan, goal: string, run: unknown, tools: QuickStartTeamTools, options?: StageQuickStartOptions): Promise<{
     teamId?: string;
     teamName?: string;
     phase?: string;

@@ -43,6 +43,8 @@ import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
 import { buildQuickStartPlan, quickStartDeliveryDefaults, stageQuickStartTeam } from './quick-start.ts'
+import { normalizeClarification } from './clarify.ts'
+import { polishRequirement } from './polish.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
 import { installTeamCapabilities } from './capabilities.ts'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
@@ -111,6 +113,13 @@ export interface Config {
    * Disable to keep the natural-language trigger as the only entry point.
    */
   slashCommand?: boolean
+  /**
+   * Blocking clarification policy. `enforce: true` rejects DAG creation whose
+   * plan carries tasks until a confirmed clarification is supplied.
+   */
+  clarify?: { enforce?: boolean }
+  /** memory-eternal (or compatible) recall endpoint for agent_teams_memory_recall. */
+  memory?: { endpoint?: string }
 }
 
 // `z.object()` has an implicit `{}` default in Schemastery.  Fallback routes
@@ -175,6 +184,8 @@ export const Config: z<Config> = z.object({
   maxMembers: z.natural().min(1).default(8),
   promptSectionOrder: z.natural().default(117),
   slashCommand: z.boolean().default(true),
+  clarify: z.union([z.object({ enforce: z.boolean() }), z.const(undefined)]),
+  memory: z.union([z.object({ endpoint: z.string() }), z.const(undefined)]),
 })
 
 /** The model-facing usage policy: when and how to drive AgentTeams. */
@@ -190,7 +201,28 @@ export function usageSectionText(toolNames: string, profilesText = ''): string {
 8. When full quality mode is requested: requirements → implementation → verification → review → integration. Plan the entire DAG while staged, including implementation before requirements finishes and integration depending on review round 1. Failed review automatically adds repair + next review and rewires pending downstream gates. Do not recreate this loop, omit integration or depend on a failed task. Review acceptance judges the latest implementation. Do not put smoke-test scripts into task instructions.
 9. Halted means the user stopped work (including the captain turn). Resume only on a later explicit user request with a reason, via agent_teams_resume or create_task({resume:true,resumeReason}); creating tasks alone never resumes. Escalated means the review loop hit its limit, not a halt. Deployment requires explicit user confirmation.
 10. Wait for all required tasks to be terminal and members idle/ready, present results, then delete/archive unless the user wants to continue. Never discard unfinished work without authorization.
+11. Before generating a DAG, confirm the blocking clarification with the user (agent_teams_clarify): type, plain-language scale, UI, platforms, hardware candidates, exclusions, and executable acceptance. Pass the confirmed object to agent_teams_create as clarification; a plan without it is incomplete.
+12. Members may call agent_teams_memory_recall with the constitution memory_hints. A failed recall means the vault is unavailable, not that the memory is empty.
 Tools: ${toolNames}${profilesText === '' ? '' : `\n\n${profilesText}`}`
+}
+
+/** Compact workspace facts handed to the polish model; never the full tree. */
+async function describeWorkspaceFacts(workspace: string): Promise<string> {
+  try {
+    const entries = await readdir(workspace, { withFileTypes: true })
+    const dirs = entries.filter(entry => entry.isDirectory() && !entry.name.startsWith('.')).map(entry => entry.name + '/').slice(0, 20)
+    const files = entries.filter(entry => entry.isFile()).map(entry => entry.name).slice(0, 20)
+    let scripts = ''
+    try {
+      const pkg = JSON.parse(await readFile(join(workspace, 'package.json'), 'utf8')) as { scripts?: Record<string, unknown> }
+      scripts = Object.keys(pkg.scripts ?? {}).join(', ')
+    } catch { /* no package.json */ }
+    return ['workspace: ' + workspace, 'dirs: ' + dirs.join(' '), 'files: ' + files.join(' '), scripts === '' ? '' : 'scripts: ' + scripts]
+      .filter(line => line !== '')
+      .join('\n')
+  } catch {
+    return 'workspace: ' + workspace
+  }
 }
 
 export function apply(ctx: Context, config: Config): void {
@@ -207,6 +239,8 @@ export function apply(ctx: Context, config: Config): void {
     // Owner configuration is validated once, at mount: an empty or malformed
     // policy must never reach a member creation path.
     toolPolicies: parseToolPolicies(config.toolPolicies),
+    clarify: config.clarify,
+    memory: config.memory,
   }
 
   // Provider registration is a sibling plugin's effect (`subagent-spawn` /
@@ -501,6 +535,28 @@ export function apply(ctx: Context, config: Config): void {
           res.end(JSON.stringify({ error: 'sessionId and goal are required' }))
           return
         }
+        // Blocking clarification root: no DAG is generated before the user
+        // confirms this form.
+        let clarification
+        try {
+          clarification = normalizeClarification(payload.clarification)
+        } catch (error: unknown) {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'clarification is required before founding a team: ' + (error instanceof Error ? error.message : String(error)) }))
+          return
+        }
+        const requirementRaw = payload.requirement
+        const requirement = (() => {
+          if (typeof requirementRaw !== 'object' || requirementRaw === null) return undefined
+          const record = requirementRaw as Record<string, unknown>
+          const original = typeof record['original'] === 'string' ? record['original'].trim() : ''
+          const expanded = typeof record['expanded'] === 'string' ? record['expanded'].trim() : ''
+          const conditions = Array.isArray(record['conditions'])
+            ? record['conditions'].filter((item): item is string => typeof item === 'string')
+            : []
+          if (original === '' && expanded === '') return undefined
+          return { original: original === '' ? expanded : original, expanded, conditions }
+        })()
         const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
         if (captain === undefined) {
           res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
@@ -542,7 +598,7 @@ export function apply(ctx: Context, config: Config): void {
             create: definition,
             createTask: taskDefinition,
             deleteTeam: tools?.get?.('agent_teams_delete'),
-          })
+          }, { clarification, ...requirement === undefined ? {} : { requirement } })
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ ok: true, teamId: value.teamId, teamName: value.teamName, phase: value.phase, template: plan.template, tasks: plan.tasks.length }))
         } catch (error: unknown) {
@@ -558,6 +614,64 @@ export function apply(ctx: Context, config: Config): void {
         }
       },
     }), 'agent-teams: quick-start route')
+
+    // Module 0: optional requirement polish. One-shot model call; failures
+    // degrade to the original text so the wizard never dead-ends.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/polish',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const requirement = typeof payload.requirement === 'string' ? payload.requirement.trim() : ''
+        if (sessionId === '' || requirement === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId and requirement are required' }))
+          return
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const facts = await describeWorkspaceFacts(workspace)
+        const abort = new AbortController()
+        const timeout = setTimeout(() => { abort.abort() }, 30_000)
+        try {
+          const result = await polishRequirement(ctx, captain, { requirement, workspaceFacts: facts }, abort.signal)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({
+            ok: true,
+            expanded: result.expanded,
+            hidden_conditions: [...result.hiddenConditions],
+            degraded: result.degraded,
+            ...result.model === undefined ? {} : { model: result.model },
+          }))
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          ctx.logger.warn('agent-teams: polish failed: ' + message)
+          res.writeHead(422, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: message }))
+        } finally {
+          clearTimeout(timeout)
+        }
+      },
+    }), 'agent-teams: polish route')
+
 
     ctx.effect(() => webServer.register({
       kind: 'exact',

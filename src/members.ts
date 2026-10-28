@@ -18,12 +18,14 @@ import { installModelSelection, type Agent, type ModelSelection } from '@deepsee
 import { foldSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
 import { createUserMessage, LlmError, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { agentTeamsSource, observedSessionFormatVersion, type SessionFormatBearer, guardSubagentCreation, startMember, usesManagedActivations, guardSubagentDelivery, installContinuableMemberSetup, memberToolFilter, queueMemberPrompt, restrictableToolNames, startMemberWithLenientFilter, steerMemberPrompt, sessionOwnEvents } from './harness-compat.ts'
 import { markMailboxDelivered, appendMailbox, CAPTAIN_KEY, createMessage, readRetiredMemberIds, readTeamSync, readTeam, releaseMailboxDelivery, withTeamLock, writeTeam } from './state.ts'
 import { mailboxPrompt } from './mailbox.ts'
 import { nearestLiveLead } from './lineage.ts'
 import { roleGuidance } from './role-guidance.ts'
+import { constitutionPreamble } from './constitution.ts'
 import { appendTeamEvent, captainSessionOf } from './events.ts'
 import type { MemberToolFilter } from './tool-policies.ts'
 import { TERMINAL_TASK_STATUSES, type TeamMember, type TeamState, type TeamTask } from './types.ts'
@@ -45,6 +47,8 @@ function brandedSessionId(value: string): SessionId {
 export interface MemberRuntimeConfig {
   /** Registered `ctx.subagents` provider name (must support continuable + persona). */
   provider: string
+  /** Strict clarification mode: refuse to spawn members of a team without a constitution. */
+  clarify?: { enforce?: boolean }
   /** Child delegation depth cap (0 forbids delegation entirely). */
   maxDepth?: number
   /** Plugin-wide execution prompt. */
@@ -833,7 +837,7 @@ export function memberPersona(team: TeamState, member: TeamMember, stateDir: str
   const injectedPrompt = member.executionPrompt?.trim() || executionPrompt?.trim()
   const guidance = roleGuidance(member.role)
   const protocol = truncatedPersonaProtocol(team.profile?.protocol)
-  return `You are ${member.name}, a member of the multi-agent team "${team.name}" running inside DeepSeek Harness AgentTeams. The captain leads the team; you are a worker member${member.role ? ` with the role: ${member.role}` : ''}.
+  const basePersona = `You are ${member.name}, a member of the multi-agent team "${team.name}" running inside DeepSeek Harness AgentTeams. The captain leads the team; you are a worker member${member.role ? ` with the role: ${member.role}` : ''}.
 
 Team context:
 - Team id: ${team.id}
@@ -865,6 +869,19 @@ Working rules:
 8. Do not start a teammate's assigned task. Do not privately tell the next-stage member to start; the scheduler assigns unlocked work after you become idle.
 9. You are a worker: do not create or delete teams, reassign tasks, or add/remove members — that is the captain's job.
 10. Quality-gate kinds carry a contract (kind, objective, inScope, acceptance, verify). Stay inside inScope. Do not mark your own implementation as review pass. Review/requirements complete only with verdict=pass; needs_revision/reject must fail with findings. Mail is not a formal next review. Completed work must not be repeated to attach late evidence: call update_task on the original task with its attempt_id and acceptanceResults/commandsRun/evidence_note; supplements are append-only and cannot change its verdict.`
+  return withConstitution(team, stateDir, basePersona)
+}
+
+/** Prepend the read-only constitution to a member persona (highest priority). */
+function withConstitution(team: TeamState, stateDir: string, persona: string): string {
+  const relative = team.constitution?.path
+  if (relative === undefined) return persona
+  try {
+    const text = readFileSync(join(dirname(stateDir), relative), 'utf8')
+    return constitutionPreamble(text) + '\n' + persona
+  } catch {
+    return persona
+  }
 }
 
 /**
@@ -934,6 +951,11 @@ export async function spawnMember(
   }
   if (!usesManagedActivations(ctx.subagents) && !legacyCapabilities.toolFilter) {
     throw new Error(`agent-teams: provider "${config.provider}" cannot restrict captain-only tools for members`)
+  }
+  // Blocking clarification root: in strict mode a team may not spawn any
+  // member until the confirmed clarification produced its constitution.
+  if (config.clarify?.enforce === true && team.constitution === undefined) {
+    throw new Error('agent-teams: this team has no project constitution yet; confirm the blocking clarification before any member is spawned')
   }
   const label = `${MEMBER_LABEL_PREFIX}${team.id}:${member.name}`
   // The legacy filter of a member without a configured tool policy: the

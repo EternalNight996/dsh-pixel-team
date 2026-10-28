@@ -7,7 +7,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { TaskKind } from './types.ts'
+import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts'
 
 /** One built-in template: default roles and a small task DAG. */
 export const SECT_NAMES: Record<string, string> = {
@@ -360,11 +360,19 @@ export interface QuickStartTeamTools {
  * fields, and a half-staged team would block the next attempt, so a failure
  * after creation rolls the team back before rethrowing.
  */
+export interface StageQuickStartOptions {
+  /** Confirmed blocking clarification; required by the web route. */
+  readonly clarification?: TeamClarification
+  /** User-confirmed requirement text (original + optional polish). */
+  readonly requirement?: TeamRequirement
+}
+
 export async function stageQuickStartTeam(
   plan: QuickStartPlan,
   goal: string,
   run: unknown,
   tools: QuickStartTeamTools,
+  options?: StageQuickStartOptions,
 ): Promise<{ teamId?: string; teamName?: string; phase?: string }> {
   const create = tools.create.execute
   const createTask = tools.createTask.execute
@@ -374,6 +382,8 @@ export async function stageQuickStartTeam(
     description: goal,
     approval: 'required',
     plan: { members: plan.members, tasks: [] },
+    ...options?.clarification === undefined ? {} : { clarification: options.clarification },
+    ...options?.requirement === undefined ? {} : { requirement: options.requirement },
   }, run) as { team_id?: string; team_name?: string; phase?: string }
   try {
     const seedToTaskId = new Map<string, string>()

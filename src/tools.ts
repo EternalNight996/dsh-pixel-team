@@ -20,6 +20,10 @@ import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { join } from 'node:path'
 import { readdir } from 'node:fs/promises'
 import { appendTeamEvent, captainSessionOf } from './events.ts'
+import { describeClarification, normalizeClarification } from './clarify.ts'
+import { hardwarePoolText } from './clarify-hardware.ts'
+import { buildConstitution, writeConstitution } from './constitution.ts'
+import { recallMemory } from './memory.ts'
 import {
   amendTaskContract,
   acknowledgeMailbox,
@@ -119,6 +123,10 @@ export interface ToolsConfig {
   profiles: Record<string, import('./profiles.ts').TeamProfileConfig>
   /** Owner-declared reusable member tool policies, keyed by policy id (#59). */
   toolPolicies: Record<string, MemberToolPolicy>
+  /** Blocking clarification policy; `enforce` rejects DAG creation without one. */
+  clarify?: { enforce?: boolean }
+  /** memory-eternal (or compatible) recall endpoint; empty uses the default. */
+  memory?: { endpoint?: string }
 }
 
 /** Browser/UI mutations allowed while a plan is waiting for approval. */
@@ -970,6 +978,37 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         enum: ['required', 'automatic'],
         description: 'required stages the plan for explicit user review; automatic starts immediately. Defaults to automatic for API compatibility.',
       },
+      clarification: {
+        type: 'object', additionalProperties: false,
+        description: 'Confirmed blocking clarification. When clarify.enforce is on, a DAG with tasks cannot be created without it.',
+        properties: {
+          type: { type: 'string', required: true, enum: ['hardware', 'software'] },
+          scale: { type: 'string', required: true, enum: ['small', 'medium', 'fullstack'] },
+          ui: {
+            type: 'object', additionalProperties: false, required: true,
+            properties: {
+              reference: { type: 'string' },
+              styles: { type: 'array', items: { type: 'string' } },
+              notes: { type: 'string' },
+            },
+          },
+          platforms: { type: 'array', required: true, items: { type: 'string' } },
+          hardwareList: { type: 'array', items: { type: 'string' } },
+          constraints: { type: 'array', items: { type: 'string' } },
+          excluded: { type: 'array', items: { type: 'string' } },
+          acceptance: { type: 'array', required: true, items: { type: 'string' } },
+          memoryHints: { type: 'array', items: { type: 'string' } },
+        },
+      },
+      requirement: {
+        type: 'object', additionalProperties: false,
+        description: 'User-confirmed requirement text: original, optional AI-polished expansion, and selected hidden conditions.',
+        properties: {
+          original: { type: 'string', required: true },
+          expanded: { type: 'string' },
+          conditions: { type: 'array', items: { type: 'string' } },
+        },
+      },
     },
     output: {
       schema: {
@@ -1031,6 +1070,19 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       // the profile / inline-plan exclusion below stays untouched.
       const inlinePlan = args.plan !== undefined && !isEmptyInlinePlan(args.plan) ? args.plan : undefined
       if (profileName !== undefined && inlinePlan !== undefined) throw new Error('choose either a configured profile or an inline plan')
+      // Blocking clarification root: normalize it before touching state so an
+      // invalid form never creates a half-built team.
+      const clarification = args.clarification === undefined ? undefined : normalizeClarification(args.clarification)
+      const requirement = args.requirement === undefined
+        ? undefined
+        : {
+          original: args.requirement.original.trim(),
+          expanded: (args.requirement.expanded ?? '').trim(),
+          conditions: [...(args.requirement.conditions ?? [])].filter((item: unknown): item is string => typeof item === 'string'),
+        }
+      if (clarification === undefined && config.clarify?.enforce === true && (inlinePlan?.tasks.length ?? 0) > 0) {
+        throw new Error('clarification is required before a DAG is generated: confirm the clarification form (agent_teams_clarify) and pass it as `clarification`')
+      }
       const created = await withTeamLock(captainLockKey(stateRoot, captain.id), async () => {
         const current = await findTeamByParticipant(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
         if (current !== undefined) {
@@ -1110,6 +1162,22 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           }
         } catch (error: unknown) {
           ctx.logger.warn(`agent-teams: post-create events failed for "${created.state.id}": ${String(error)}`)
+        }
+      }
+      if (clarification !== undefined) {
+        try {
+          const constitution = buildConstitution(clarification, created.state.id)
+          const written = await writeConstitution(workspace, created.state.id, constitution)
+          await withTeamLock(teamLockKey(stateRoot, created.state.id), async () => {
+            const fresh = await readTeam(stateRoot, created.state.id)
+            if (fresh === undefined) return
+            fresh.clarification = clarification
+            if (requirement !== undefined) fresh.requirement = requirement
+            fresh.constitution = written
+            await writeTeam(stateRoot, fresh)
+          })
+        } catch (error: unknown) {
+          ctx.logger.warn(`agent-teams: constitution write failed for "${created.state.id}": ${String(error)}`)
         }
       }
       const persisted = await readTeam(stateRoot, created.state.id).catch(() => undefined)
@@ -2693,6 +2761,86 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       }
     },
   }))
+  ctx.tools.register(defineTool({
+    name: 'agent_teams_clarify',
+    description: 'Validate the fixed seven-section requirement clarification and render it for the user. Confirm it with the user first; then pass the same object to agent_teams_create as clarification before any DAG with tasks is created.',
+    parameters: {
+      type: { type: 'string', required: true, enum: ['hardware', 'software'], description: '软硬开发 or 纯软件开发.' },
+      scale: { type: 'string', required: true, enum: ['small', 'medium', 'fullstack'], description: 'Plain-language scale: small (1-3d), medium (1-2w), fullstack (months).' },
+      ui: {
+        type: 'object', additionalProperties: false, required: true,
+        description: 'UI reference, styles and free-text notes.',
+        properties: {
+          reference: { type: 'string', description: 'Named project/site, or omit for no reference.' },
+          styles: { type: 'array', items: { type: 'string' }, description: '工业极简 / 桌面端传统 / 移动端触控优先 / 科技感大屏.' },
+          notes: { type: 'string', description: 'Extra constraints such as 车间强光.' },
+        },
+      },
+      platforms: { type: 'array', required: true, items: { type: 'string' }, description: 'Windows / Linux (UOS/麒麟) / macOS / Android / iOS.' },
+      hardwareList: { type: 'array', items: { type: 'string' }, description: 'Selected candidate ids or free-form hardware notes; the plugin never decides hardware.' },
+      constraints: { type: 'array', items: { type: 'string' }, description: 'Additional hard constraints.' },
+      excluded: { type: 'array', items: { type: 'string' }, description: 'Explicit non-goals (default: 不改 MES 接口 / 不升级系统 / 不引入云服务).' },
+      acceptance: { type: 'array', required: true, items: { type: 'string' }, description: 'Executable acceptance criteria (e.g. 连续72h无崩溃).' },
+      memoryHints: { type: 'array', items: { type: 'string' }, description: 'Keywords members should recall from the memory vault.' },
+    },
+    output: {
+      schema: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          accepted: { type: 'boolean', required: true },
+          markdown: { type: 'string', required: true },
+          hardware_pool: { type: 'string', required: true },
+          clarification_json: { type: 'string', required: true },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: value.markdown + '\n\n' + value.hardware_pool
+          + '\n\nNext: confirm this form with the user, then pass the same object to agent_teams_create as clarification.',
+      }],
+    },
+    async execute(args) {
+      const clarification = normalizeClarification(args)
+      return {
+        accepted: true,
+        markdown: describeClarification(clarification),
+        hardware_pool: hardwarePoolText(),
+        clarification_json: JSON.stringify(clarification),
+      }
+    },
+  }))
+  ctx.tools.register(defineTool({
+    name: 'agent_teams_memory_recall',
+    description: 'Query the configured memory vault (memory-eternal or compatible) for prior project decisions matching the constitution memory_hints. Returns hit text or an error; never blocks a turn.',
+    parameters: {
+      query: { type: 'string', required: true, description: 'What to recall (project constraints, prior decisions, domain terms).' },
+      limit: { type: 'number', description: 'Maximum hits (default 5).' },
+    },
+    output: {
+      schema: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          ok: { type: 'boolean', required: true },
+          text: { type: 'string' },
+          source: { type: 'string' },
+          error: { type: 'string' },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: value.ok ? (value.text ?? '') : 'memory recall unavailable: ' + (value.error ?? 'unknown error') }],
+    },
+    async execute(args, exec) {
+      const query = args.query.trim()
+      if (query === '') throw new Error('query must not be empty')
+      const rawLimit = args.limit
+      const limit = typeof rawLimit === 'number' && Number.isFinite(rawLimit) ? Math.max(1, Math.min(20, Math.floor(rawLimit))) : 5
+      try {
+        const hit = await recallMemory(config.memory?.endpoint, query, limit, exec.signal)
+        return { ok: true, text: hit.text.slice(0, 6000), source: hit.source }
+      } catch (error: unknown) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      }
+    },
+  }))
   // Live-member hydration validates saved filters against registered tools.
   const memberSelections = installMemberSelectionRuntime(ctx, config.stateDir, (workspace, teamId, memberName) => (
     scheduler.kickMember(workspace, teamId, memberName)
@@ -2983,6 +3131,7 @@ function memberRuntime(config: ToolsConfig): MemberRuntimeConfig {
     maxDepth: config.memberMaxDepth,
     executionPrompt: config.executionPrompt,
     fallback: config.fallback,
+    clarify: config.clarify,
   }
 }
 

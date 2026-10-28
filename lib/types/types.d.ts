@@ -352,4 +352,58 @@ export interface TeamState {
     reviewPolicy?: ReviewPolicy;
     /** Set when an automatic review/repair loop hits its configured ceiling. */
     escalated?: boolean;
+    /** Blocking clarification the user confirmed before this DAG was generated. */
+    clarification?: TeamClarification;
+    /** Requirement text the user confirmed (original + optional AI polish). */
+    requirement?: TeamRequirement;
+    /** Read-only constitution generated from the clarification. */
+    constitution?: {
+        path: string;
+        checksum: string;
+        project: string;
+    };
+}
+/** Clarification captured before a DAG is generated (blocking root node). */
+export type ClarifyType = 'hardware' | 'software';
+/** Plain-language project scale choice. */
+export type ClarifyScale = 'small' | 'medium' | 'fullstack';
+/** One confirmed clarification object. */
+export interface TeamClarification {
+    type: ClarifyType;
+    scale: ClarifyScale;
+    ui: {
+        reference?: string;
+        styles: string[];
+        notes?: string;
+    };
+    platforms: string[];
+    hardwareList: string[];
+    constraints: string[];
+    excluded: string[];
+    acceptance: string[];
+    memoryHints: string[];
+}
+/** Read-only project constitution derived from the clarification. */
+export interface TeamConstitution {
+    project: string;
+    type: ClarifyType;
+    scale: ClarifyScale;
+    ui: {
+        reference?: string;
+        styles: string[];
+        notes?: string;
+    };
+    platforms: string[];
+    hardware_list: string[];
+    constraints: string[];
+    excluded: string[];
+    acceptance: string[];
+    memory_hints: string[];
+    createdAt: number;
+}
+/** Requirement text the user confirmed (original + optional AI polish). */
+export interface TeamRequirement {
+    original: string;
+    expanded: string;
+    conditions: string[];
 }

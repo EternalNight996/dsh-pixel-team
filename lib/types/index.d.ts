@@ -77,6 +77,17 @@ export interface Config {
      * Disable to keep the natural-language trigger as the only entry point.
      */
     slashCommand?: boolean;
+    /**
+     * Blocking clarification policy. `enforce: true` rejects DAG creation whose
+     * plan carries tasks until a confirmed clarification is supplied.
+     */
+    clarify?: {
+        enforce?: boolean;
+    };
+    /** memory-eternal (or compatible) recall endpoint for agent_teams_memory_recall. */
+    memory?: {
+        endpoint?: string;
+    };
 }
 export declare const Config: z<Config>;
 /** The model-facing usage policy: when and how to drive AgentTeams. */

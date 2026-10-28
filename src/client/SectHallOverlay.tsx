@@ -12,6 +12,7 @@ import type { ActivityTeam } from './activity-monitor.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
 import { TeamSection } from './ActivityPanel.tsx'
 import { HallInbox } from './HallInbox.tsx'
+import { MemoryModeBanner } from './MemoryModeBanner.tsx'
 import { StagingPlanEditor } from './StagingPlanEditor.tsx'
 import { TeamConfigPanel } from './TeamConfigPanel.tsx'
 import { PixelOffice, type SceneAction } from './pixel-office/PixelOffice.tsx'
@@ -611,6 +612,7 @@ export function SectHallOverlay({
           <button type="button" className={css.sheetClose} onClick={finishSheet} aria-label={t('office.closePanel')}>×</button>
         </header>
         <div className={css.sheetBody}>
+          <MemoryModeBanner t={t} />
           {sheet === 'ranks' ? (
             <div className={css.ranks}>
               <p className={css.settingsHint}>{t('office.ascensionIntro')}</p>

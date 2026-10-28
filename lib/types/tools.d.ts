@@ -36,6 +36,14 @@ export interface ToolsConfig {
     profiles: Record<string, import('./profiles.ts').TeamProfileConfig>;
     /** Owner-declared reusable member tool policies, keyed by policy id (#59). */
     toolPolicies: Record<string, MemberToolPolicy>;
+    /** Blocking clarification policy; `enforce` rejects DAG creation without one. */
+    clarify?: {
+        enforce?: boolean;
+    };
+    /** memory-eternal (or compatible) recall endpoint; empty uses the default. */
+    memory?: {
+        endpoint?: string;
+    };
 }
 /** Browser/UI mutations allowed while a plan is waiting for approval. */
 export type StagedPlanMutation = {

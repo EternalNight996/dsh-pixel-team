@@ -23,6 +23,10 @@ export declare const PERSONA_PROTOCOL_MAX_CHARS = 400;
 export interface MemberRuntimeConfig {
     /** Registered `ctx.subagents` provider name (must support continuable + persona). */
     provider: string;
+    /** Strict clarification mode: refuse to spawn members of a team without a constitution. */
+    clarify?: {
+        enforce?: boolean;
+    };
     /** Child delegation depth cap (0 forbids delegation entirely). */
     maxDepth?: number;
     /** Plugin-wide execution prompt. */
