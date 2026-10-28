@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.24] - 2026-10-29
+
+### Changed
+- 志向 step keeps a single annotation line: 目标. The long hint and the
+  character/shortcut meta line are gone.
+- AI polish now writes the expanded requirement straight back into the goal
+  textarea; the extra preview panel, hidden-condition checkboxes and confirm
+  button are removed. The user decides whether to continue.
+
 ## [0.1.23] - 2026-10-29
 
 ### Added

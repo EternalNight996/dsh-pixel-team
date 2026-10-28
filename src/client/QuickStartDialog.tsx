@@ -12,7 +12,7 @@ import { SECT_PRESETS, randomSect, sectPreset } from './sects.ts'
 import { ClarifySheet, DEFAULT_CLARIFY_DRAFT, clarificationPayload, linesOf, type ClarifyDraft } from './ClarifySheet.tsx'
 import type { ClarifyOptions } from '../clarify.ts'
 import { DEFAULT_MODE, TEAM_MODES, getModeSpec, type TeamMode } from '../modes.ts'
-import { PolishPreview } from './PolishPreview.tsx'
+
 
 type TplKey = 'quickstart.tplFix' | 'quickstart.tplFeat' | 'quickstart.tplResearch' | 'quickstart.tplAudit' | 'quickstart.tplFullstack'
   | 'quickstart.tplHardening' | 'quickstart.tplBuild' | 'quickstart.tplArray' | 'quickstart.tplDocs' | 'quickstart.tplDebate'
@@ -74,15 +74,9 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
   const [error, setError] = useState('')
   const [blocked, setBlocked] = useState(false)
   const [created, setCreated] = useState<string | undefined>()
-  // Module 0: AI polish preview; module 1: blocking clarification draft.
-  const [polishOpen, setPolishOpen] = useState(false)
+  // Module 0: AI polish writes straight back into the goal textarea.
   const [polishBusy, setPolishBusy] = useState(false)
   const [polishError, setPolishError] = useState('')
-  const [polishDegraded, setPolishDegraded] = useState(false)
-  const [expandedGoal, setExpandedGoal] = useState('')
-  const [polishConditions, setPolishConditions] = useState<string[]>([])
-  const [selectedConditions, setSelectedConditions] = useState<string[]>([])
-  const [requirement, setRequirement] = useState<{ original: string; expanded: string; conditions: string[] } | undefined>()
   const [clarify, setClarify] = useState<ClarifyDraft>(DEFAULT_CLARIFY_DRAFT)
   // Module 1: the option lists are proposed by the model from this requirement.
   const [clarifyOptions, setClarifyOptions] = useState<ClarifyOptions | undefined>()
@@ -159,7 +153,6 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
   }
 
   const goalTrimmed = goal.trim()
-  const effectiveGoal = requirement?.expanded.trim() || goalTrimmed
   const runPolish = async (): Promise<void> => {
     if (goalTrimmed === '') { setPolishError(t('quickstart.goalRequired')); return }
     setPolishBusy(true)
@@ -171,26 +164,16 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
         body: JSON.stringify({ sessionId, requirement: goalTrimmed, mode }),
       })
       const body = await response.json().catch(() => null) as {
-        ok?: boolean; expanded?: string; hidden_conditions?: string[]; degraded?: boolean; error?: string
+        ok?: boolean; expanded?: string; error?: string
       } | null
       if (!response.ok || body?.ok !== true) throw new Error(body?.error ?? ('HTTP ' + response.status))
-      const expanded = body.expanded ?? goalTrimmed
-      const conditions = body.hidden_conditions ?? []
-      setExpandedGoal(expanded)
-      setPolishConditions(conditions)
-      setSelectedConditions(conditions)
-      setPolishDegraded(body.degraded === true)
-      setPolishOpen(true)
+      // Insert the polished text into the input; the user decides the next step.
+      setGoal((body.expanded ?? goalTrimmed).trim())
     } catch (cause) {
       setPolishError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setPolishBusy(false)
     }
-  }
-  const confirmPolish = (): void => {
-    const expanded = expandedGoal.trim() || goalTrimmed
-    setRequirement({ original: goalTrimmed, expanded, conditions: selectedConditions })
-    setPolishOpen(false)
   }
 
   // Fetch requirement-specific clarification options when the step opens (or
@@ -209,11 +192,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
           body: JSON.stringify({
             sessionId,
             mode,
-            requirement: {
-              original: goalTrimmed,
-              expanded: requirement?.expanded ?? '',
-              conditions: requirement?.conditions ?? [],
-            },
+            requirement: { original: goalTrimmed },
           }),
           signal: controller.signal,
         })
@@ -239,7 +218,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
       }
     })()
     return () => { controller.abort() }
-  }, [step, goalTrimmed, sessionId, requirement, mode])
+  }, [step, goalTrimmed, sessionId, mode])
   const currentStep: Step = STEPS[step] ?? STEPS[0] as Step
   const canAdvance = useMemo(() => {
     if (busy) return false
@@ -262,12 +241,11 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
         body: JSON.stringify({
           sessionId,
           mode,
-          goal: effectiveGoal,
+          goal: goalTrimmed,
           template,
           roles: sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
           replace,
           clarification: clarificationPayload(clarify),
-          ...requirement === undefined ? {} : { requirement },
         }),
       })
       const body = await response.json().catch(() => null) as { ok?: boolean; teamId?: string; teamName?: string; error?: string } | null
@@ -355,7 +333,6 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
 
           {currentStep === 'vow' && (
             <section className={css.stepPane} data-step="vow">
-              <p className={css.hint}>{t('quickstart.vowHint')}</p>
               <label className={css.field}>
                 <span>{t('quickstart.goal')}</span>
                 <textarea
@@ -365,16 +342,12 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
                   autoFocus
                   disabled={busy}
                   placeholder={t('quickstart.goalPlaceholder')}
-                  onChange={(event) => { setGoal(event.target.value); setRequirement(undefined); setPolishOpen(false) }}
+                  onChange={(event) => { setGoal(event.target.value); setPolishError('') }}
                   onKeyDown={(event) => {
                     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); next() }
                   }}
                 />
               </label>
-              <p className={css.goalMeta}>
-                <span>{t('quickstart.goalLength', { count: goalTrimmed.length })}</span>
-                <span>{t('quickstart.goalShortcut')}</span>
-              </p>
               <div className={css.modeRow}>
                 <span className={css.modeLabel}>{t('mode.select')}</span>
                 {TEAM_MODES.map(item => {
@@ -404,28 +377,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
                   {polishBusy ? t('polish.busy') : t('polish.button')}
                 </button>
                 {polishError !== '' && <span className={css.polishError} role="alert">{polishError}</span>}
-                {requirement !== undefined && <span className={css.polishApplied}>{t('polish.applied')}</span>}
               </div>
-              {polishOpen && (
-                <PolishPreview
-                  original={goalTrimmed}
-                  expanded={expandedGoal}
-                  conditions={polishConditions}
-                  selected={selectedConditions}
-                  degraded={polishDegraded}
-                  busy={polishBusy}
-                  error={polishError}
-                  t={t}
-                  onExpandedChange={setExpandedGoal}
-                  onToggle={(condition) => {
-                    setSelectedConditions((current) => current.includes(condition)
-                      ? current.filter(item => item !== condition)
-                      : [...current, condition])
-                  }}
-                  onConfirm={confirmPolish}
-                  onCancel={() => { setPolishOpen(false) }}
-                />
-              )}
             </section>
           )}
 
@@ -535,7 +487,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryDoctrine')}</dt><dd>{doctrineName}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summarySect')}</dt><dd>{sectName}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryRoster')}</dt><dd><span className={css.chips}>{roster.map(personChip)}</span></dd></div>
-                <div className={css.summaryRow}><dt>{t('quickstart.summaryVow')}</dt><dd>{effectiveGoal}</dd></div>
+                <div className={css.summaryRow}><dt>{t('quickstart.summaryVow')}</dt><dd>{goalTrimmed}</dd></div>
               </dl>
               <p className={css.oath}>{t('quickstart.oathNotice')}</p>
             </section>
