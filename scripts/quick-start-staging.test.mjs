@@ -4,6 +4,7 @@
  * "plan.tasks[0].kind is not a declared property"。
  */
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { QUICK_START_TEMPLATES, buildQuickStartPlan, quickStartTaskCalls, stageQuickStartTeam } from '../lib/quick-start.js'
 
@@ -52,6 +53,30 @@ test('an ordinary-work template stays ordinary work', () => {
   const calls = quickStartTaskCalls(buildQuickStartPlan('write the guide', 'docs'))
   assert.ok(calls.some(call => call.input.kind === undefined), 'docs keeps plain work tasks')
   assert.ok(calls.every(call => call.input.kind === undefined || call.input.kind === 'review'))
+})
+
+test('every doctrine the quick-start dialog offers has a server template', () => {
+  // The dialog silently falls back to the first template for an unknown id, so
+  // a doctrine missing here would stage the fix workflow under another label.
+  const dialog = readFileSync(new URL('../src/client/QuickStartDialog.tsx', import.meta.url), 'utf8')
+  const offered = [...dialog.matchAll(/\{ id: '([^']+)', labelKey: 'quickstart\.tpl/g)].map(match => match[1])
+  assert.ok(offered.length >= 10, 'the dialog template list could not be parsed: ' + JSON.stringify(offered))
+  const server = new Set(QUICK_START_TEMPLATES.map(template => template.id))
+  for (const id of offered) {
+    assert.ok(server.has(id), 'the dialog offers "' + id + '" but src/quick-start.ts has no such template')
+  }
+})
+
+test('the audit doctrine is a read-only audit plus review, not the fix workflow', () => {
+  const plan = buildQuickStartPlan('audit the release', 'audit')
+  const calls = quickStartTaskCalls(plan)
+  assert.deepEqual(plan.members.map(member => member.role), ['auditor', 'reviewer'])
+  assert.deepEqual(calls.map(call => call.seedId), ['audit', 'review'])
+  assert.equal(calls[0].input.kind, undefined, 'the audit task stays ordinary read-only work')
+  assert.equal(calls[1].input.kind, 'review')
+  assert.equal(calls[1].input.reviewedTaskId, 'audit')
+  assert.deepEqual(calls[1].input.dependencies, ['audit'])
+  assert.equal(plan.template, 'audit')
 })
 function recorder(failOnCall) {
   const calls = { create: [], createTask: [], deleteTeam: [] }

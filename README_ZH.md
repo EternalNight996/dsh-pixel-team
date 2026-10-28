@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/EternalNight996/dsh-pixel-team/stargazers"><img src="https://img.shields.io/github/stars/EternalNight996/dsh-pixel-team?style=flat" alt="GitHub stars" /></a>
   <a href="https://www.npmjs.com/package/dsh-pixel-team"><img src="https://img.shields.io/npm/v/dsh-pixel-team" alt="npm" /></a>
-  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.15-FF7A45" alt="release" /></a>
+  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.16-FF7A45" alt="release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license" /></a>
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/DSH-Web%20%2B%20Headless-5B4CF0" alt="DSH" /></a>
 </p>
@@ -85,7 +85,7 @@
 
 **DeepSeek Harness（桌面 / Web）**
 
-    dsh plugin --profile desktop add dsh-pixel-team@0.1.15
+    dsh plugin --profile desktop add dsh-pixel-team@0.1.16
     # 重开 DSH → 打开 山门 · 名册
 
 然后：
@@ -104,7 +104,7 @@
     dsh --profile desktop
     # 直接说：用 AgentTeams 开一个团队做 …
 
-当前版本 **0.1.15**。推荐宿主：DeepSeek Harness **0.2.1-rc.3**（Web + Headless）。精确矩阵见 [compatibility.json](compatibility.json)。
+当前版本 **0.1.16**。推荐宿主：DeepSeek Harness **0.2.1-rc.3**（Web + Headless）。精确矩阵见 [compatibility.json](compatibility.json)。
 
 想先看效果？**[打开梦游官网的在线展示页](http://180.76.144.48/dsh-pixel-team)**。
 
@@ -137,6 +137,7 @@
 |---|---|---|
 | **全栈** | 合契师 · 灵绘师 · 地脉师 · 验证 · 审查 | 契约先行、前后端并行 |
 | **安全加固** | 巡查使 · 镇魔师 · 验证 · 审查 | 先复现、最小修复、残余风险 |
+| **只读审计 / 巡查** | 巡查使 · 审查 | 只读取证、不改工作区 |
 | **修 Bug / 新功能 / 调研 / 构建 / 文档 / 论道** | 小规模角色组 | 日常团队任务 |
 | **架构重构** | 阵法师 · 实现 · 验证 · 审查 | 边界与迁移 |
 

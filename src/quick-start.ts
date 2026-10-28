@@ -84,6 +84,15 @@ export const QUICK_START_TEMPLATES: readonly QuickStartTemplate[] = [
     ],
   },
   {
+    id: 'audit',
+    label: '巡查',
+    roles: ['auditor', 'reviewer'],
+    tasks: [
+      { id: 'audit', subject: '只读审计', role: 'auditor', description: '只读检查代码、依赖、配置与文档，按严重度逐条记录发现；不改动工作区。', expected: '证据清单（文件/行、复现步骤、影响、建议）。', acceptance: ['每条发现都有可复核证据', '未改动工作区'] },
+      { id: 'review', subject: '审查审计结论', role: 'reviewer', kind: 'review', reviewedTaskId: 'audit', description: '核对每条发现的证据与影响判断，证据不足则打回。', acceptance: ['每条结论都有证据支撑', '证据不足项已指出'], dependencies: ['audit'] },
+    ],
+  },
+  {
     id: 'build',
     label: '构建发布',
     roles: ['implementer', 'verifier', 'operator', 'reviewer'],

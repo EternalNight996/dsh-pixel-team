@@ -158,7 +158,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ sessionId, goal: goalTrimmed, template, roles: sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)], replace }),
       })
-      const body = await response.json().catch(() => null) as { ok?: boolean; teamId?: string; error?: string } | null
+      const body = await response.json().catch(() => null) as { ok?: boolean; teamId?: string; teamName?: string; error?: string } | null
       if (!response.ok || body?.ok !== true) {
         const raw = body?.error ?? ('HTTP ' + response.status)
         const existing = /already lead team/i.test(raw)
@@ -166,7 +166,7 @@ export function QuickStartWizard({ sessionId, t, onDone, onFounded }: {
         throw new Error(existing ? t('quickstart.teamExists') : raw)
       }
       setCreated(t('quickstart.created', {
-        team: body.teamId ?? '',
+        team: body.teamName ?? body.teamId ?? '',
         sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
       }))
       if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId } }))

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.16] - 2026-10-28
+
+### Fixed
+- 「巡查 / audit」was offered by the 道统 picker but missing from the server
+  templates, so the wizard silently staged the fix workflow. Added the read-only
+  audit template (auditor → reviewer) and a dialog/server parity regression test.
+- The founding success message now shows the team name instead of its id.
+
+### Docs
+- README role/template table lists the audit doctrine.
+
 ## [0.1.15] - 2026-10-28
 
 ### Changed
