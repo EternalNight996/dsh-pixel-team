@@ -183,11 +183,11 @@
 
 ## 💬 交流群 & 赞助
 
-**有问题、想法，或想聊 DSH 插件——扫码进 QQ 交流群：**
+**有问题、想法，或想聊 DSH 插件——扫码进 QQ / 微信交流群：**
 
 | QQ 交流群 | 微信交流群 |
 |:---:|:---:|
-| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ 交流群二维码" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="微信交流群二维码" /></a> |
+| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ 交流群二维码" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.jpg" target="_blank" rel="noreferrer" title="点击放大"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.jpg" width="220" alt="微信交流群二维码" /></a> |
 
 **请作者喝杯咖啡（完全自愿）：**
 

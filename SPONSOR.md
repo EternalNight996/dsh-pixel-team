@@ -8,9 +8,11 @@ DSH Pixel Team（dsh-pixel-team）是 MIT 协议的开源插件，始终免费�
 
 ## 交流群
 
-扫码进入产品交流群，插件更新与使用问题会在群里同步。
+扫码进入产品交流群，插件更新与使用问题会在群里同步（QQ 群或微信群任选其一）。
 
-![QQ 群二维码](assets/support/group-qr.jpg)
+| QQ 交流群 | 微信交流群 |
+| --- | --- |
+| ![QQ 群二维码](assets/support/group-qr.jpg) | ![微信交流群二维码](assets/support/group-wechat.jpg) |
 
 ## 赞助
 

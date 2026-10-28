@@ -564,6 +564,7 @@ export declare const zh: {
     'ascension.story.3': string;
     'about.groupHint': string;
     'about.groupCaption': string;
+    'about.groupCaptionWechat': string;
     'about.groupNote': string;
     'about.sponsorHint': string;
     'about.sponsorPay': string;
@@ -1184,6 +1185,7 @@ export declare const en: {
     'ascension.story.3': string;
     'about.groupHint': string;
     'about.groupCaption': string;
+    'about.groupCaptionWechat': string;
     'about.groupNote': string;
     'about.sponsorHint': string;
     'about.sponsorPay': string;

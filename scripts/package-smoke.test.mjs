@@ -36,6 +36,7 @@ test('the publish tarball contains the runtime, support QRs and sponsor/about do
     'lib/client.js',
     'lib/client/pixel-office/PixelOfficeScene.js',
     'assets/support/group-qr.jpg',
+    'assets/support/group-wechat.jpg',
     'assets/support/wechat-pay.jpg',
     'assets/support/wechat-reward.jpg',
     'SPONSOR.md',
@@ -61,7 +62,7 @@ test('the publish tarball ships only the intended runtime scripts, no source/tes
 test('the support route allowlist matches the packaged QR assets', () => {
   const host = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8')
   const routeAssets = [...host.matchAll(/'([a-z-]+\.jpg)', 'image\/jpeg'/g)].map(match => match[1]).sort()
-  assert.deepEqual(routeAssets, ['group-qr.jpg', 'wechat-pay.jpg', 'wechat-reward.jpg'])
+  assert.deepEqual(routeAssets, ['group-qr.jpg', 'group-wechat.jpg', 'wechat-pay.jpg', 'wechat-reward.jpg'])
   const files = packList().files.map(file => file.path)
   for (const asset of routeAssets) assert.ok(files.includes(`assets/support/${asset}`))
 })

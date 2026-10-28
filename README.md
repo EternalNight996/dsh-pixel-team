@@ -183,11 +183,11 @@ App icons live in `assets/app-icons/` (desktop, web, iOS, Android) and the plugi
 
 ## 💬 Community
 
-**Questions, ideas, or DSH plugin talk — join the QQ group:**
+**Questions, ideas, or DSH plugin talk — join the QQ or WeChat group:**
 
 | QQ group | WeChat group |
 |:---:|:---:|
-| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ group QR" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.png" width="220" alt="WeChat group QR" /></a> |
+| <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-qr.jpg" width="220" alt="QQ group QR" /></a> | <a href="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.jpg" target="_blank" rel="noreferrer" title="Click to enlarge"><img src="https://raw.githubusercontent.com/EternalNight996/dsh-pixel-team/main/assets/support/group-wechat.jpg" width="220" alt="WeChat group QR" /></a> |
 
 **Buy the author a coffee (optional):**
 

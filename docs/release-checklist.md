@@ -19,7 +19,7 @@ before a public release.
 pnpm verify:release now runs npm pack --dry-run and asserts:
 
 - lib/index.js, lib/client.js and the pixel-office scene are shipped;
-- assets/support/group-qr.jpg, wechat-pay.jpg, wechat-reward.jpg are shipped and
+- assets/support/group-qr.jpg, group-wechat.jpg, wechat-pay.jpg, wechat-reward.jpg are shipped and
   match the host route allowlist;
 - SPONSOR.md, README.md, cordis.patch.yml and package.json are shipped;
 - no src/, docs/ or *.test.mjs ships; only the three intended runtime scripts

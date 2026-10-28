@@ -750,6 +750,7 @@ export function apply(ctx: Context, config: Config): void {
     const supportDir = fileURLToPath(new URL('../assets/support/', import.meta.url))
     const SUPPORT_ASSETS = new Map<string, string>([
       ['group-qr.jpg', 'image/jpeg'],
+      ['group-wechat.jpg', 'image/jpeg'],
       ['wechat-pay.jpg', 'image/jpeg'],
       ['wechat-reward.jpg', 'image/jpeg'],
     ])

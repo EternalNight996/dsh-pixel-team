@@ -690,10 +690,16 @@ export function SectHallOverlay({
               {aboutTab === 'group' ? (
                 <div className={css.aboutSection}>
                   <p className={css.settingsHint}>{t('about.groupHint')}</p>
-                  <figure className={css.qrCard}>
-                    <img src={supportAsset('group-qr.jpg')} alt={t('about.groupCaption')} loading="lazy" />
-                    <figcaption>{t('about.groupCaption')}</figcaption>
-                  </figure>
+                  <div className={css.qrGrid}>
+                    <figure className={css.qrCard}>
+                      <img src={supportAsset('group-qr.jpg')} alt={t('about.groupCaption')} loading="lazy" />
+                      <figcaption>{t('about.groupCaption')}</figcaption>
+                    </figure>
+                    <figure className={css.qrCard}>
+                      <img src={supportAsset('group-wechat.jpg')} alt={t('about.groupCaptionWechat')} loading="lazy" />
+                      <figcaption>{t('about.groupCaptionWechat')}</figcaption>
+                    </figure>
+                  </div>
                   <p className={css.settingsHint}>{t('about.groupNote')}</p>
                   <p className={css.settingsMeta}>{t('about.groupFallback')}</p>
                   <div className={css.aboutActions}>
