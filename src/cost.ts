@@ -1,0 +1,107 @@
+/**
+ * Soft cost gate: estimate a spawn, log it, and let the user decide.
+ *
+ * Never degrades a model, never pauses the queue: a terminate decision cancels
+ * exactly the one spawn that asked.
+ */
+import { randomUUID } from 'node:crypto'
+import { appendFile, mkdir, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { publishCostPrompt, type CostPrompt } from './events-bus.ts'
+
+export interface CostConfig {
+  enabled?: boolean
+  perTaskUsd?: number
+  perDayUsd?: number
+}
+
+export interface CostLogEntry {
+  ts: number
+  sessionId: string
+  teamId?: string
+  taskId?: string
+  memberName: string
+  estimateUsd: number
+  thresholdUsd?: number
+  reason?: 'task' | 'day'
+  decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout'
+}
+
+const DEFAULT_PER_TASK = 2
+const DEFAULT_PER_DAY = 35
+// Conservative planning rates (USD per 1K tokens). Only used for the prompt.
+const PRICE_INPUT_PER_1K = 0.0005
+const PRICE_OUTPUT_PER_1K = 0.0015
+const DEFAULT_TIMEOUT_MS = 180_000
+
+const pending = new Map<string, (decision: 'continue' | 'terminate') => void>()
+
+/** Estimate one spawn: prompt chars in, a conservative completion budget out. */
+export function estimateCost(textChars: number): number {
+  const inputTokens = Math.max(500, Math.ceil(textChars / 4))
+  const outputTokens = 1500
+  return Math.round((inputTokens / 1000 * PRICE_INPUT_PER_1K + outputTokens / 1000 * PRICE_OUTPUT_PER_1K) * 10000) / 10000
+}
+
+export function costLogPath(workspace: string): string {
+  return join(workspace, '.pixel-team', 'cost-log.jsonl')
+}
+
+/** Sum today's logged estimates (local calendar day). */
+export async function readTodayCost(workspace: string, now = Date.now()): Promise<number> {
+  let text = ''
+  try {
+    text = await readFile(costLogPath(workspace), 'utf8')
+  } catch {
+    return 0
+  }
+  const day = new Date(now)
+  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime()
+  let total = 0
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === '') continue
+    try {
+      const entry = JSON.parse(line) as CostLogEntry
+      if (entry.ts >= start && entry.ts <= now + 86_400_000) total += entry.estimateUsd
+    } catch { /* skip a torn line */ }
+  }
+  return Math.round(total * 10000) / 10000
+}
+
+/** Append one decision to the JSONL log (never throws into the spawn path). */
+export async function appendCostLog(workspace: string, entry: CostLogEntry): Promise<void> {
+  try {
+    await mkdir(join(workspace, '.pixel-team'), { recursive: true })
+    await appendFile(costLogPath(workspace), JSON.stringify(entry) + '\n', 'utf8')
+  } catch { /* logging must not block work */ }
+}
+
+/**
+ * Publish a prompt and wait for the user's decision. A timeout continues (the
+ * gate is soft by design) and is logged as such.
+ */
+export async function requestCostDecision(
+  prompt: Omit<CostPrompt, 'requestId'>,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<'continue' | 'terminate' | 'timeout'> {
+  const requestId = randomUUID()
+  const full: CostPrompt = { ...prompt, requestId }
+  return new Promise((resolve) => {
+    const done = (decision: 'continue' | 'terminate' | 'timeout'): void => {
+      clearTimeout(timer)
+      pending.delete(requestId)
+      resolve(decision)
+    }
+    const timer = setTimeout(() => { done('timeout') }, timeoutMs)
+    pending.set(requestId, (decision) => { done(decision) })
+    publishCostPrompt(full)
+  })
+}
+
+/** Resolve one pending prompt; false when it already timed out. */
+export function resolveCostDecision(requestId: string, decision: 'continue' | 'terminate'): boolean {
+  const resolve = pending.get(requestId)
+  if (resolve === undefined) return false
+  resolve(decision)
+  return true
+}

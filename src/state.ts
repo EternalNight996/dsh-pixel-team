@@ -16,6 +16,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { publishLibraryChange } from './events-bus.ts'
 import { join } from 'node:path'
 import type { MemberToolFilter } from './tool-policies.ts'
 import { FINDING_SEVERITIES, REVIEW_VERDICTS, TASK_KINDS, TERMINAL_TASK_STATUSES, type ReviewFinding, type TaskStatus, type TeamMember, type TeamMessage, type TeamProfileSnapshot, type TeamState, type TeamTask } from './types.ts'
@@ -235,6 +236,7 @@ export async function createTeamDir(stateRoot: string, state: TeamState): Promis
   const dir = join(stateRoot, state.id)
   await mkdir(join(dir, 'inbox'), { recursive: true })
   await atomicWriteText(join(dir, 'team.json'), JSON.stringify(state, null, 2))
+  publishLibraryChange(stateRoot)
 }
 
 /**
@@ -292,6 +294,7 @@ export function readTeamSync(stateRoot: string, teamId: string): TeamState | und
  */
 export async function writeTeam(stateRoot: string, state: TeamState): Promise<void> {
   await atomicWriteText(join(stateRoot, state.id, 'team.json'), JSON.stringify(state, null, 2))
+  publishLibraryChange(stateRoot)
 }
 
 /** Read the durable set of member session ids retired by remove/delete. */
@@ -1201,6 +1204,7 @@ export async function archiveTeamDir(stateRoot: string, teamId: string): Promise
   // The new generation is authoritative. A failed cleanup only leaves a
   // hidden recovery directory, which archive discovery deliberately ignores.
   if (displaced) await rm(previous, { recursive: true, force: true }).catch(() => undefined)
+  publishLibraryChange(stateRoot)
 }
 
 /**

@@ -1,0 +1,22 @@
+.root { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.empty { color: #9aa4b2; font-size: 13px; }
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.team { font-weight: 600; }
+.scale { color: #f2c14e; }
+.cost { color: #9aa4b2; }
+.live { color: #7fd6a8; margin-left: auto; }
+.offline { color: #ffb86b; margin-left: auto; }
+.canvas { position: relative; flex: 1; overflow: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(10,14,22,0.35); min-height: 240px; }
+.edges { position: absolute; inset: 0; pointer-events: none; }
+.card { position: absolute; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; border: 1px solid #2c3442; background: #131a24; font-size: 12px; box-sizing: border-box; overflow: hidden; }
+.card[data-status='claimed'], .card[data-status='in_progress'] { border-color: #f2c14e; }
+.card[data-status='completed'] { border-color: #7fd6a8; }
+.card[data-status='failed'] { border-color: #ff6b6b; }
+.subject { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta { display: flex; justify-content: space-between; gap: 6px; color: #9aa4b2; }
+.status { text-transform: uppercase; letter-spacing: 0.04em; }
+.acceptance { color: #9aa4b2; }
+.acceptance[data-failed='true'] { color: #ff6b6b; }
+.blocker { display: flex; gap: 8px; align-items: baseline; font-size: 12px; padding: 8px 10px; border-radius: 8px; border: 1px solid #2c3442; }
+.blocker[data-blocked='true'] { border-color: rgba(255,107,107,0.5); color: #ffb0b0; }
+.blockerTitle { color: #9aa4b2; }

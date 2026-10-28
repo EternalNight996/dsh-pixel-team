@@ -1,0 +1,16 @@
+export interface CostPrompt {
+    readonly requestId: string;
+    readonly sessionId: string;
+    readonly teamId?: string;
+    readonly taskId?: string;
+    readonly memberName: string;
+    readonly estimateUsd: number;
+    readonly thresholdUsd: number;
+    readonly reason: 'task' | 'day';
+}
+/** Notify subscribers that a workspace's team state changed. */
+export declare function publishLibraryChange(stateRoot: string): void;
+export declare function subscribeLibraryChange(listener: (stateRoot: string) => void): () => void;
+/** Ask the browser to confirm one over-threshold spawn. */
+export declare function publishCostPrompt(prompt: CostPrompt): void;
+export declare function subscribeCostPrompt(listener: (prompt: CostPrompt) => void): () => void;

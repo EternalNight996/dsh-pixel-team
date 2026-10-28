@@ -88,6 +88,12 @@ export interface Config {
     memory?: {
         endpoint?: string;
     };
+    /** Soft cost gate: prompt thresholds; terminate cancels only the current spawn. */
+    cost?: {
+        enabled?: boolean;
+        perTaskUsd?: number;
+        perDayUsd?: number;
+    };
 }
 export declare const Config: z<Config>;
 /** The model-facing usage policy: when and how to drive AgentTeams. */

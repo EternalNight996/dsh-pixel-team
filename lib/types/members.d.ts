@@ -27,6 +27,12 @@ export interface MemberRuntimeConfig {
     clarify?: {
         enforce?: boolean;
     };
+    /** Soft cost gate thresholds; `enabled: false` disables the prompt. */
+    cost?: {
+        enabled?: boolean;
+        perTaskUsd?: number;
+        perDayUsd?: number;
+    };
     /** Child delegation depth cap (0 forbids delegation entirely). */
     maxDepth?: number;
     /** Plugin-wide execution prompt. */

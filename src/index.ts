@@ -45,6 +45,10 @@ import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
 import { buildQuickStartPlan, quickStartDeliveryDefaults, stageQuickStartTeam } from './quick-start.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
+import { projectLibraryTeam } from './library-projection.ts'
+import { readTodayCost, resolveCostDecision } from './cost.ts'
+import { subscribeCostPrompt, subscribeLibraryChange } from './events-bus.ts'
+import { splitAcceptance } from './verifier-script.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
 import { installTeamCapabilities } from './capabilities.ts'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
@@ -120,6 +124,8 @@ export interface Config {
   clarify?: { enforce?: boolean }
   /** memory-eternal (or compatible) recall endpoint for agent_teams_memory_recall. */
   memory?: { endpoint?: string }
+  /** Soft cost gate: prompt thresholds; terminate cancels only the current spawn. */
+  cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
 }
 
 // `z.object()` has an implicit `{}` default in Schemastery.  Fallback routes
@@ -186,6 +192,7 @@ export const Config: z<Config> = z.object({
   slashCommand: z.boolean().default(true),
   clarify: z.union([z.object({ enforce: z.boolean() }), z.const(undefined)]),
   memory: z.union([z.object({ endpoint: z.string() }), z.const(undefined)]),
+  cost: z.union([z.object({ enabled: z.boolean(), perTaskUsd: z.number(), perDayUsd: z.number() }), z.const(undefined)]),
 })
 
 /** The model-facing usage policy: when and how to drive AgentTeams. */
@@ -241,6 +248,7 @@ export function apply(ctx: Context, config: Config): void {
     toolPolicies: parseToolPolicies(config.toolPolicies),
     clarify: config.clarify,
     memory: config.memory,
+    cost: config.cost,
   }
 
   // Provider registration is a sibling plugin's effect (`subagent-spawn` /
@@ -317,6 +325,99 @@ export function apply(ctx: Context, config: Config): void {
       res.end(body)
     },
   }), 'agent-teams: activity route')
+
+    // Module 3: push the library projection over SSE. It reads the same durable
+    // team record every other surface reads — no polling, no second state store.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/events',
+      handler: async (req, res) => {
+        const url = new URL(req.url ?? '/', 'http://x')
+        const sessionId = url.searchParams.get('sessionId')?.trim() ?? ''
+        const captain = sessionId === '' ? undefined : ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const stateRoot = join(workspace, config.stateDir ?? '.agent-teams')
+        res.writeHead(200, {
+          'content-type': 'text/event-stream; charset=utf-8',
+          'cache-control': 'no-store',
+          connection: 'keep-alive',
+        })
+        res.write(': connected\n\n')
+        let closed = false
+        const send = (event: string, data: unknown): void => {
+          if (closed) return
+          try {
+            res.write('event: ' + event + '\ndata: ' + JSON.stringify(data) + '\n\n')
+          } catch {
+            closed = true
+          }
+        }
+        const emit = async (): Promise<void> => {
+          if (closed) return
+          try {
+            const team = await findTeamByCaptain(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
+            const today = await readTodayCost(workspace)
+            send('library', { team: team === undefined ? null : projectLibraryTeam(team, today), todayCostUsd: today })
+          } catch (error: unknown) {
+            send('error', { message: error instanceof Error ? error.message : String(error) })
+          }
+        }
+        void emit()
+        const offTeams = subscribeLibraryChange((root) => { if (root === stateRoot) void emit() })
+        const offCost = subscribeCostPrompt((prompt) => { if (prompt.sessionId === captain.id) send('cost', prompt) })
+        const heartbeat = setInterval(() => {
+          if (closed) return
+          try { res.write(': ping\n\n') } catch { closed = true }
+        }, 15_000)
+        const cleanup = (): void => {
+          if (closed) return
+          closed = true
+          offTeams()
+          offCost()
+          clearInterval(heartbeat)
+          try { res.end() } catch { /* already closed */ }
+        }
+        req.on('close', cleanup)
+        res.on('close', cleanup)
+      },
+    }), 'agent-teams: library events route')
+
+    // Module 4: the browser's answer to one cost prompt. An expired prompt is a
+    // 404, never a spawn failure.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/cost/decision',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const requestId = typeof payload.requestId === 'string' ? payload.requestId.trim() : ''
+        const decision = payload.decision === 'continue' ? 'continue' : payload.decision === 'terminate' ? 'terminate' : undefined
+        if (requestId === '' || decision === undefined) {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'requestId and decision (continue|terminate) are required' }))
+          return
+        }
+        const resolved = resolveCostDecision(requestId, decision)
+        res.writeHead(resolved ? 200 : 404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(JSON.stringify(resolved ? { ok: true, decision } : { error: 'cost prompt is no longer pending' }))
+      },
+    }), 'agent-teams: cost decision route')
 
     ctx.effect(() => webServer.register({
       kind: 'exact',
@@ -572,7 +673,12 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const workspace = captain.session.header.cwd ?? process.cwd()
-        const plan = buildQuickStartPlan(goal, template, roles, quickStartDeliveryDefaults(workspace))
+        // Module 5: executable acceptance lines become verifier commands; the
+        // prose criteria stay on the verification/review tasks.
+        const acceptance = splitAcceptance(clarification.acceptance)
+        const delivery = quickStartDeliveryDefaults(workspace)
+        delivery.verify = [...delivery.verify, ...acceptance.commands]
+        const plan = buildQuickStartPlan(goal, template, roles, { ...delivery, acceptance: acceptance.criteria })
         const replace = payload.replace === true
         const abort = new AbortController()
         const timeout = setTimeout(() => { abort.abort() }, 30_000)

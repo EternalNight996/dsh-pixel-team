@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts'
+import { verifierOutputContract } from './verifier-script.ts'
 
 /** One built-in template: default roles and a small task DAG. */
 export const SECT_NAMES: Record<string, string> = {
@@ -194,6 +195,8 @@ function shortGoal(goal: string, max: number): string {
 export interface QuickStartDelivery {
   inScope: string[]
   verify: string[]
+  /** Prose acceptance criteria from the constitution (merged into gate tasks). */
+  acceptance?: string[]
   /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
   layers?: { frontend: string[]; backend: string[] }
 }
@@ -262,15 +265,19 @@ export function buildQuickStartPlan(
       ? delivery?.layers?.frontend
       : task.role === 'backend' ? delivery?.layers?.backend : undefined
     const scoped = task.inScope ?? layerScope ?? inScope
+    const extraAcceptance = (kind === 'verification' || kind === 'integration' || kind === 'review')
+      ? [...(delivery?.acceptance ?? [])]
+      : []
+    const contractNote = kind === 'verification' ? '\n\n' + verifierOutputContract() : ''
     return {
       id: task.id,
       subject: `${task.subject}：${shortGoal(goal, 40)}`,
-      description: `${task.description}${task.expected === undefined ? '' : `\n\n交付/验收：${task.expected}`}\n\n目标：${goal}`,
+      description: `${task.description}${task.expected === undefined ? '' : `\n\n交付/验收：${task.expected}`}\n\n目标：${goal}${contractNote}`,
       assignee: ROLE_NAMES[roles.includes(task.role) ? task.role : roles[index % roles.length] as string] ?? (roles.includes(task.role) ? task.role : roles[index % roles.length] as string),
       dependencies: [...(task.dependencies ?? [])],
       ...kind === undefined ? {} : { kind },
       ...kind === undefined ? {} : { objective: task.objective ?? `${task.subject}：${goal}` },
-      ...kind === undefined ? {} : { acceptance: [...(task.acceptance ?? ['目标达成', '证据已记录'])] },
+      ...kind === undefined ? {} : { acceptance: [...(task.acceptance ?? ['目标达成', '证据已记录']), ...extraAcceptance] },
       ...needsScope ? { inScope: [...scoped] } : {},
       ...needsVerify ? { verify: [...(task.verify ?? verify)] } : {},
       ...kind === undefined || task.reviewedTaskId === undefined ? {} : { reviewedTaskId: task.reviewedTaskId },

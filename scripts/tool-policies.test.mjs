@@ -49,6 +49,7 @@ test('an allow-list policy injects the four required coordination tools', () => 
     'agent_teams_update_task',
     'agent_teams_send_message',
     'agent_teams_status',
+    'agent_teams_memory_recall',
   ])
 })
 

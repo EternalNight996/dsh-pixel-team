@@ -51,6 +51,8 @@ export interface QuickStartPlan {
 export interface QuickStartDelivery {
     inScope: string[];
     verify: string[];
+    /** Prose acceptance criteria from the constitution (merged into gate tasks). */
+    acceptance?: string[];
     /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
     layers?: {
         frontend: string[];

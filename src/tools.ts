@@ -127,6 +127,8 @@ export interface ToolsConfig {
   clarify?: { enforce?: boolean }
   /** memory-eternal (or compatible) recall endpoint; empty uses the default. */
   memory?: { endpoint?: string }
+  /** Soft cost gate thresholds forwarded to member spawns. */
+  cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
 }
 
 /** Browser/UI mutations allowed while a plan is waiting for approval. */
@@ -3132,6 +3134,7 @@ function memberRuntime(config: ToolsConfig): MemberRuntimeConfig {
     executionPrompt: config.executionPrompt,
     fallback: config.fallback,
     clarify: config.clarify,
+    cost: config.cost,
   }
 }
 

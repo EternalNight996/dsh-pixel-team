@@ -27,6 +27,7 @@ import { nearestLiveLead } from './lineage.ts'
 import { roleGuidance } from './role-guidance.ts'
 import { constitutionPreamble } from './constitution.ts'
 import { appendTeamEvent, captainSessionOf } from './events.ts'
+import { appendCostLog, estimateCost, readTodayCost, requestCostDecision } from './cost.ts'
 import type { MemberToolFilter } from './tool-policies.ts'
 import { TERMINAL_TASK_STATUSES, type TeamMember, type TeamState, type TeamTask } from './types.ts'
 
@@ -49,6 +50,8 @@ export interface MemberRuntimeConfig {
   provider: string
   /** Strict clarification mode: refuse to spawn members of a team without a constitution. */
   clarify?: { enforce?: boolean }
+  /** Soft cost gate thresholds; `enabled: false` disables the prompt. */
+  cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
   /** Child delegation depth cap (0 forbids delegation entirely). */
   maxDepth?: number
   /** Plugin-wide execution prompt. */
@@ -956,6 +959,35 @@ export async function spawnMember(
   // member until the confirmed clarification produced its constitution.
   if (config.clarify?.enforce === true && team.constitution === undefined) {
     throw new Error('agent-teams: this team has no project constitution yet; confirm the blocking clarification before any member is spawned')
+  }
+  // Soft cost gate (module 4): prompt before an over-threshold spawn. A
+  // terminate decision cancels exactly this spawn; nothing else is paused.
+  if (config.cost?.enabled !== false) {
+    const workspace = dirname(stateDir)
+    const perTask = config.cost?.perTaskUsd ?? 2
+    const perDay = config.cost?.perDayUsd ?? 35
+    const estimate = estimateCost((team.description ?? '').length + (member.executionPrompt ?? '').length + member.name.length * 4)
+    const today = await readTodayCost(workspace).catch(() => 0)
+    const reason = estimate > perTask ? 'task' as const : today + estimate > perDay ? 'day' as const : undefined
+    if (reason === undefined) {
+      await appendCostLog(workspace, {
+        ts: Date.now(), sessionId: captain.id, teamId: team.id, memberName: member.name, estimateUsd: estimate, decision: 'auto-continue',
+      })
+    } else {
+      const threshold = reason === 'task' ? perTask : perDay
+      const decision = await requestCostDecision({
+        sessionId: captain.id, teamId: team.id, memberName: member.name,
+        estimateUsd: estimate, thresholdUsd: threshold, reason,
+      })
+      await appendCostLog(workspace, {
+        ts: Date.now(), sessionId: captain.id, teamId: team.id, memberName: member.name,
+        estimateUsd: estimate, thresholdUsd: threshold, reason,
+        decision: decision === 'timeout' ? 'timeout' : decision,
+      })
+      if (decision === 'terminate') {
+        throw new Error('agent-teams: the cost gate terminated this spawn for member "' + member.name + '"; parallel work is unaffected')
+      }
+    }
   }
   const label = `${MEMBER_LABEL_PREFIX}${team.id}:${member.name}`
   // The legacy filter of a member without a configured tool policy: the

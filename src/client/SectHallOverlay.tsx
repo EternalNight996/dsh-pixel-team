@@ -13,6 +13,8 @@ import type { AgentTeamsTranslate } from './locales.ts'
 import { TeamSection } from './ActivityPanel.tsx'
 import { HallInbox } from './HallInbox.tsx'
 import { MemoryModeBanner } from './MemoryModeBanner.tsx'
+import { LibraryPanel } from './LibraryPanel.tsx'
+import { CostDialog } from './CostDialog.tsx'
 import { StagingPlanEditor } from './StagingPlanEditor.tsx'
 import { TeamConfigPanel } from './TeamConfigPanel.tsx'
 import { PixelOffice, type SceneAction } from './pixel-office/PixelOffice.tsx'
@@ -140,7 +142,7 @@ function writePanelRect(rect: PanelRect): void {
   try { window.localStorage.setItem(PANEL_RECT_KEY, JSON.stringify(rect)) } catch { /* private mode */ }
 }
 
-type SheetKind = HallSheetAction | 'character'
+type SheetKind = HallSheetAction | 'character' | 'library'
 
 /** 「宗门志」里的四个页签（赞助排第一）。 */
 type AboutTab = 'sponsor' | 'group' | 'about' | 'feedback'
@@ -584,7 +586,8 @@ export function SectHallOverlay({
               : sheet === 'inbox' ? t('workspace.inbox')
               : sheet === 'teams' ? t('office.facility.teams')
                 : sheet === 'board' ? t('workspace.tabBoard')
-                  : t('workspace.tabConfig')
+                  : sheet === 'library' ? t('library.title')
+                    : t('workspace.tabConfig')
     return createPortal((
       <aside
         className={css.sheet}
@@ -607,6 +610,11 @@ export function SectHallOverlay({
           {sheet === 'board' && hasTeam && (
             <button type="button" className={css.sheetAction} onClick={startNewTask} title={t('office.newTaskHint')}>
               ＋ {t('office.newTask')}
+            </button>
+          )}
+          {hasTeam && (
+            <button type="button" className={css.sheetAction} data-control="hall-library" onClick={() => { setSheet(sheet === 'library' ? 'board' : 'library') }}>
+              {sheet === 'library' ? t('library.back') : '📚 ' + t('library.title')}
             </button>
           )}
           <button type="button" className={css.sheetClose} onClick={finishSheet} aria-label={t('office.closePanel')}>×</button>
@@ -878,6 +886,10 @@ export function SectHallOverlay({
                 })}
               </div>
             )
+          ) : sheet === 'library' ? (
+            sessionId === undefined
+              ? <p className={css.settingsHint}>{t('library.empty')}</p>
+              : <LibraryPanel sessionId={sessionId} t={t} />
           ) : sheet === 'inbox' ? (
             <HallInbox messages={hall.captainInbox} t={t} />
           ) : sheet === 'config' ? (
@@ -982,6 +994,7 @@ export function SectHallOverlay({
               )
           )}
         </div>
+        <CostDialog sessionId={sessionId} t={t} />
       </aside>
     ), document.body)
   }
@@ -1066,7 +1079,8 @@ export function SectHallOverlay({
                   activeAction={
                     sheet === 'character' ? 'gear'
                       : sheet === 'settings' || sheet === 'start' ? null
-                        : sheet ?? null
+                        : sheet === 'library' ? 'board'
+                          : sheet ?? null
                   }
                   onAction={(action) => {
                     // 无队伍时山门就是开宗入口（与底部「开宗」双向对应）；有队伍时开名册。

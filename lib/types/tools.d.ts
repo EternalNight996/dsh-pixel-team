@@ -44,6 +44,12 @@ export interface ToolsConfig {
     memory?: {
         endpoint?: string;
     };
+    /** Soft cost gate thresholds forwarded to member spawns. */
+    cost?: {
+        enabled?: boolean;
+        perTaskUsd?: number;
+        perDayUsd?: number;
+    };
 }
 /** Browser/UI mutations allowed while a plan is waiting for approval. */
 export type StagedPlanMutation = {
