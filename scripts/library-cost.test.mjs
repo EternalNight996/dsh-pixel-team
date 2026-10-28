@@ -3,11 +3,12 @@
  */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { projectLibraryTeam } from '../lib/library-projection.js'
-import { splitAcceptance, verifierOutputContract } from '../lib/verifier-script.js'
+import { buildVerifierScript, splitAcceptance, verifierOutputContract } from '../lib/verifier-script.js'
 import { appendCostLog, estimateCost, readTodayCost, resolveCostDecision } from '../lib/cost.js'
 import { DEFAULT_MEMORY_ENDPOINT, probeMemory, resolveMemoryEndpoint } from '../lib/memory.js'
 import { buildQuickStartPlan } from '../lib/quick-start.js'
@@ -86,4 +87,32 @@ test('memory probe resolves the default and treats a dead endpoint as missing', 
   assert.equal(resolveMemoryEndpoint('  '), DEFAULT_MEMORY_ENDPOINT)
   assert.equal(resolveMemoryEndpoint(' http://127.0.0.1:9/recall '), 'http://127.0.0.1:9/recall')
   assert.equal(await probeMemory('http://127.0.0.1:1/recall'), false)
+})
+
+test('verifier smoke script runs the acceptance commands and reports PASS/FAIL', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pixel-verifier-'))
+  try {
+    writeFileSync(join(dir, 'ok.mjs'), 'process.exit(0)\n')
+    writeFileSync(join(dir, 'bad.mjs'), 'process.exit(3)\n')
+    const pass = buildVerifierScript(['node ok.mjs'], 'unit-pass')
+    assert.ok(pass !== undefined)
+    assert.equal(pass.relativePath, '.pixel-team/verify/unit-pass.mjs')
+    const passPath = join(dir, pass.relativePath)
+    mkdirSync(dirname(passPath), { recursive: true })
+    writeFileSync(passPath, pass.content, 'utf8')
+    const ok = spawnSync(process.execPath, [passPath], { cwd: dir, encoding: 'utf8' })
+    assert.equal(ok.status, 0, ok.stderr)
+    assert.match(ok.stdout, /PASS/)
+    assert.match(readFileSync(passPath.replace(/\.mjs$/, '.log'), 'utf8'), /PASS/)
+    const fail = buildVerifierScript(['node bad.mjs'], 'unit-fail')
+    const failPath = join(dir, fail.relativePath)
+    mkdirSync(dirname(failPath), { recursive: true })
+    writeFileSync(failPath, fail.content, 'utf8')
+    const failed = spawnSync(process.execPath, [failPath], { cwd: dir, encoding: 'utf8' })
+    assert.equal(failed.status, 1)
+    assert.match(failed.stdout, /FAIL/)
+    assert.equal(buildVerifierScript([], 'empty'), undefined)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

@@ -16,3 +16,14 @@ export declare function splitAcceptance(acceptance: readonly string[]): Acceptan
 export declare function verifierOutputContract(): string;
 /** Extra acceptance criteria derived from the constitution (deduplicated). */
 export declare function constitutionCriteria(constitution: TeamConstitution | undefined): string[];
+export interface VerifierScript {
+    /** Workspace-relative script path (POSIX separators). */
+    readonly relativePath: string;
+    readonly content: string;
+}
+/**
+ * Generate the verifier smoke script from executable acceptance commands.
+ * Running it prints 【PASS】/【FAIL】, writes the full log beside itself and exits
+ * non-zero on the first failure set so the host gate can fail the task.
+ */
+export declare function buildVerifierScript(commands: readonly string[], name: string): VerifierScript | undefined;

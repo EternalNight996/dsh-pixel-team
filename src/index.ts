@@ -34,8 +34,8 @@ import {
   type ToolsConfig,
 } from './tools.ts'
 import { installAgentTeamsGestureBoundary, registerAgentTeamsCommand } from './command.ts'
-import { readFile, readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
 import { archiveTeamDir, findTeamByCaptain, readTeam } from './state.ts'
@@ -50,7 +50,7 @@ import { probeMemory } from './memory.ts'
 import { projectLibraryTeam } from './library-projection.ts'
 import { readTodayCost, resolveCostDecision } from './cost.ts'
 import { subscribeCostPrompt, subscribeLibraryChange } from './events-bus.ts'
-import { splitAcceptance } from './verifier-script.ts'
+import { buildVerifierScript, splitAcceptance } from './verifier-script.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
 import { installTeamCapabilities } from './capabilities.ts'
 import { agentTeamsSource, observedSessionFormatVersion } from './harness-compat.ts'
@@ -680,6 +680,19 @@ export function apply(ctx: Context, config: Config): void {
         const acceptance = splitAcceptance(clarification.acceptance)
         const delivery = quickStartDeliveryDefaults(workspace)
         delivery.verify = [...delivery.verify, ...acceptance.commands]
+        // Module 5: materialize the executable acceptance as a smoke script the
+        // host runs when the verification task completes; its FAIL fails the task
+        // and therefore blocks the reviewer.
+        const verifierScript = buildVerifierScript(
+          acceptance.commands,
+          'verify-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+        )
+        if (verifierScript !== undefined) {
+          const scriptPath = join(workspace, verifierScript.relativePath)
+          await mkdir(dirname(scriptPath), { recursive: true })
+          await writeFile(scriptPath, verifierScript.content, 'utf8')
+          delivery.verify = [...delivery.verify, 'node ' + verifierScript.relativePath]
+        }
         const plan = buildQuickStartPlan(goal, template, roles, { ...delivery, acceptance: acceptance.criteria })
         const replace = payload.replace === true
         const abort = new AbortController()
