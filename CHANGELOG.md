@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.28] - 2026-10-29
+
+### Changed
+- The existing-sect confirmation is now a floating tag above the submit button
+  (with a small tail pointing at it), not an inline block that shifts layout.
+- While AI polish is running, 下一步 and the step dots are disabled and the goal
+  textarea is read-only, so the polished text cannot race the user's edits.
+
 ## [0.1.27] - 2026-10-29
 
 ### Changed

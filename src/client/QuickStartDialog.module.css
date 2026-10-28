@@ -616,3 +616,9 @@
 .replaceBubble { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 0; padding: 10px 12px; border: 1px solid rgba(242,193,78,0.55); background: rgba(242,193,78,0.08); border-radius: 10px; }
 .replaceText { margin: 0; font-size: 12px; line-height: 1.5; color: #f2c14e; }
 .replaceActions { display: flex; justify-content: flex-end; gap: 8px; }
+.confirmFloat { position: absolute; right: 12px; bottom: calc(100% + 12px); width: min(320px, calc(100vw - 60px)); display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(242,193,78,0.6); background: #1b2028; box-shadow: 0 10px 28px rgb(0 0 0 / 45%); z-index: 3; }
+.confirmFloatText { margin: 0; font-size: 12px; line-height: 1.5; color: #f2c14e; }
+.confirmFloatActions { display: flex; justify-content: flex-end; gap: 8px; }
+.confirmFloatActions button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; cursor: pointer; }
+.confirmFloatActions button[data-primary] { border-color: #f2c14e; background: linear-gradient(118deg, #f8e6b0, #f2c14e); color: #16241b; font-weight: 700; }
+.confirmFloatTail { position: absolute; right: 26px; bottom: -7px; width: 12px; height: 12px; background: #1b2028; border-right: 1px solid rgba(242,193,78,0.6); border-bottom: 1px solid rgba(242,193,78,0.6); transform: rotate(45deg); }

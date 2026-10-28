@@ -245,14 +245,16 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   }, [step, goalTrimmed, sessionId, mode, interviewNonce])
   const currentStep: Step = STEPS[step] ?? STEPS[0] as Step
   const canAdvance = useMemo(() => {
-    if (busy) return false
+    // Never advance while polish is still running: the result is about to land
+    // in the goal textarea.
+    if (busy || polishBusy) return false
     switch (currentStep) {
       case 'vow': return goalTrimmed.length >= 2
       case 'interview': return interviewState !== 'loading' && interviewQuestions.length > 0
       case 'sect': return sectMode !== 'custom' || sectRoles.length > 0
       default: return true
     }
-  }, [busy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length])
+  }, [busy, polishBusy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length])
 
   const submit = async (replace: boolean): Promise<void> => {
     if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(1); return }
@@ -349,7 +351,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                     className={css.stepButton}
                     data-control={'quickstart-step-' + index}
                     aria-current={state === 'current' ? 'step' : undefined}
-                    disabled={busy || index > step}
+                    disabled={busy || polishBusy || index > step}
                     onClick={() => { goTo(index) }}
                   >
                     <span className={css.stepDot}>{index < step ? '✓' : index + 1}</span>
@@ -393,7 +395,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                   value={goal}
                   rows={5}
                   autoFocus
-                  disabled={busy}
+                  disabled={busy || polishBusy}
                   placeholder={t('quickstart.goalPlaceholder')}
                   onChange={(event) => { setGoal(event.target.value); setPolishError('') }}
                   onKeyDown={(event) => {
@@ -556,18 +558,19 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           )}
 
           {error !== '' && <p className={css.error} role="alert">{error}</p>}
-          {blocked && (
-            <div className={css.replaceBubble} role="alertdialog" aria-label={t('quickstart.replaceConfirm')}>
-              <p className={css.replaceText}>{t('quickstart.replaceConfirm')}</p>
-              <div className={css.replaceActions}>
-                <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
-                <button type="button" data-primary disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
-              </div>
-            </div>
-          )}
           {created !== undefined && <p className={css.success} role="status">{created}</p>}
       </div>
       <div className={css.wizardActions}>
+        {blocked && (
+          <div className={css.confirmFloat} role="alertdialog" aria-label={t('quickstart.replaceConfirm')}>
+            <p className={css.confirmFloatText}>{t('quickstart.replaceConfirm')}</p>
+            <div className={css.confirmFloatActions}>
+              <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
+              <button type="button" data-primary disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
+            </div>
+            <span className={css.confirmFloatTail} aria-hidden />
+          </div>
+        )}
         <button type="button" disabled={busy} onClick={close}>{t('quickstart.cancel')}</button>
         {step > 0 && (
           <button type="button" data-control="quickstart-back" disabled={busy} onClick={() => { goTo(step - 1) }}>{t('quickstart.back')}</button>
