@@ -334,3 +334,61 @@ export function quickStartTaskCalls(plan: QuickStartPlan): QuickStartTaskCall[] 
   }))
 }
 
+/** The host tools a quick-start staging pass needs (injectable for tests). */
+export interface QuickStartTool {
+  execute?: (args: unknown, exec: unknown) => Promise<unknown>
+}
+
+export interface QuickStartTeamTools {
+  create: QuickStartTool
+  createTask: QuickStartTool
+  deleteTeam?: QuickStartTool
+}
+
+/**
+ * Stage a quick-start team: create the roster first, then add every task with
+ * its quality contract. The create tool's plan schema cannot carry quality
+ * fields, and a half-staged team would block the next attempt, so a failure
+ * after creation rolls the team back before rethrowing.
+ */
+export async function stageQuickStartTeam(
+  plan: QuickStartPlan,
+  goal: string,
+  run: unknown,
+  tools: QuickStartTeamTools,
+): Promise<{ teamId?: string; teamName?: string; phase?: string }> {
+  const create = tools.create.execute
+  const createTask = tools.createTask.execute
+  if (create === undefined || createTask === undefined) throw new Error('team creation tools are unavailable')
+  const created = await create({
+    name: plan.teamName,
+    description: goal,
+    approval: 'required',
+    plan: { members: plan.members, tasks: [] },
+  }, run) as { team_id?: string; team_name?: string; phase?: string }
+  try {
+    const seedToTaskId = new Map<string, string>()
+    const liveIdOf = (seedId: string): string => seedToTaskId.get(seedId) ?? seedId
+    for (const call of quickStartTaskCalls(plan)) {
+      const staged = await createTask({
+        ...call.input,
+        dependencies: call.input.dependencies.map(liveIdOf),
+        ...call.input.reviewedTaskId === undefined ? {} : { reviewedTaskId: liveIdOf(call.input.reviewedTaskId) },
+      }, run) as { task_id?: string }
+      if (staged.task_id === undefined) throw new Error('quick-start task "' + call.seedId + '" was not staged')
+      seedToTaskId.set(call.seedId, staged.task_id)
+    }
+  } catch (error) {
+    if (created.team_id !== undefined && tools.deleteTeam?.execute !== undefined) {
+      try {
+        await tools.deleteTeam.execute({}, run)
+      } catch {
+        // Best effort: the original staging error is what the caller must see.
+      }
+    }
+    throw error
+  }
+  return { teamId: created.team_id, teamName: created.team_name, phase: created.phase }
+}
+
+

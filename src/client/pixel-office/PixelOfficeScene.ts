@@ -125,6 +125,7 @@ import {
 import { FACILITIES, FACILITY_ORDER, WALL_HEIGHT, type FacilityRect, type SceneAction, type SceneHit } from './office-actions.ts'
 import { mountModelFor, toneForTier, weaponShapeFor, type EquipTone, type MountModel, type WeaponShape } from '../equipment-visuals.ts'
 import { realmPaletteForLevel } from '../realm-colors.ts'
+import { castFrameIndex, type CastWindow } from './cast-timing.ts'
 import { characterFrames, FRAME_H, FRAME_W } from './sprite/character-frames.ts'
 import { mountFrames, MOUNT_H, MOUNT_W } from './sprite/mount-frames.ts'
 import { skillIcon, SKILL_ICON_SIZE } from './sprite/skill-icons.ts'
@@ -226,13 +227,17 @@ export function createPixelScene(
   const zoom = options.zoom ?? 1
   // 双击弹跳：按成员 id 记录起跳帧时间（-1 表示刚请求）。
   const jumps = new Map<string, number>()
-  // 施法演出：换装 / 破境后短暂播放施法帧（毫秒时间戳）
-  const castUntil = new Map<string, number>()
+  // 施法演出：换装 / 破境后短暂播放施法帧（起止时间戳，不同事件时长不同）
+  const castWindow = new Map<string, CastWindow>()
   const castSeen = new Map<string, boolean>()
   // 施法迸出的灵屑：位置、速度、寿命
   type CastSpark = { x: number; y: number; vx: number; vy: number; life: number; color: string }
   let castSparks: CastSpark[] = []
   let lastPaintAt = 0
+  function startCast(id: string, durationMs: number): void {
+    const start = nowMs()
+    castWindow.set(id, { start, until: start + durationMs })
+  }
   function spawnCastSparks(x: number, y: number): void {
     for (let i = 0; i < 14; i += 1) {
       const angle = (i / 14) * Math.PI * 2
@@ -1293,8 +1298,8 @@ export function createPixelScene(
     const form = travelForm(member)
     const sitting = !walking && form === 'walk'
     const key = member.id || member.name
-    const until = castUntil.get(key) ?? 0
-    const casting = until > time
+    const window = castWindow.get(key)
+    const casting = window !== undefined && window.until > time
     if (casting && castSeen.get(key) !== true) {
       castSeen.set(key, true)
       spawnCastSparks(cx, baseY - 34)
@@ -1305,8 +1310,8 @@ export function createPixelScene(
       ? frames.cast
       : sitting ? frames.sit : form !== 'walk' ? frames.ride : frames.walk
     const seed = hash(key)
-    const index = casting
-      ? Math.min(frames.cast.length - 1, Math.max(0, Math.floor((950 - (until - time)) / 220)))
+    const index = casting && window !== undefined
+      ? castFrameIndex(window, time, frames.cast.length)
       : sitting
         ? Math.floor(time / 720 + (seed % 5)) % pose.length
         : pose === frames.walk
@@ -1537,7 +1542,7 @@ export function createPixelScene(
       if (previous !== undefined && level > previous) {
         // 升级横幅抬高，避免和等级框/经验飘字叠在一起。
         cultivationFx.push({ x: spot.cx, y: spot.baseY - 96, groundY: spot.baseY, text: `Lv.${level}`, start: time, kind: 'level' })
-        castUntil.set(id, nowMs() + 1200)
+        startCast(id, 1200)
         leveled = true
       }
       lastLevel.set(id, level)
@@ -2231,14 +2236,14 @@ export function createPixelScene(
       mountOverride.set(id, form)
       if (variant !== undefined) mountVariant.set(id, variant)
       if (label !== undefined) equipFlash.set(id, { at: nowMs(), text: label, kind: 'mount' })
-      castUntil.set(id, nowMs() + 950)
+      startCast(id, 950)
       jumps.set(id, -1)
     },
     setEquip(id, kind, tier, itemId, label) {
       if (kind === 'weapon') weaponEquip.set(id, { tier, itemId, label })
       else skillEquip.set(id, tier)
       if (label !== undefined) equipFlash.set(id, { at: nowMs(), text: label, kind })
-      castUntil.set(id, nowMs() + 950)
+      startCast(id, 950)
       jumps.set(id, -1)
     },
     dispose() {

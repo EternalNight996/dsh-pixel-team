@@ -175,8 +175,10 @@ test('doctor detects peer-only drift and a mismatched installed plugin', t => {
   write(join(root, 'node_modules/@deepseek-ai/dsh-session'), { name: '@deepseek-ai/dsh-session', version: '0.1.2-rc.1' })
   assert.equal(inspectInstallation(root).ok, true)
   const profile = join(root, 'profile')
-  write(join(profile, 'node_modules/dsh-pixel-team'), { name: 'dsh-pixel-team', version: '0.1.15' })
-  assert.match(inspectInstallation(root, profile).problems.join(), /0\.1\.15/)
+  // A version that can never equal the checked-in package version: the doctor
+  // only reports the mismatch message when the installed plugin differs.
+  write(join(profile, 'node_modules/dsh-pixel-team'), { name: 'dsh-pixel-team', version: '99.0.0' })
+  assert.match(inspectInstallation(root, profile).problems.join(), /99\.0\.0/)
 })
 
 test('released target enters the download matrix and replaces the old source prediction', () => {

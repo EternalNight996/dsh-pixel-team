@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.15] - 2026-10-28
+
+### Changed
+- Quick-start staging is extracted into a tested helper (`stageQuickStartTeam`):
+  roster first, then every task through `agent_teams_create_task`, with rollback
+  of a half-staged team.
+- Cast animation derives its frame index from the real start/end window, so the
+  1200ms breakthrough cast no longer freezes on frame 0 for 250ms.
+
+### Tests
+- Mocked staging tests: creation order, dependency/review id mapping, rollback,
+  create failure, missing tools.
+- Cast-timing tests: all four frames play within both 950ms and 1200ms windows.
+
 ## [0.1.14] - 2026-10-28
 
 ### Fixed

@@ -5,7 +5,7 @@
  */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { QUICK_START_TEMPLATES, buildQuickStartPlan, quickStartTaskCalls } from '../lib/quick-start.js'
+import { QUICK_START_TEMPLATES, buildQuickStartPlan, quickStartTaskCalls, stageQuickStartTeam } from '../lib/quick-start.js'
 
 const CREATE_TASK_FIELDS = new Set([
   'subject', 'description', 'assignee', 'dependencies',
@@ -53,3 +53,69 @@ test('an ordinary-work template stays ordinary work', () => {
   assert.ok(calls.some(call => call.input.kind === undefined), 'docs keeps plain work tasks')
   assert.ok(calls.every(call => call.input.kind === undefined || call.input.kind === 'review'))
 })
+function recorder(failOnCall) {
+  const calls = { create: [], createTask: [], deleteTeam: [] }
+  const tools = {
+    create: {
+      async execute(args) {
+        calls.create.push(args)
+        return { team_id: 'team-1', team_name: 'probe sect', phase: 'staged' }
+      },
+    },
+    createTask: {
+      async execute(args) {
+        calls.createTask.push(args)
+        if (failOnCall !== undefined && calls.createTask.length === failOnCall) throw new Error('create_task failed')
+        return { task_id: 't' + calls.createTask.length }
+      },
+    },
+    deleteTeam: {
+      async execute(args) { calls.deleteTeam.push(args) },
+    },
+  }
+  return { calls, tools }
+}
+
+test('staging creates the roster without tasks, then maps depends/review to live ids', async () => {
+  const plan = buildQuickStartPlan('fix login', 'fix')
+  const run = { marker: true }
+  const { calls, tools } = recorder()
+  const value = await stageQuickStartTeam(plan, 'fix login', run, tools)
+  assert.deepEqual(value, { teamId: 'team-1', teamName: 'probe sect', phase: 'staged' })
+  assert.equal(calls.create.length, 1)
+  assert.deepEqual(calls.create[0].plan.tasks, [], 'create must carry no tasks')
+  assert.equal(calls.create[0].plan.members.length, plan.members.length)
+  assert.equal(calls.createTask.length, plan.tasks.length)
+  // impl -> t1, verify -> t2 (depends t1), review -> t3 (depends t2, reviews t1)
+  assert.deepEqual(calls.createTask.map(call => call.dependencies), [[], ['t1'], ['t2']])
+  assert.equal(calls.createTask[2].reviewedTaskId, 't1')
+  for (const key of ['kind', 'objective', 'acceptance', 'verify', 'inScope']) {
+    assert.ok(key in calls.createTask[0], 'implementation contract must reach create_task: ' + key)
+  }
+  assert.deepEqual(calls.deleteTeam, [])
+})
+
+test('a failed task rolls the half-staged team back', async () => {
+  const plan = buildQuickStartPlan('fix login', 'fix')
+  const { calls, tools } = recorder(2)
+  await assert.rejects(() => stageQuickStartTeam(plan, 'fix login', {}, tools), /create_task failed/)
+  assert.equal(calls.deleteTeam.length, 1, 'the half-staged team must be rolled back once')
+})
+
+test('a create failure never deletes anything', async () => {
+  const plan = buildQuickStartPlan('fix login', 'fix')
+  const deleted = []
+  const tools = {
+    create: { async execute() { throw new Error('team already exists') } },
+    createTask: { async execute() { return { task_id: 't1' } } },
+    deleteTeam: { async execute() { deleted.push(true) } },
+  }
+  await assert.rejects(() => stageQuickStartTeam(plan, 'fix login', {}, tools), /team already exists/)
+  assert.deepEqual(deleted, [])
+})
+
+test('missing tools are reported before any call', async () => {
+  const plan = buildQuickStartPlan('fix login', 'fix')
+  await assert.rejects(() => stageQuickStartTeam(plan, 'fix login', {}, { create: {}, createTask: {} }), /unavailable/)
+})
+

@@ -91,3 +91,23 @@ export interface QuickStartTaskCall {
  * are staged one create-task call at a time after the team exists.
  */
 export declare function quickStartTaskCalls(plan: QuickStartPlan): QuickStartTaskCall[];
+/** The host tools a quick-start staging pass needs (injectable for tests). */
+export interface QuickStartTool {
+    execute?: (args: unknown, exec: unknown) => Promise<unknown>;
+}
+export interface QuickStartTeamTools {
+    create: QuickStartTool;
+    createTask: QuickStartTool;
+    deleteTeam?: QuickStartTool;
+}
+/**
+ * Stage a quick-start team: create the roster first, then add every task with
+ * its quality contract. The create tool's plan schema cannot carry quality
+ * fields, and a half-staged team would block the next attempt, so a failure
+ * after creation rolls the team back before rethrowing.
+ */
+export declare function stageQuickStartTeam(plan: QuickStartPlan, goal: string, run: unknown, tools: QuickStartTeamTools): Promise<{
+    teamId?: string;
+    teamName?: string;
+    phase?: string;
+}>;
