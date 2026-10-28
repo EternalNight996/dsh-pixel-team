@@ -1,7 +1,7 @@
 # Release checklist (dsh-pixel-team)
 
-Date: 2026-10-27. Automated gates are reproducible; manual gates are still required
-before a public release.
+Date: 2026-10-29 (v0.1.17). Automated gates are reproducible; manual gates are
+still required before a public release.
 
 ## Automated (green)
 
@@ -9,25 +9,25 @@ before a public release.
 |---|---|---|
 | TypeScript | pnpm typecheck | pass |
 | Build + artifact stamp | pnpm build | pass |
-| Browser-side contracts | pnpm verify:web-routes | 56/56 |
+| Browser-side contracts | pnpm verify:web-routes | 86/86 |
 | Release metadata + package smoke | pnpm verify:release | pass |
 | Source/build/config stamps | node scripts/verify.mjs | pass |
 | Full suite | pnpm verify | exit 0 |
 
 ## Package smoke
 
-pnpm verify:release now runs npm pack --dry-run and asserts:
+pnpm verify:release runs npm pack --dry-run and asserts:
 
 - lib/index.js, lib/client.js and the pixel-office scene are shipped;
 - assets/support/group-qr.jpg, group-wechat.jpg, wechat-pay.jpg, wechat-reward.jpg are shipped and
   match the host route allowlist;
 - SPONSOR.md, README.md, cordis.patch.yml and package.json are shipped;
-- no src/, docs/ or *.test.mjs ships; only the three intended runtime scripts
+- no src/, docs/ or *.test.mjs ships; only the intended runtime scripts
   (compatibility, doctor, legacy-session-source-repair) are included;
 - tarball is non-trivial and under the 8 MB budget.
 
-Current artifact (dry-run): dsh-pixel-team-0.3.0-rc.1.tgz, ~1.8 MB packed,
-~4.1 MB unpacked.
+Current artifact (dry-run): dsh-pixel-team-0.1.17.tgz, 7.2 MB packed,
+9.8 MB unpacked, 321 files.
 
 ## Manual gates (not yet run for this build)
 
@@ -35,13 +35,17 @@ Current artifact (dry-run): dsh-pixel-team-0.3.0-rc.1.tgz, ~1.8 MB packed,
    QR loading, equipment switch feedback, feedback copy/prefilled issue.
 2. Packaged artifact into an isolated profile: cold start + real host support
    route /plugins/dsh-pixel-team/support/*.
-3. Real-model minimal business: create → dispatch → execute → verify → review.
-4. A/B: single agent vs 5-person fullstack, compare wall clock, tokens, first-pass
+3. Real-model minimal business: clarify → polish → plan → create → dispatch →
+   execute → verify → review.
+4. SSE library panel: /plugins/dsh-pixel-team/events push (EventSource auth,
+   no buffering) after an app restart.
+5. Cost dialog: an over-threshold spawn shows the prompt and "terminate" cancels
+   only that spawn while parallel work continues.
+6. A/B: single agent vs 5-person fullstack, compare wall clock, tokens, first-pass
    pass rate (suggest wall clock -25%, tokens <=1.3x, pass rate not lower).
 
 ## Deploy note
 
-The desktop profile currently points at an older tarball
-(dsh-pixel-team-0.3.0-rc.1.tgz). Updating node_modules works for a restart, but
-a plugin-manager reinstall would restore the old package until the tarball and
-lockfile are regenerated.
+v0.1.17 is a GitHub-only release: npm `latest` intentionally stays on 0.1.16.
+The desktop profile is on 0.1.16 from npm; install 0.1.17 from the GitHub tag or
+a local checkout until the npm line advances.

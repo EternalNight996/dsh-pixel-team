@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.17] - 2026-10-29
+
+### Added
+- Blocking clarification root: fixed seven-section form, agent_teams_clarify,
+  hard-gated quick-start route, persisted on team.json.
+- Read-only .pixel-team/<project>-constitution.json injected at the top of every
+  member persona; agent_teams_memory_recall proxies the memory vault.
+- Optional AI requirement polish (original / expanded / hidden conditions) before
+  clarification; degrades to the original text when the model route is unavailable.
+- 道通藏书阁 panel: SSE push from an in-process bus, swimlanes by dependency
+  depth, topology edges, acceptance results and blocker bar; no polling, no
+  second state store.
+- Soft cost gate: per-spawn estimate, per-task/day thresholds, continue/terminate
+  prompt that cancels only the current spawn, JSONL cost log.
+- Verifier acceptance contract: executable constitution criteria become verify
+  commands; prose criteria join gate tasks; verifier output is PASS/FAIL only.
+
+### Changed
+- captain tool surface 15 → 17 (clarify, memory_recall); member tools 4 → 5.
+- New config: clarify.enforce, memory.endpoint, cost.{enabled,perTaskUsd,perDayUsd}.
+
+### Docs
+- Release checklist refreshed for 0.1.17.
+
 ## [0.1.16] - 2026-10-28
 
 ### Fixed
