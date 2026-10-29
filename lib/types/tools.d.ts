@@ -50,6 +50,15 @@ export interface ToolsConfig {
         perTaskUsd?: number;
         perDayUsd?: number;
     };
+    /** Quality gate policy: host re-verification, auto review, product verify commands. */
+    quality?: {
+        /** Host re-runs declared verify commands before accepting a completion (default true). */
+        autoVerify?: boolean;
+        /** Host auto-completes ready review tasks once their gates pass (default false). */
+        autoReview?: boolean;
+        /** Verify commands for generated projects; overrides inherited workspace scripts. */
+        commands?: string[];
+    };
 }
 /** Browser/UI mutations allowed while a plan is waiting for approval. */
 export type StagedPlanMutation = {

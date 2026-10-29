@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.47] - 2026-10-29
+
+### Added
+- Config `quality`: `autoVerify` (host re-runs verify, default true),
+  `autoReview` (host auto-completes ready review tasks after all gates,
+  acceptance and host commands pass) and `commands` (verify commands for
+  generated projects).
+
+### Fixed
+- Generated-project plans no longer inherit the plugin's own verify commands
+  (e.g. `pnpm typecheck`). They default to `git diff --check` unless
+  `quality.commands` is configured, so a green gate actually refers to the
+  product workspace instead of the plugin source.
+
 ## [0.1.46] - 2026-10-29
 
 ### Fixed

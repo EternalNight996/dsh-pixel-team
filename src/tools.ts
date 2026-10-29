@@ -64,7 +64,8 @@ import {
   normalizeBlankOptionalTaskFields,
   taskKindOf,
 } from './state.ts'
-import { appendTaskEvidence } from './quality-gates.ts'
+import { appendTaskEvidence, reviewedTargetOf } from './quality-gates.ts'
+import { randomUUID } from 'node:crypto'
 import { actualChangedPaths, missingDeclaredChanges, runHostVerification } from './host-verify.ts'
 import { buildDeliveryReport, writeDeliveryReport } from './delivery-report.ts'
 import { selectCleanupCandidates } from './cleanup.ts'
@@ -131,6 +132,15 @@ export interface ToolsConfig {
   memory?: { endpoint?: string }
   /** Soft cost gate thresholds forwarded to member spawns. */
   cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
+  /** Quality gate policy: host re-verification, auto review, product verify commands. */
+  quality?: {
+    /** Host re-runs declared verify commands before accepting a completion (default true). */
+    autoVerify?: boolean
+    /** Host auto-completes ready review tasks once their gates pass (default false). */
+    autoReview?: boolean
+    /** Verify commands for generated projects; overrides inherited workspace scripts. */
+    commands?: string[]
+  }
 }
 
 /** Browser/UI mutations allowed while a plan is waiting for approval. */
@@ -227,6 +237,35 @@ function bindClosingVerdict(workspace: string, team: TeamState, task: TeamTask):
   task.reviewedScope = bound.reviewedScope
   task.reviewedDuringDrift = bound.reviewedDuringDrift
   task.verdictStartSnapshot = undefined
+}
+
+/**
+ * Auto-review: when quality.autoReview is on, close ready review tasks from an
+ * independent host audit (all gates completed, target acceptance/commands
+ * passed, no failed task). The verdict is still bound to the artifact revision.
+ */
+function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsConfig): void {
+  if (config.quality?.autoReview !== true) return
+  if (team.tasks.some(task => task.status === 'failed')) return
+  for (const review of team.tasks) {
+    if (taskKindOf(review) !== 'review' || review.status !== 'pending' || (review.attempt ?? 0) > 0) continue
+    if (review.dependencies.some(id => team.tasks.find(task => task.id === id)?.status !== 'completed')) continue
+    const target = reviewedTargetOf(team, review)
+    if (target === undefined || target.status !== 'completed') continue
+    const targetAcceptance = target.acceptanceResults ?? []
+    if (targetAcceptance.length === 0 || targetAcceptance.some(item => item.status !== 'passed')) continue
+    if ((target.commandsRun ?? []).some(item => item.status !== 'passed')) continue
+    const otherGates = team.tasks.filter(task => task.id !== review.id && task.id !== target.id && isQualityKind(taskKindOf(task)))
+    if (otherGates.some(task => task.status !== 'completed')) continue
+    review.status = 'completed'
+    review.verdict = 'pass'
+    review.assignee = CAPTAIN_KEY
+    review.attempt = 1
+    review.attemptId = randomUUID()
+    review.output = '主机自动审核：依赖门禁、实现验收与主机复跑命令全部通过，无需人工复审'
+    review.updatedAt = Date.now()
+    bindClosingVerdict(workspace, team, review)
+  }
 }
 
 /** Process-local lock key enforcing one active team per captain session. */
@@ -2172,7 +2211,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
               }
             }
           }
-          if ((task.verify?.length ?? 0) > 0) {
+          if (config.quality?.autoVerify !== false && (task.verify?.length ?? 0) > 0) {
             const hostResults = await runHostVerification(workspace, task.verify ?? [])
             const failed = hostResults.find((item) => item.status === 'failed')
             if (failed !== undefined) {
@@ -2221,6 +2260,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           followUpSummary = `Automatic quality follow-up for ${task.id}: ${followUp!.created.map(item => `${item.id} (${item.kind}, owner=${item.assignee ?? 'unassigned'}, deps=${item.dependencies.join(',') || 'none'})`).join('; ')}.${rewired.length ? ` Updated dependencies: ${rewired.map(item => `${item.id} -> ${item.dependencies.join(',')}`).join('; ')}.` : ''} Use these tasks; do not create duplicate repair/review work.${followUp!.excludedFindings === undefined ? '' : ` Findings on default-excluded paths were not turned into a contract and stay with the user: ${followUp!.excludedFindings.join(', ')}.`}`
           followUpMessage = createMessage(CAPTAIN_KEY, CAPTAIN_KEY, followUpSummary)
         }
+        autoReviewReadyTasks(workspace, fresh, config)
         if (followUp?.escalated === true) {
           await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, createMessage(
             CAPTAIN_KEY,

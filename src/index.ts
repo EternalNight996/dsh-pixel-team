@@ -137,6 +137,15 @@ export interface Config {
   cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
   /** Founding project boundary: product directory and extra read-only paths. */
   boundary?: { productsDir?: string; forbidden?: string[] }
+  /** Quality gate policy: host re-verification, auto review, product verify commands. */
+  quality?: {
+    /** Host re-runs declared verify commands before accepting a completion (default true). */
+    autoVerify?: boolean
+    /** Host auto-completes ready review tasks once their gates pass (default false). */
+    autoReview?: boolean
+    /** Verify commands for generated projects; overrides inherited workspace scripts. */
+    commands?: string[]
+  }
 }
 
 // `z.object()` has an implicit `{}` default in Schemastery.  Fallback routes
@@ -205,6 +214,7 @@ export const Config: z<Config> = z.object({
   memory: z.union([z.object({ endpoint: z.string() }), z.const(undefined)]),
   cost: z.union([z.object({ enabled: z.boolean(), perTaskUsd: z.number(), perDayUsd: z.number() }), z.const(undefined)]),
   boundary: z.union([z.object({ productsDir: z.string(), forbidden: z.array(z.string()) }), z.const(undefined)]),
+  quality: z.union([z.object({ autoVerify: z.boolean(), autoReview: z.boolean(), commands: z.array(z.string()) }), z.const(undefined)]),
 })
 
 /** The model-facing usage policy: when and how to drive AgentTeams. */
@@ -262,6 +272,7 @@ export function apply(ctx: Context, config: Config): void {
     clarify: config.clarify,
     memory: config.memory,
     cost: config.cost,
+    quality: config.quality,
   }
 
   // Provider registration is a sibling plugin's effect (`subagent-spawn` /
@@ -808,6 +819,12 @@ export function apply(ctx: Context, config: Config): void {
         const acceptance = splitAcceptance(clarification.acceptance)
         const modeSpec = getModeSpec(clarification.mode)
         const delivery = quickStartDeliveryDefaults(workspace)
+        // Generated projects live under projects/<slug>/: the plugin's own
+        // scripts (pnpm typecheck) do NOT verify the product. Use configured
+        // commands, else a product-neutral check; never inherit plugin scripts.
+        delivery.verify = config.quality?.commands !== undefined && config.quality.commands.length > 0
+          ? [...config.quality.commands]
+          : ['git diff --check']
         delivery.verify = [...delivery.verify, ...acceptance.commands]
         delivery.mode = clarification.mode
         // Mode acceptance baseline + constitution prose criteria land on the gates.

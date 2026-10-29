@@ -99,6 +99,15 @@ export interface Config {
         productsDir?: string;
         forbidden?: string[];
     };
+    /** Quality gate policy: host re-verification, auto review, product verify commands. */
+    quality?: {
+        /** Host re-runs declared verify commands before accepting a completion (default true). */
+        autoVerify?: boolean;
+        /** Host auto-completes ready review tasks once their gates pass (default false). */
+        autoReview?: boolean;
+        /** Verify commands for generated projects; overrides inherited workspace scripts. */
+        commands?: string[];
+    };
 }
 export declare const Config: z<Config>;
 /** The model-facing usage policy: when and how to drive AgentTeams. */
