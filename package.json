@@ -1,6 +1,6 @@
 {
   "name": "dsh-pixel-team",
-  "version": "0.1.49",
+  "version": "0.1.50",
   "description": "DSH Pixel Team：DeepSeek Harness 的像素洞府多智能体团队协作与交付流水线（AgentTeams 衍生，MIT）。",
   "type": "module",
   "main": "lib/index.js",
@@ -116,6 +116,7 @@
     "test:git-install": "node --test scripts/git-artifacts.test.mjs",
     "verify:source-runner": "node --test scripts/harness-source-verify.test.mjs",
     "verify:git-artifact": "node scripts/git-artifacts.mjs",
+    "verify:release-guard": "node scripts/release-guard.mjs",
     "verify:issue-regressions": "node --test scripts/issue-188.test.mjs scripts/issue-189.test.mjs scripts/issue-205.test.mjs scripts/issue-234.test.mjs scripts/issue-236.test.mjs scripts/issue-236-stale-module.test.mjs scripts/issue-262.test.mjs",
     "verify:legacy-session-repair": "node --test scripts/legacy-session-source-repair.test.mjs",
     "verify:lineage-identity": "node --test scripts/lineage-identity.test.mjs"

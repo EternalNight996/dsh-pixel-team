@@ -45,6 +45,8 @@ export const DEPENDENCY_OUTPUTS_TOTAL_MAX_CHARS = 12_000
 export interface SchedulerConfig {
   readonly stateDir: string
   readonly executionPrompt?: string
+  /** Wake the captain for the next ready solo task (zero-member teams). */
+  readonly notifyCaptain?: (captain: Agent, teamId: string, text: string) => Promise<boolean>
   readonly dispatch?: (captain: Agent, teamId: string, memberName: string, text: string, signal: AbortSignal, mode: 'queue' | 'steer', attemptId?: string) => Promise<boolean>
 }
 
@@ -277,6 +279,8 @@ export function installTeamScheduler(ctx: Context, config: SchedulerConfig): Tea
   // graph kicks must keep it parked. A cold process starts with an empty map,
   // so durable open attempts are still recovered after restart.
   const parkedAttempts = new Map<string, string>()
+  // Last solo task announced to the captain, so repeated kicks do not spam.
+  const soloNotified = new Map<string, string>()
 
   const memberQueueKey = (stateRoot: string, teamId: string, memberName: string): string => (
     `${stateRoot}\u0000${teamId}\u0000${memberName}`
@@ -307,6 +311,22 @@ export function installTeamScheduler(ctx: Context, config: SchedulerConfig): Tea
       for (const member of team.members) {
         if (member.status === 'removed') continue
         await runtime.kickMember(workspace, teamId, member.name, captain)
+      }
+      // Zero-member solo team: the captain executes tasks itself. Once at least
+      // one task is done, wake the captain for the next ready task; the first
+      // task is already announced by the approval context.
+      if (config.notifyCaptain !== undefined && team.members.every(member => member.status === 'removed')) {
+        const hasCompleted = team.tasks.some(task => task.status === 'completed')
+        const next = hasCompleted ? nextReadyTask(team.tasks, CAPTAIN_KEY) : undefined
+        if (next !== undefined) {
+          const key = next.id + ':' + String(next.attempt ?? 0)
+          if (soloNotified.get(teamId) !== key) {
+            soloNotified.set(teamId, key)
+            await config.notifyCaptain(captain, teamId, '【单掌门·自动接续】下一项 ready 任务：' + next.id + ' ' + next.subject + '。请调用 agent_teams_reassign_task({ task_id: "' + next.id + '", assignee: "captain", reason: "solo-auto" }) 开始，并按契约完成、更新后再继续下一项。')
+          }
+        } else {
+          soloNotified.delete(teamId)
+        }
       }
     },
 

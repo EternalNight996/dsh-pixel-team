@@ -755,7 +755,22 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
   installRetiredMemberGuard(ctx, config.stateDir)
   installMemberDelegationGuard(ctx, config.stateDir, config.memberMaxDepth ?? 0)
   installMailboxAdmission(ctx, config.stateDir)
-  const scheduler = installTeamScheduler(ctx, { stateDir: config.stateDir, executionPrompt: config.executionPrompt, dispatch: dispatchMember })
+  const scheduler = installTeamScheduler(ctx, {
+    stateDir: config.stateDir,
+    executionPrompt: config.executionPrompt,
+    notifyCaptain: async (captain, teamId, text) => {
+      try {
+        captain.steer(createUserMessage({
+          content: [{ type: 'text', text }],
+          source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
+        }))
+        return true
+      } catch (error: unknown) {
+        ctx.logger.warn('agent-teams: solo captain wake failed for ' + teamId + ': ' + String(error))
+        return false
+      }
+    },
+    dispatch: dispatchMember })
 
 
   async function dispatchMember(captain: Agent, teamId: string, memberName: string, text: string, signal: AbortSignal, mode: 'queue' | 'steer', attemptId?: string): Promise<boolean> {

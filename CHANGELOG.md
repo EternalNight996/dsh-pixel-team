@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.50] - 2026-10-29
+
+### Added
+- Solo teams auto-continue: after the first completed task the scheduler wakes the
+  captain for the next ready task (one notification per task; the first task is
+  still announced by the approval context).
+- `pnpm verify:release-guard`: every generated lib file must be tracked and every
+  relative import must resolve before tagging (prevents the 0.1.44 missing-file
+  package).
+
 ## [0.1.49] - 2026-10-29
 
 ### Added

@@ -21,6 +21,8 @@ export declare const DEPENDENCY_OUTPUTS_TOTAL_MAX_CHARS = 12000;
 export interface SchedulerConfig {
     readonly stateDir: string;
     readonly executionPrompt?: string;
+    /** Wake the captain for the next ready solo task (zero-member teams). */
+    readonly notifyCaptain?: (captain: Agent, teamId: string, text: string) => Promise<boolean>;
     readonly dispatch?: (captain: Agent, teamId: string, memberName: string, text: string, signal: AbortSignal, mode: 'queue' | 'steer', attemptId?: string) => Promise<boolean>;
 }
 export interface TeamScheduler {

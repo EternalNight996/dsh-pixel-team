@@ -1,6 +1,6 @@
 # Release checklist (dsh-pixel-team)
 
-Date: 2026-10-29 (v0.1.49). Automated gates are reproducible; manual gates are
+Date: 2026-10-29 (v0.1.50). Automated gates are reproducible; manual gates are
 still required before a public release.
 
 ## Automated (green)
@@ -9,8 +9,9 @@ still required before a public release.
 |---|---|---|
 | TypeScript | pnpm typecheck | pass |
 | Build + artifact stamp | pnpm build | pass |
-| Browser-side contracts | pnpm verify:web-routes | 86/86 |
+| Browser-side contracts | pnpm verify:web-routes | 108/108 |
 | Release metadata + package smoke | pnpm verify:release | pass |
+| Tracked lib + import graph | pnpm verify:release-guard | pass (run after `git add` of every new lib file, before tagging) |
 | Source/build/config stamps | node scripts/verify.mjs | pass |
 | Full suite | pnpm verify | exit 0 |
 
@@ -26,8 +27,7 @@ pnpm verify:release runs npm pack --dry-run and asserts:
   (compatibility, doctor, legacy-session-source-repair) are included;
 - tarball is non-trivial and under the 8 MB budget.
 
-Current artifact (dry-run): dsh-pixel-team-0.1.21.tgz, ~7.2 MB packed,
-~9.8 MB unpacked, 325 files.
+The dry-run tarball is checked for the required runtime files and the 8 MB budget.
 
 ## Manual gates (not yet run for this build)
 
@@ -46,6 +46,7 @@ Current artifact (dry-run): dsh-pixel-team-0.1.21.tgz, ~7.2 MB packed,
 
 ## Deploy note
 
-v0.1.49 is a GitHub-only release: npm `latest` intentionally stays on 0.1.16. Every generated lib file must be tracked before tagging (0.1.44 missed lib/architecture.js).
-The desktop profile is on 0.1.16 from npm; install 0.1.17 from the GitHub tag or
-a local checkout until the npm line advances.
+GitHub-only releases: npm `latest` intentionally stays on 0.1.16.
+Every generated lib file must be tracked before tagging (0.1.44 missed
+lib/architecture.js; `pnpm verify:release-guard` now checks this).
+The desktop profile follows the latest GitHub tag.
