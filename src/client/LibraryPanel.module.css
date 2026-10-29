@@ -43,3 +43,8 @@
 .rowMeta, .rowStatus, .rowAcceptance { font-size: 11px; color: #9aa4b2; white-space: nowrap; }
 .rowAcceptance[data-failed='true'] { color: #ff6b6b; }
 .rowDetail { display: flex; flex-direction: column; gap: 4px; padding: 0 10px 10px 30px; }
+.acceptanceList { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.acceptanceList li { color: #9aa4b2; }
+.acceptanceList li[data-status='pass'] { color: #7fd6a8; }
+.acceptanceList li[data-status='fail'] { color: #ff6b6b; }
+.acceptanceMark { display: inline-block; min-width: 42px; font-weight: 700; margin-right: 6px; }

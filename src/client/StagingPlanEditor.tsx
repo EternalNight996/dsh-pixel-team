@@ -761,6 +761,9 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
           <span>{t('plan.align.source')}</span>
           {team.planSource === 'template' ? t('plan.align.template') : t('plan.align.ai')}
         </p>
+        {team.planSource === 'template' && team.planError !== undefined && (
+          <p data-warn="true"><span>{t('plan.align.errorLabel')}</span>{team.planError}</p>
+        )}
       </section>
 
       <ol className={css.planFlow} aria-label={t('plan.flow.aria')}>

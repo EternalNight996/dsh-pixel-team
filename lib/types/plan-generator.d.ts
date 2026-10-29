@@ -39,6 +39,12 @@ export declare function buildPlanPrompt(input: {
 /** Parse + validate the model plan; undefined means "fall back to the template". */
 export declare function parsePlanSpecs(raw: string, roles: readonly string[], projectRoot?: string, forbiddenPaths?: readonly string[]): PlanTaskSpec[] | undefined;
 /** One-shot plan generation; undefined asks the caller to use the template. */
+export interface PlanGenerationResult {
+    readonly specs?: PlanTaskSpec[];
+    readonly error?: string;
+}
+/** At least one task title/description must mention a goal token. */
+export declare function planLooksRelevant(specs: readonly PlanTaskSpec[], goal: string, constraints: readonly string[]): boolean;
 export declare function generatePlanSpecs(ctx: Context, captain: Agent, input: {
     goal: string;
     mode: TeamMode;
@@ -50,4 +56,4 @@ export declare function generatePlanSpecs(ctx: Context, captain: Agent, input: {
     workspaceFacts: string;
     projectRoot: string;
     forbiddenPaths: readonly string[];
-}, signal?: AbortSignal): Promise<PlanTaskSpec[] | undefined>;
+}, signal?: AbortSignal): Promise<PlanGenerationResult>;

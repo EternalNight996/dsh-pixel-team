@@ -88,6 +88,18 @@ export function LibraryPanel({ sessionId, t }: {
                   <span className={css.detailMeta}>
                     {t('library.deps')}: {task.dependencies.join(', ') || t('library.noDeps')} · {task.kind}
                   </span>
+                  {task.acceptance.length > 0 && (
+                    <ul className={css.acceptanceList}>
+                      {task.acceptance.map(item => (
+                        <li key={item.criterion} data-status={item.status}>
+                          <span className={css.acceptanceMark}>
+                            {item.status === 'pass' ? 'PASS' : item.status === 'fail' ? 'FAIL' : t('library.pending')}
+                          </span>
+                          {item.criterion}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>

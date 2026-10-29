@@ -972,22 +972,26 @@ export async function spawnMember(
     // Mode budget, optionally overridden by the profile's cost config.
     const budget = resolveModeBudget(mode, config.cost)
     const estimate = estimateCost((team.description ?? '').length + (member.executionPrompt ?? '').length + member.name.length * 4)
+    const activeTask = team.tasks.find(task => task.assignee === member.name && (task.status === 'claimed' || task.status === 'in_progress'))
     const today = await readTodayCost(workspace).catch(() => 0)
     const reason = estimate > budget.perTaskUsd ? 'task' as const : today + estimate > budget.perDayUsd ? 'day' as const : undefined
     if (reason === undefined) {
       await appendCostLog(workspace, {
         ts: Date.now(), sessionId: captain.id, teamId: team.id, memberName: member.name, estimateUsd: estimate, mode, decision: 'auto-continue',
+        ...activeTask === undefined ? {} : { taskId: activeTask.id },
       })
     } else {
       const threshold = reason === 'task' ? budget.perTaskUsd : budget.perDayUsd
       const decision = await requestCostDecision({
         sessionId: captain.id, teamId: team.id, memberName: member.name,
         estimateUsd: estimate, thresholdUsd: threshold, reason, mode,
+        ...activeTask === undefined ? {} : { taskId: activeTask.id },
       })
       await appendCostLog(workspace, {
         ts: Date.now(), sessionId: captain.id, teamId: team.id, memberName: member.name,
         estimateUsd: estimate, thresholdUsd: threshold, reason, mode,
         decision: decision === 'timeout' ? 'timeout' : decision,
+        ...activeTask === undefined ? {} : { taskId: activeTask.id },
       })
       if (decision === 'terminate') {
         throw new Error('agent-teams: the cost gate terminated this spawn for member "' + member.name + '"; parallel work is unaffected')

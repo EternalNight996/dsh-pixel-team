@@ -57,6 +57,8 @@ export interface QuickStartDelivery {
     acceptance?: string[];
     /** Development mode for the verifier strategy note. */
     mode?: TeamMode;
+    /** Goal + interview context appended to every task description. */
+    contextText?: string;
     /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
     layers?: {
         frontend: string[];

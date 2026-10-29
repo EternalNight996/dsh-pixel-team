@@ -188,6 +188,12 @@ function templateOf(id: string): QuickStartTemplate {
   return QUICK_START_TEMPLATES.find(template => template.id === id) ?? QUICK_START_TEMPLATES[0] as QuickStartTemplate
 }
 
+function contextBlock(delivery?: QuickStartDelivery): string {
+  return delivery?.contextText === undefined || delivery.contextText.trim() === ''
+    ? ''
+    : '\n\n需求上下文：\n' + delivery.contextText.trim()
+}
+
 function shortGoal(goal: string, max: number): string {
   const flat = goal.replace(/\s+/g, ' ').trim()
   return flat.length <= max ? flat : `${flat.slice(0, Math.max(1, max - 1))}…`
@@ -201,6 +207,8 @@ export interface QuickStartDelivery {
   acceptance?: string[]
   /** Development mode for the verifier strategy note. */
   mode?: TeamMode
+  /** Goal + interview context appended to every task description. */
+  contextText?: string
   /** Disjoint frontend/backend roots, when the workspace has recognizable layers. */
   layers?: { frontend: string[]; backend: string[] }
 }
@@ -279,7 +287,7 @@ export function buildQuickStartPlan(
     return {
       id: task.id,
       subject: `${task.subject}：${shortGoal(goal, 40)}`,
-      description: `${task.description}${task.expected === undefined ? '' : `\n\n交付/验收：${task.expected}`}\n\n目标：${goal}${contractNote}`,
+      description: `${task.description}${task.expected === undefined ? '' : `\n\n交付/验收：${task.expected}`}\n\n目标：${goal}${contractNote}${contextBlock(delivery)}`,
       assignee: ROLE_NAMES[roles.includes(task.role) ? task.role : roles[index % roles.length] as string] ?? (roles.includes(task.role) ? task.role : roles[index % roles.length] as string),
       dependencies: [...(task.dependencies ?? [])],
       ...kind === undefined ? {} : { kind },
@@ -461,7 +469,7 @@ export function buildPlanFromSpecs(
     return {
       id: spec.id,
       subject: spec.subject + '：' + shortGoal(goal, 40),
-      description: spec.description + '\n\n目标：' + goal + contractNote,
+      description: spec.description + '\n\n目标：' + goal + contractNote + contextBlock(delivery),
       assignee: ROLE_NAMES[spec.role] ?? spec.role,
       dependencies: [...spec.dependencies],
       ...kind === undefined ? {} : { kind },

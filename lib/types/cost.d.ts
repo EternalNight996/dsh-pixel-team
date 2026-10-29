@@ -26,6 +26,8 @@ export declare function resolveModeBudget(mode: TeamMode | undefined, override?:
 /** Estimate one spawn: prompt chars in, a conservative completion budget out. */
 export declare function estimateCost(textChars: number): number;
 export declare function costLogPath(workspace: string): string;
+/** Read every cost-log entry (oldest first); a torn line is skipped. */
+export declare function readCostLogEntries(workspace: string): Promise<CostLogEntry[]>;
 /** Sum today's logged estimates (local calendar day). */
 export declare function readTodayCost(workspace: string, now?: number): Promise<number>;
 /** Append one decision to the JSONL log (never throws into the spawn path). */

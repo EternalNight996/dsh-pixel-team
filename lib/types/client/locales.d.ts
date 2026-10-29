@@ -202,6 +202,7 @@ export declare const zh: {
     'plan.align.source': string;
     'plan.align.ai': string;
     'plan.align.template': string;
+    'plan.align.errorLabel': string;
     'plan.tasks.title': string;
     'plan.tasks.count': string;
     'plan.tasks.empty': string;
@@ -502,7 +503,15 @@ export declare const zh: {
     'library.details': string;
     'library.deps': string;
     'library.noDeps': string;
+    'library.pending': string;
     'library.description': string;
+    'cost.ledger.title': string;
+    'cost.ledger.today': string;
+    'cost.ledger.refresh': string;
+    'cost.ledger.byTask': string;
+    'cost.ledger.recent': string;
+    'cost.ledger.unlinked': string;
+    'cost.ledger.empty': string;
     'cost.title': string;
     'cost.body': string;
     'cost.task': string;
@@ -941,6 +950,7 @@ export declare const en: {
     'plan.align.source': string;
     'plan.align.ai': string;
     'plan.align.template': string;
+    'plan.align.errorLabel': string;
     'plan.tasks.title': string;
     'plan.tasks.count': string;
     'plan.tasks.empty': string;
@@ -1241,7 +1251,15 @@ export declare const en: {
     'library.details': string;
     'library.deps': string;
     'library.noDeps': string;
+    'library.pending': string;
     'library.description': string;
+    'cost.ledger.title': string;
+    'cost.ledger.today': string;
+    'cost.ledger.refresh': string;
+    'cost.ledger.byTask': string;
+    'cost.ledger.recent': string;
+    'cost.ledger.unlinked': string;
+    'cost.ledger.empty': string;
     'cost.title': string;
     'cost.body': string;
     'cost.task': string;

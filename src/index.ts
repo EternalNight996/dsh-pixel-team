@@ -54,7 +54,7 @@ import { generateClarificationFromAnswers, generateInterviewQuestions } from './
 import { DEFAULT_MODE, getModeSpec, isTeamMode } from './modes.ts'
 import { probeMemory } from './memory.ts'
 import { projectLibraryTeam } from './library-projection.ts'
-import { readTodayCost, resolveCostDecision } from './cost.ts'
+import { readCostLogEntries, readTodayCost, resolveCostDecision } from './cost.ts'
 import { subscribeCostPrompt, subscribeLibraryChange } from './events-bus.ts'
 import { buildVerifierScript, detectLegacyRegressionCommand, splitAcceptance } from './verifier-script.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
@@ -431,6 +431,54 @@ export function apply(ctx: Context, config: Config): void {
       },
     }), 'agent-teams: cost decision route')
 
+    // Cost ledger for the roster/name-list: today's spend, per-task totals and
+    // the latest entries, all read from .pixel-team/cost-log.jsonl.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/cost/report',
+      handler: async (req, res) => {
+        if (req.method !== 'GET') {
+          res.writeHead(405, { allow: 'GET', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://x')
+        const sessionId = url.searchParams.get('sessionId')?.trim() ?? ''
+        const captain = sessionId === '' ? undefined : ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const entries = await readCostLogEntries(workspace)
+        const todayUsd = await readTodayCost(workspace)
+        const byTask = new Map<string, { taskId: string; usd: number; count: number }>()
+        const byTeam = new Map<string, { teamId: string; usd: number }>()
+        for (const entry of entries) {
+          const taskKey = entry.taskId === undefined || entry.taskId === '' ? '(spawn)' : entry.taskId
+          const task = byTask.get(taskKey) ?? { taskId: taskKey, usd: 0, count: 0 }
+          task.usd += entry.estimateUsd
+          task.count += 1
+          byTask.set(taskKey, task)
+          if (entry.teamId !== undefined) {
+            const team = byTeam.get(entry.teamId) ?? { teamId: entry.teamId, usd: 0 }
+            team.usd += entry.estimateUsd
+            byTeam.set(entry.teamId, team)
+          }
+        }
+        const round = (value: number): number => Math.round(value * 10000) / 10000
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(JSON.stringify({
+          ok: true,
+          today_usd: round(todayUsd),
+          by_task: [...byTask.values()].map(item => ({ ...item, usd: round(item.usd) })).sort((left, right) => right.usd - left.usd),
+          by_team: [...byTeam.values()].map(item => ({ ...item, usd: round(item.usd) })).sort((left, right) => right.usd - left.usd),
+          entries: entries.slice(-60).reverse(),
+        }))
+      },
+    }), 'agent-teams: cost report route')
+
     // Library "stop task": revoke the current attempt and mark the task failed
     // so the scheduler and downstream gates see a terminal stop.
     ctx.effect(() => webServer.register({
@@ -791,9 +839,9 @@ export function apply(ctx: Context, config: Config): void {
         const planFacts = await describeWorkspaceFacts(workspace)
         const planAbort = new AbortController()
         const planTimeout = setTimeout(() => { planAbort.abort() }, 60_000)
-        let planSpecs
+        let planResult: { specs?: import('./plan-generator.ts').PlanTaskSpec[]; error?: string } = { error: 'plan generation did not run' }
         try {
-          planSpecs = await generatePlanSpecs(ctx, captain, {
+          planResult = await generatePlanSpecs(ctx, captain, {
             goal,
             mode: clarification.mode,
             clarification,
@@ -805,6 +853,18 @@ export function apply(ctx: Context, config: Config): void {
         } finally {
           clearTimeout(planTimeout)
         }
+        const planSpecs = planResult.specs
+        const planError = planResult.error
+        // Even the template fallback must carry the user's real choices.
+        delivery.contextText = [
+          '目标：' + goal,
+          '模式：' + clarification.mode,
+          '平台：' + clarification.platforms.join(' / '),
+          '访谈约束：' + (clarification.constraints.length === 0 ? '无' : clarification.constraints.join('；')),
+          '验收：' + clarification.acceptance.join('；'),
+          '禁止边界：' + (clarification.excluded.length === 0 ? '无' : clarification.excluded.join('；')),
+          '产物根目录：' + projectRoot,
+        ].join('\n')
         const basePlan = planSpecs !== undefined
           ? buildPlanFromSpecs(goal, template, planRoles, planSpecs, delivery)
           : confinePlanToProject(buildQuickStartPlan(goal, template, roles, delivery), projectRoot)
@@ -846,6 +906,7 @@ export function apply(ctx: Context, config: Config): void {
                 if (fresh === undefined) return
                 fresh.planSource = planSpecs !== undefined ? 'ai' : 'template'
                 fresh.planProjectRoot = projectRoot
+                if (planError !== undefined) fresh.planError = planError
                 await writeTeam(stateRoot, fresh)
               })
             } catch (error: unknown) {

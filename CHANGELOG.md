@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.41] - 2026-10-29
+
+### Changed
+- Plan generation is no longer silently replaced by the template: a failed AI plan
+  records its reason and the review card shows it; AI plans are checked for
+  relevance to the goal/interview (maxTokens 4500).
+- The template fallback now embeds the confirmed goal, mode, platforms, interview
+  constraints, acceptance, excluded boundaries and product root into every task
+  description, so even a fallback plan carries the user's real choices.
+
+### Fixed
+- 功德碑 (cultivation) now settles directly from the hall overlay, so captain-only
+  task completions increase the captain's progress even when the activity panel
+  is closed.
+- 名册 history teams are a dropdown, maximizing usable space.
+- 藏经阁 task rows show PASS/FAIL/pending per acceptance criterion again.
+- 名册 includes a cost ledger (today, per-task totals, recent entries); spawn
+  cost entries now record the task id.
+
 ## [0.1.40] - 2026-10-29
 
 ### Fixed

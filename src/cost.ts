@@ -59,6 +59,24 @@ export function costLogPath(workspace: string): string {
   return join(workspace, '.pixel-team', 'cost-log.jsonl')
 }
 
+/** Read every cost-log entry (oldest first); a torn line is skipped. */
+export async function readCostLogEntries(workspace: string): Promise<CostLogEntry[]> {
+  let text = ''
+  try {
+    text = await readFile(costLogPath(workspace), 'utf8')
+  } catch {
+    return []
+  }
+  const entries: CostLogEntry[] = []
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === '') continue
+    try {
+      entries.push(JSON.parse(line) as CostLogEntry)
+    } catch { /* skip a torn line */ }
+  }
+  return entries
+}
+
 /** Sum today's logged estimates (local calendar day). */
 export async function readTodayCost(workspace: string, now = Date.now()): Promise<number> {
   let text = ''

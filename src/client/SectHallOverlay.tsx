@@ -14,6 +14,7 @@ import { TeamSection } from './ActivityPanel.tsx'
 import { HallInbox } from './HallInbox.tsx'
 import { MemoryModeBanner } from './MemoryModeBanner.tsx'
 import { LibraryPanel } from './LibraryPanel.tsx'
+import { CostLedger } from './CostLedger.tsx'
 import { CostDialog } from './CostDialog.tsx'
 import { StagingPlanEditor } from './StagingPlanEditor.tsx'
 import { TeamConfigPanel } from './TeamConfigPanel.tsx'
@@ -21,7 +22,7 @@ import { PixelOffice, type SceneAction } from './pixel-office/PixelOffice.tsx'
 import { QuickStartWizard } from './QuickStartDialog.tsx'
 import { CULTIVATION_ITEMS, captainKey, cultivationFromXp, idleXpPer10s, memberKey } from './cultivation.ts'
 import { APP_ICON } from './artwork.ts'
-import { useCultivationVersion, xpOf } from './cultivation-store.ts'
+import { ingestCultivation, useCultivationVersion, xpOf } from './cultivation-store.ts'
 import { OPEN_HALL_SHEET_EVENT, type HallSheetAction } from './hall-events.ts'
 import { ASCENSION_RANKS, ASCENSION_STORY, ASCENSION_TIPS, rankAtLevel } from './immortals.ts'
 import { realmPaletteForLevel } from './realm-colors.ts'
@@ -191,6 +192,11 @@ export function SectHallOverlay({
   const [equippedByCharacter, setEquippedByCharacter] = useState<Record<string, EquippedSlots>>({})
   const equipped: EquippedSlots = characterId === undefined ? {} : (equippedByCharacter[characterId] ?? {})
   useCultivationVersion()
+  // 即使右侧活动面板未挂载，洞府也结算修为：掌门本人执行任务同样涨功德。
+  useEffect(() => {
+    const teams = team === undefined ? [...history] : [team, ...history]
+    if (teams.length > 0) ingestCultivation(teams, sessionId)
+  }, [team, history, sessionId])
   // 宗门志：页签 + 反馈草稿 + 复制结果提示。
   const [aboutTab, setAboutTab] = useState<AboutTab>('sponsor')
   const [feedbackText, setFeedbackText] = useState('')
@@ -911,49 +917,33 @@ export function SectHallOverlay({
               <button type="button" className={css.historyStart} onClick={startSect} title={t('quickstart.entryTitle')}>
                 <span aria-hidden>⛩</span>{t('quickstart.entry')}
               </button>
+              {sessionId !== undefined && <CostLedger sessionId={sessionId} t={t} />}
               {!hasTeam && history.length === 0 && historyTasks.length === 0 && (
                 <p className={css.settingsHint}>{t('office.historyEmpty')}</p>
               )}
               {(hasTeam || history.length > 0) && (
                 <div className={css.historyBlock}>
                   <span className={css.historyTitle}>{t('office.historyTeams')}</span>
-                  <div className={css.historyList}>
+                  <select
+                    className={css.historySelect}
+                    aria-label={t('office.historyTeams')}
+                    value={viewingCurrent ? CURRENT_TEAM_SENTINEL : selectedHistory?.teamId ?? ''}
+                    onChange={(event) => { setHistoryTeamId(event.currentTarget.value) }}
+                  >
                     {hasTeam && (
-                      <button
-                        type="button"
-                        className={css.historyItem}
-                        data-current="true"
-                        data-active={viewingCurrent || undefined}
-                        onClick={() => { setHistoryTeamId(CURRENT_TEAM_SENTINEL) }}
-                      >
-                        <span className={css.historyName}>
-                          <span className={css.historyCurrentDot} aria-hidden />
-                          {hall.name}
-                          <span className={css.historyCurrentBadge}>{t('office.historyCurrent')}</span>
-                        </span>
-                        <span className={css.historyMeta}>{done}/{total} · {t('team.stats.members', { count: hall.members.length })}</span>
-                      </button>
+                      <option value={CURRENT_TEAM_SENTINEL}>
+                        {hall.name} · {t('office.historyCurrent')} · {done}/{total}
+                      </option>
                     )}
                     {history.map(team => {
-                      const done = team.tasks.filter(task => task.status === 'completed').length
+                      const completed = team.tasks.filter(task => task.status === 'completed').length
                       return (
-                        <button
-                          key={team.teamId}
-                          type="button"
-                          className={css.historyItem}
-                          data-active={!viewingCurrent && selectedHistory?.teamId === team.teamId || undefined}
-                          onClick={() => { setHistoryTeamId(team.teamId) }}
-                        >
-                          <span className={css.historyName}>
-                            <span className={css.historyPastDot} aria-hidden />
-                            {team.name}
-                            <span className={css.historyPastBadge}>{t('office.historyPast')}</span>
-                          </span>
-                          <span className={css.historyMeta}>{done}/{team.tasks.length} · {t('team.stats.members', { count: team.members.length })}</span>
-                        </button>
+                        <option key={team.teamId} value={team.teamId}>
+                          {team.name} · {t('office.historyPast')} · {completed}/{team.tasks.length}
+                        </option>
                       )
                     })}
-                  </div>
+                  </select>
                   {selectedHistory !== undefined ? (
                     <div className={css.historyDetail}>
                       <TeamSection

@@ -60,6 +60,7 @@ export interface ActivityTeam {
     readonly planReviewState?: 'awaiting_review' | 'awaiting_feedback';
     /** AI or template fallback, for the plan-review alignment card. */
     readonly planSource?: 'ai' | 'template';
+    readonly planError?: string;
     readonly planProjectRoot?: string;
     readonly planSummary?: {
         mode?: string;

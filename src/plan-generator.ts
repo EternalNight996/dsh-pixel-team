@@ -169,6 +169,23 @@ export function parsePlanSpecs(raw: string, roles: readonly string[], projectRoo
 }
 
 /** One-shot plan generation; undefined asks the caller to use the template. */
+export interface PlanGenerationResult {
+  readonly specs?: PlanTaskSpec[]
+  readonly error?: string
+}
+
+/** At least one task title/description must mention a goal token. */
+export function planLooksRelevant(specs: readonly PlanTaskSpec[], goal: string, constraints: readonly string[]): boolean {
+  const tokens = (goal + ' ' + constraints.join(' '))
+    .replace(/[\s，。；、,:;!?（）()【】\[\]"'`]/g, ' ')
+    .split(' ')
+    .map(token => token.trim())
+    .filter(token => token.length >= 2)
+  if (tokens.length === 0) return true
+  const haystack = specs.map(spec => spec.subject + ' ' + spec.description).join(' ')
+  return tokens.some(token => haystack.includes(token))
+}
+
 export async function generatePlanSpecs(
   ctx: Context,
   captain: Agent,
@@ -182,7 +199,7 @@ export async function generatePlanSpecs(
     forbiddenPaths: readonly string[]
   },
   signal?: AbortSignal,
-): Promise<PlanTaskSpec[] | undefined> {
+): Promise<PlanGenerationResult> {
   const prompts = buildPlanPrompt(input)
   try {
     const selection = await resolveMemberLlmSelection(ctx, captain, {}, signal)
@@ -194,15 +211,21 @@ export async function generatePlanSpecs(
         content: [{ type: 'text', text: prompts.user }],
         source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
       })],
-      maxTokens: 3000,
-      temperature: 0.4,
+      maxTokens: 4500,
+      temperature: 0.3,
       ...signal === undefined ? {} : { signal },
     })
     let text = ''
     for await (const chunk of stream) if (chunk.type === 'text-delta') text += chunk.text
-    return parsePlanSpecs(text, input.roles.map(item => item.role), input.projectRoot, input.forbiddenPaths)
+    const specs = parsePlanSpecs(text, input.roles.map(item => item.role), input.projectRoot, input.forbiddenPaths)
+    if (specs === undefined) return { error: '模型返回的计划未通过校验（缺 review/依赖环/契约不全/越界）' }
+    if (!planLooksRelevant(specs, input.goal, input.clarification.constraints)) {
+      return { error: '模型生成的计划与目标/访谈缺乏关联' }
+    }
+    return { specs }
   } catch (error: unknown) {
-    ctx.logger.warn('agent-teams: plan generation degraded: ' + (error instanceof Error ? error.message : String(error)))
-    return undefined
+    const message = error instanceof Error ? error.message : String(error)
+    ctx.logger.warn('agent-teams: plan generation degraded: ' + message)
+    return { error: message }
   }
 }
