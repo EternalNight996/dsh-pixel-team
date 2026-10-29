@@ -59,6 +59,29 @@ export function costLogPath(workspace: string): string {
   return join(workspace, '.pixel-team', 'cost-log.jsonl')
 }
 
+/** Merge cost logs read from several workspaces without double-counting. */
+export function mergeCostEntries(entries: readonly CostLogEntry[]): CostLogEntry[] {
+  const seen = new Set<string>()
+  const merged: CostLogEntry[] = []
+  for (const entry of entries) {
+    const key = [entry.ts, entry.sessionId, entry.teamId ?? '', entry.memberName, entry.taskId ?? '', entry.decision].join('\u0000')
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(entry)
+  }
+  return merged.sort((left, right) => left.ts - right.ts)
+}
+
+/** Sum today's entries across a merged log (local calendar day). */
+export function todayCostFromEntries(entries: readonly CostLogEntry[], now = Date.now()): number {
+  const day = new Date(now)
+  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime()
+  const total = entries
+    .filter(entry => entry.ts >= start && entry.ts <= now + 86_400_000)
+    .reduce((sum, entry) => sum + entry.estimateUsd, 0)
+  return Math.round(total * 10000) / 10000
+}
+
 /** Read every cost-log entry (oldest first); a torn line is skipped. */
 export async function readCostLogEntries(workspace: string): Promise<CostLogEntry[]> {
   let text = ''

@@ -26,6 +26,10 @@ export declare function resolveModeBudget(mode: TeamMode | undefined, override?:
 /** Estimate one spawn: prompt chars in, a conservative completion budget out. */
 export declare function estimateCost(textChars: number): number;
 export declare function costLogPath(workspace: string): string;
+/** Merge cost logs read from several workspaces without double-counting. */
+export declare function mergeCostEntries(entries: readonly CostLogEntry[]): CostLogEntry[];
+/** Sum today's entries across a merged log (local calendar day). */
+export declare function todayCostFromEntries(entries: readonly CostLogEntry[], now?: number): number;
 /** Read every cost-log entry (oldest first); a torn line is skipped. */
 export declare function readCostLogEntries(workspace: string): Promise<CostLogEntry[]>;
 /** Sum today's logged estimates (local calendar day). */

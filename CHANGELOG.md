@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.57] - 2026-10-29
+
+### Fixed
+- Cost report merges logs from the session workspace, DSH profile and DSH home
+  (deduped). A team whose spend was logged beside the profile no longer shows an
+  empty ledger / zero cost.
+- Spawn cost entries now attach the member's pending assigned task even before it
+  is claimed, so new spend is attributable per task.
+
 ## [0.1.56] - 2026-10-29
 
 ### Fixed

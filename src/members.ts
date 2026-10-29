@@ -976,6 +976,7 @@ export async function spawnMember(
     const budget = resolveModeBudget(mode, config.cost)
     const estimate = estimateCost((team.description ?? '').length + (member.executionPrompt ?? '').length + member.name.length * 4)
     const activeTask = team.tasks.find(task => task.assignee === member.name && (task.status === 'claimed' || task.status === 'in_progress'))
+      ?? team.tasks.find(task => task.assignee === member.name && task.status === 'pending')
     const today = await readTodayCost(workspace).catch(() => 0)
     const reason = estimate > budget.perTaskUsd ? 'task' as const : today + estimate > budget.perDayUsd ? 'day' as const : undefined
     if (reason === undefined) {

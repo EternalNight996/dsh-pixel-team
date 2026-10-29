@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { projectLibraryTeam } from '../lib/library-projection.js'
 import { buildVerifierScript, splitAcceptance, verifierOutputContract } from '../lib/verifier-script.js'
-import { appendCostLog, estimateCost, readTodayCost, resolveCostDecision } from '../lib/cost.js'
+import { appendCostLog, estimateCost, mergeCostEntries, readTodayCost, resolveCostDecision, todayCostFromEntries } from '../lib/cost.js'
 import { DEFAULT_MEMORY_ENDPOINT, probeMemory, resolveMemoryEndpoint } from '../lib/memory.js'
 import { buildQuickStartPlan } from '../lib/quick-start.js'
 
@@ -65,6 +65,15 @@ test('constitution acceptance reaches the quick-start verification task', () => 
   const verify = plan.tasks.find(task => task.id === 'verify')
   assert.ok(verify.acceptance.includes('连续72h无崩溃'))
   assert.ok(verify.description.includes('【PASS】'))
+})
+
+test('merged cost logs dedupe and sum today across roots', () => {
+  const now = Date.now()
+  const entry = { ts: now, sessionId: 's', teamId: 't', memberName: 'm', estimateUsd: 0.25, decision: 'auto-continue' }
+  const old = { ts: now - 2 * 86_400_000, sessionId: 's', teamId: 't', memberName: 'm', estimateUsd: 9, decision: 'auto-continue' }
+  const merged = mergeCostEntries([entry, { ...entry }, old])
+  assert.equal(merged.length, 2)
+  assert.equal(todayCostFromEntries(merged), 0.25)
 })
 
 test('cost estimates are positive and today cost sums the log', async () => {

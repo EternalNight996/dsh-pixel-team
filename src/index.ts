@@ -55,7 +55,7 @@ import { generateClarificationFromAnswers, generateInterviewQuestions } from './
 import { DEFAULT_MODE, getModeSpec, isTeamMode } from './modes.ts'
 import { probeMemory } from './memory.ts'
 import { projectLibraryTeam } from './library-projection.ts'
-import { readCostLogEntries, readTodayCost, resolveCostDecision } from './cost.ts'
+import { mergeCostEntries, readCostLogEntries, readTodayCost, resolveCostDecision, todayCostFromEntries } from './cost.ts'
 import { subscribeCostPrompt, subscribeLibraryChange } from './events-bus.ts'
 import { buildVerifierScript, detectLegacyRegressionCommand, splitAcceptance } from './verifier-script.ts'
 import { parseToolPolicies, type MemberToolPolicy } from './tool-policies.ts'
@@ -486,9 +486,17 @@ export function apply(ctx: Context, config: Config): void {
         }
         const workspace = captain.session.header.cwd ?? process.cwd()
         const teamFilter = url.searchParams.get('teamId')?.trim() ?? ''
-        const allEntries = await readCostLogEntries(workspace)
+        // The desktop session workspace and the profile directory can differ
+        // (older teams logged costs next to the profile). Merge known roots so
+        // 名册 still finds the real spend instead of showing an empty ledger.
+        const roots = [...new Set([
+          workspace,
+          process.env.DSH_PROFILE_DIR ?? '',
+          process.env.DSH_HOME ?? '',
+        ].filter(root => root !== ''))]
+        const allEntries = mergeCostEntries((await Promise.all(roots.map(root => readCostLogEntries(root)))).flat())
         const entries = teamFilter === '' ? allEntries : allEntries.filter(entry => entry.teamId === teamFilter)
-        const todayUsd = await readTodayCost(workspace)
+        const todayUsd = todayCostFromEntries(allEntries)
         const byTask = new Map<string, { taskId: string; usd: number; count: number }>()
         const byTeam = new Map<string, { teamId: string; usd: number }>()
         for (const entry of entries) {
