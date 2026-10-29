@@ -5,6 +5,7 @@
  */
 import type { TeamClarification, TeamState, TeamTask } from './types.ts'
 import { getModeSpec, isTeamMode } from './modes.ts'
+import { buildArchitecture } from './architecture.ts'
 
 export interface LibraryAcceptance {
   readonly criterion: string
@@ -57,6 +58,8 @@ export interface LibraryTeamView {
   /** Numbered requirement/interview checklist (constraints, else acceptance). */
   readonly requirements: readonly string[]
   readonly tasks: readonly LibraryTaskView[]
+  /** Deterministic core architecture (tech stack, constraints, DAG, root). */
+  readonly architecture: string
   readonly edges: readonly LibraryEdgeView[]
   readonly blocker?: LibraryBlocker
 }
@@ -155,6 +158,7 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
       total: allAcceptance.length,
     },
     requirements: clarification === undefined || clarification.constraints.length === 0 ? [...clarification?.acceptance ?? []] : [...clarification.constraints],
+    architecture: buildArchitecture(team),
     todayCostUsd: Math.round(todayCostUsd * 10000) / 10000,
     updatedAt: Math.max(team.createdAt, ...team.tasks.map(task => task.updatedAt)),
     tasks,

@@ -47,6 +47,7 @@ import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
 import { buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
 import { generatePlanSpecs } from './plan-generator.ts'
 import { confinePlanToProject, derivePlatformPaths, projectRootFor } from './project-boundary.ts'
+import { buildArchitecture } from './architecture.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
 import { generateClarifyOptions } from './clarify-options.ts'
@@ -910,6 +911,15 @@ export function apply(ctx: Context, config: Config): void {
                 fresh.planProjectRoot = projectRoot
                 if (planError !== undefined) fresh.planError = planError
                 await writeTeam(stateRoot, fresh)
+                // Persist the core architecture next to the product so later
+                // sessions/members can recover it instead of losing context.
+                try {
+                  const archFile = join(workspace, projectRoot, 'ARCHITECTURE.md')
+                  await mkdir(dirname(archFile), { recursive: true })
+                  await writeFile(archFile, buildArchitecture(fresh), 'utf8')
+                } catch (error: unknown) {
+                  ctx.logger.warn('agent-teams: architecture file write failed: ' + String(error))
+                }
               })
             } catch (error: unknown) {
               ctx.logger.warn('agent-teams: plan metadata write failed: ' + String(error))

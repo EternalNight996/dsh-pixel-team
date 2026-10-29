@@ -508,6 +508,11 @@ export declare const zh: {
     'library.requirements': string;
     'library.skeleton': string;
     'library.failures': string;
+    'library.reqCol': string;
+    'library.reqState': string;
+    'library.reqFailures': string;
+    'library.reqFailuresTotal': string;
+    'library.architecture': string;
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;
@@ -1260,6 +1265,11 @@ export declare const en: {
     'library.requirements': string;
     'library.skeleton': string;
     'library.failures': string;
+    'library.reqCol': string;
+    'library.reqState': string;
+    'library.reqFailures': string;
+    'library.reqFailuresTotal': string;
+    'library.architecture': string;
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;

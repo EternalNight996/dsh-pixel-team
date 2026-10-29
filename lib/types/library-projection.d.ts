@@ -55,6 +55,8 @@ export interface LibraryTeamView {
     /** Numbered requirement/interview checklist (constraints, else acceptance). */
     readonly requirements: readonly string[];
     readonly tasks: readonly LibraryTaskView[];
+    /** Deterministic core architecture (tech stack, constraints, DAG, root). */
+    readonly architecture: string;
     readonly edges: readonly LibraryEdgeView[];
     readonly blocker?: LibraryBlocker;
 }

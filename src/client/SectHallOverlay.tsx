@@ -148,6 +148,18 @@ type SheetKind = HallSheetAction | 'character' | 'library'
 /** 「宗门志」里的四个页签（赞助排第一）。 */
 type AboutTab = 'sponsor' | 'group' | 'about' | 'feedback'
 
+/** Visual state for the roster dropdown color marking. */
+function teamVisualState(team: ActivityTeam): 'done' | 'failed' | 'running' | 'waiting' {
+  if (team.tasks.length > 0 && team.tasks.every(task => task.status === 'completed')) return 'done'
+  if (team.tasks.some(task => task.status === 'failed')) return 'failed'
+  if (team.tasks.some(task => task.status === 'claimed' || task.status === 'in_progress')) return 'running'
+  return 'waiting'
+}
+
+function stateDot(state: 'done' | 'failed' | 'running' | 'waiting'): string {
+  return state === 'done' ? '🟢' : state === 'failed' ? '🔴' : state === 'running' ? '🟡' : '🔵'
+}
+
 /** 物品品阶：按解锁等级着色，越晚解锁越贵气（纯展示，不参与数值）。 */
 function itemTier(level: number): 'mortal' | 'rare' | 'epic' | 'legendary' {
   if (level >= 2800) return 'legendary'
@@ -512,6 +524,7 @@ export function SectHallOverlay({
     const viewingCurrent = hasTeam && (historyTeamId === undefined || historyTeamId === CURRENT_TEAM_SENTINEL)
     const selectedHistory = history.find(team => team.teamId === historyTeamId)
     const selectedTeamId = viewingCurrent ? hall.teamId : selectedHistory?.teamId
+    const selectedState = viewingCurrent ? teamVisualState(hall) : selectedHistory === undefined ? 'waiting' : teamVisualState(selectedHistory)
     const costByTeam = new Map((costReport?.by_team ?? []).map(item => [item.teamId, item.usd]))
     const historyTasks = hall.tasks.filter(task => task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled')
     const taskStatusLabel = (status: string): string => status === 'completed'
@@ -920,20 +933,21 @@ export function SectHallOverlay({
               <div className={css.historyHead}>
                 <select
                   className={css.historySelect}
+                  data-state={selectedState}
                   aria-label={t('office.historyTeams')}
                   value={viewingCurrent ? CURRENT_TEAM_SENTINEL : selectedHistory?.teamId ?? ''}
                   onChange={(event) => { setHistoryTeamId(event.currentTarget.value) }}
                 >
                   {hasTeam && (
                     <option value={CURRENT_TEAM_SENTINEL}>
-                      {hall.name} · {t('office.historyCurrent')} · {done}/{total} · {money(costByTeam.get(hall.teamId) ?? 0)}
+                      {stateDot(teamVisualState(hall))} {hall.name} · {t('office.historyCurrent')} · {done}/{total} · {money(costByTeam.get(hall.teamId) ?? 0)}
                     </option>
                   )}
                   {history.map(team => {
                     const completed = team.tasks.filter(task => task.status === 'completed').length
                     return (
                       <option key={team.teamId} value={team.teamId}>
-                        {team.name} · {t('office.historyPast')} · {completed}/{team.tasks.length} · {money(costByTeam.get(team.teamId) ?? 0)}
+                        {stateDot(teamVisualState(team))} {team.name} · {t('office.historyPast')} · {completed}/{team.tasks.length} · {money(costByTeam.get(team.teamId) ?? 0)}
                       </option>
                     )
                   })}

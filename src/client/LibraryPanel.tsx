@@ -61,25 +61,39 @@ export function LibraryPanel({ sessionId, t }: {
         <span className={css.version}>v{PLUGIN_VERSION}</span>
         <span className={connected ? css.live : css.offline}>{connected ? t('library.connected') : t('library.disconnected')}</span>
       </header>
-      {team.requirements.length > 0 && (
-        <section className={css.requirements}>
-          <span className={css.reqTitle}>{t('library.requirements')}</span>
-          <ol className={css.reqList}>
-            {team.requirements.map((item, index) => {
-              const allDone = team.tasks.length > 0 && team.tasks.every(task => task.status === 'completed')
-              const anyFailed = team.tasks.some(task => task.status === 'failed')
-              return (
-                <li key={index} className={css.reqItem} data-state={allDone ? 'pass' : anyFailed ? 'fail' : 'pending'}>
-                  <span className={css.reqIndex}>{index + 1}</span>
-                  <span className={css.reqText}>{item}</span>
-                  <span className={css.reqState}>{allDone ? 'PASS' : anyFailed ? 'FAIL' : t('library.inProgress')}</span>
-                </li>
-              )
-            })}
-          </ol>
-        </section>
-      )}
+      {team.requirements.length > 0 && (() => {
+        const allDone = team.tasks.length > 0 && team.tasks.every(task => task.status === 'completed')
+        const anyFailed = team.tasks.some(task => task.status === 'failed')
+        const totalFailures = team.tasks.reduce((sum, task) => sum + task.failures, 0)
+        return (
+          <section className={css.requirements}>
+            <span className={css.reqTitle}>{t('library.requirements')}</span>
+            <table className={css.reqTable}>
+              <thead>
+                <tr><th>#</th><th>{t('library.reqCol')}</th><th>{t('library.reqState')}</th><th>{t('library.reqFailures')}</th></tr>
+              </thead>
+              <tbody>
+                {team.requirements.map((item, index) => (
+                  <tr key={index} data-state={allDone ? 'pass' : anyFailed ? 'fail' : 'pending'}>
+                    <td className={css.reqIndex}>{index + 1}</td>
+                    <td className={css.reqText}>{item}</td>
+                    <td className={css.reqState}>{allDone ? 'PASS' : anyFailed ? 'FAIL' : t('library.inProgress')}</td>
+                    <td className={css.reqFailuresCell}>{totalFailures}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr><td colSpan={3}>{t('library.reqFailuresTotal')}</td><td>{totalFailures}</td></tr>
+              </tfoot>
+            </table>
+          </section>
+        )
+      })()}
       <span className={css.skeletonTitle}>{t('library.skeleton')}</span>
+      <details className={css.architecture}>
+        <summary>{t('library.architecture')}</summary>
+        <pre className={css.archText}>{team.architecture}</pre>
+      </details>
       <div className={css.list}>
         {team.tasks.map((task, index) => {
           const passed = task.acceptance.filter(item => item.status === 'pass').length

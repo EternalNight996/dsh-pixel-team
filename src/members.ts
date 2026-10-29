@@ -26,6 +26,7 @@ import { mailboxPrompt } from './mailbox.ts'
 import { nearestLiveLead } from './lineage.ts'
 import { roleGuidance } from './role-guidance.ts'
 import { constitutionPreamble } from './constitution.ts'
+import { buildArchitecture } from './architecture.ts'
 import { appendTeamEvent, captainSessionOf } from './events.ts'
 import { appendCostLog, estimateCost, readTodayCost, requestCostDecision, resolveModeBudget } from './cost.ts'
 import { DEFAULT_MODE, isTeamMode, modePhilosophyText, type TeamMode } from './modes.ts'
@@ -848,6 +849,8 @@ Team context:
 - Your name inside the team (use it as \`from\`/identity): ${member.name}
 - Team goal: ${goal}
 - Profile protocol: ${protocol}
+- Core architecture (persisted on the team; do not drift from it):
+${buildArchitecture(team)}
 ${injectedPrompt === undefined || injectedPrompt === '' ? '' : `- Execution guidance:
 ${injectedPrompt}
 `}${guidance === undefined ? '' : `- Role contract:

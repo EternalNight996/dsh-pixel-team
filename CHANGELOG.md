@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.44] - 2026-10-29
+
+### Added
+- Core architecture: a deterministic architecture summary (goal, stack/platform,
+  interview constraints, non-goals, acceptance, DAG, product root) is generated
+  from the confirmed plan, written to `projects/<root>/ARCHITECTURE.md` at
+  founding, shown in 藏经阁, and injected into every member persona.
+
+### Changed
+- 名册 dropdown options carry a state color (🟢 done / 🔴 failed / 🟡 running /
+  🔵 waiting) and the trigger border follows the selected team's state.
+- 藏经阁 requirement checklist is a table (# / requirement / state / failures)
+  with a failure total; task rows wrap so the full subject is readable.
+
 ## [0.1.43] - 2026-10-29
 
 ### Fixed

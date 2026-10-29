@@ -1231,3 +1231,7 @@
 .historyStartSmall:hover { border-color: #f2c14e; color: #f2c14e; }
 .window { max-width: min(780px, calc(100vw - 32px)); max-height: min(860px, calc(100vh - 32px)); }
 .collapseIcon { font-size: 16px; line-height: 1; font-weight: 700; }
+.historySelect[data-state='done'] { border-color: #7fd6a8; }
+.historySelect[data-state='failed'] { border-color: #ff6b6b; }
+.historySelect[data-state='running'] { border-color: #f2c14e; }
+.historySelect[data-state='waiting'] { border-color: #6fb6ff; }
