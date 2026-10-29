@@ -67,7 +67,7 @@ import {
 import { appendTaskEvidence, reviewedTargetOf } from './quality-gates.ts'
 import { autoReviewCandidates } from './auto-review.ts'
 import { randomUUID } from 'node:crypto'
-import { actualChangedPaths, missingDeclaredChanges, runHostVerification } from './host-verify.ts'
+import { actualChangedPaths, missingDeclaredChanges, productVerifyCommands, runHostVerification } from './host-verify.ts'
 import { buildDeliveryReport, writeDeliveryReport } from './delivery-report.ts'
 import { selectCleanupCandidates } from './cleanup.ts'
 import {
@@ -147,6 +147,8 @@ export interface ToolsConfig {
     verifyTimeoutMs?: number
     /** Auto review requires every acceptance item to pass (default true). */
     requireAcceptance?: boolean
+    /** Add the generated project's own package.json test/typecheck command (default true). */
+    autoDetect?: boolean
     /** Who closes an auto-audited review: host directly or a human confirmation. */
     reviewMode?: 'auto' | 'human'
   }
@@ -255,8 +257,9 @@ function bindClosingVerdict(workspace: string, team: TeamState, task: TeamTask):
  * independent host audit (all gates completed, target acceptance/commands
  * passed, no failed task). The verdict is still bound to the artifact revision.
  */
-function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsConfig): void {
-  if (config.quality?.autoReview !== true) return
+function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsConfig): TeamTask[] {
+  const human: TeamTask[] = []
+  if (config.quality?.autoReview !== true) return human
   const candidates = autoReviewCandidates(team, {
     requireAcceptance: config.quality?.requireAcceptance !== false,
   })
@@ -265,6 +268,7 @@ function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsC
     if (target === undefined) continue
     if (config.quality?.reviewMode === 'human') {
       // Audit passed, but a human must confirm before the verdict exists.
+      if (review.awaitingHuman !== true) human.push(review)
       review.awaitingHuman = true
       review.updatedAt = Date.now()
       continue
@@ -279,6 +283,7 @@ function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsC
     review.updatedAt = Date.now()
     bindClosingVerdict(workspace, team, review)
   }
+  return human
 }
 
 /** Process-local lock key enforcing one active team per captain session. */
@@ -2268,8 +2273,12 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
               }
             }
           }
-          if (config.quality?.autoVerify !== false && (task.verify?.length ?? 0) > 0) {
-            const hostResults = await runHostVerification(workspace, task.verify ?? [], config.quality?.verifyTimeoutMs)
+          const autoDetected = config.quality?.autoDetect === false
+            ? []
+            : productVerifyCommands(workspace, task.inScope?.[0])
+          const hostCommands = [...new Set([...(task.verify ?? []), ...autoDetected])]
+          if (config.quality?.autoVerify !== false && hostCommands.length > 0) {
+            const hostResults = await runHostVerification(workspace, hostCommands, config.quality?.verifyTimeoutMs)
             const failed = hostResults.find((item) => item.status === 'failed')
             if (failed !== undefined) {
               throw new Error(`host verification failed for "${failed.command}"\n${failed.evidence ?? ''}`)
@@ -2317,7 +2326,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           followUpSummary = `Automatic quality follow-up for ${task.id}: ${followUp!.created.map(item => `${item.id} (${item.kind}, owner=${item.assignee ?? 'unassigned'}, deps=${item.dependencies.join(',') || 'none'})`).join('; ')}.${rewired.length ? ` Updated dependencies: ${rewired.map(item => `${item.id} -> ${item.dependencies.join(',')}`).join('; ')}.` : ''} Use these tasks; do not create duplicate repair/review work.${followUp!.excludedFindings === undefined ? '' : ` Findings on default-excluded paths were not turned into a contract and stay with the user: ${followUp!.excludedFindings.join(', ')}.`}`
           followUpMessage = createMessage(CAPTAIN_KEY, CAPTAIN_KEY, followUpSummary)
         }
-        autoReviewReadyTasks(workspace, fresh, config)
+        const awaitingHuman = autoReviewReadyTasks(workspace, fresh, config)
         if (followUp?.escalated === true) {
           await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, createMessage(
             CAPTAIN_KEY,
@@ -2327,6 +2336,13 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         }
         await writeTeam(stateRoot, fresh)
         if (followUpMessage !== undefined) await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, followUpMessage)
+        for (const review of awaitingHuman) {
+          await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, createMessage(
+            CAPTAIN_KEY,
+            CAPTAIN_KEY,
+            `待人工复核：${review.id} ${review.subject} 已通过宿主审核，请在道统·藏经阁点「确认复核」后才会写入 verdict。`,
+          ))
+        }
         appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-updated', {
           teamId: fresh.id,
           taskId: task.id,

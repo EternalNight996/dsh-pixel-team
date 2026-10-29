@@ -44,7 +44,7 @@ import { archiveTeamDir, findTeamByCaptain, invalidateTaskAttempt, readTeam, wit
 import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
-import { buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
+import { assignRequirementCoverage, buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
 import { generatePlanSpecs } from './plan-generator.ts'
 import { confinePlanToProject, derivePlatformPaths, projectRootFor } from './project-boundary.ts'
 import { buildArchitecture } from './architecture.ts'
@@ -151,6 +151,8 @@ export interface Config {
     verifyTimeoutMs?: number
     /** Auto review requires every acceptance item to pass (default true). */
     requireAcceptance?: boolean
+    /** Add the generated project's own package.json test/typecheck command (default true). */
+    autoDetect?: boolean
     /** Who closes an auto-audited review: host directly or a human confirmation. */
     reviewMode?: 'auto' | 'human'
   }
@@ -230,6 +232,7 @@ export const Config: z<Config> = z.object({
       commandsByProject: z.dict(z.array(z.string())).default({}),
       verifyTimeoutMs: z.natural().default(120000),
       requireAcceptance: z.boolean().default(true),
+      autoDetect: z.boolean().default(true),
       reviewMode: z.union([z.const('auto'), z.const('human')]).default('auto'),
     }),
     z.const(undefined),
@@ -623,6 +626,55 @@ export function apply(ctx: Context, config: Config): void {
       },
     }), 'agent-teams: confirm review route')
 
+    // Source data for regenerating a staged plan (same goal/clarification/roles).
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/plan/source',
+      handler: async (req, res) => {
+        if (req.method !== 'GET') {
+          res.writeHead(405, { allow: 'GET', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://x')
+        const sessionId = url.searchParams.get('sessionId')?.trim() ?? ''
+        if (sessionId === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId is required' }))
+          return
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const stateRoot = join(workspace, config.stateDir ?? '.agent-teams')
+        const team = await findTeamByCaptain(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
+        if (team === undefined) {
+          res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'no active team for this session' }))
+          return
+        }
+        if (team.phase !== 'staged') {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'only a staged plan can be regenerated' }))
+          return
+        }
+        const roles = team.members.filter(member => member.status !== 'removed').map(member => member.role).filter((role): role is string => role !== undefined && role !== '')
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(JSON.stringify({
+          ok: true,
+          goal: team.description ?? '',
+          clarification: team.clarification ?? null,
+          requirement: team.requirement ?? null,
+          roles,
+          solo: team.members.filter(member => member.status !== 'removed').length === 0,
+        }))
+      },
+    }), 'agent-teams: plan source route')
+
     ctx.effect(() => webServer.register({
       kind: 'exact',
       path: '/plugins/dsh-pixel-team/halt',
@@ -961,6 +1013,11 @@ export function apply(ctx: Context, config: Config): void {
         const basePlan = planSpecs !== undefined
           ? buildPlanFromSpecs(goal, template, planRoles, planSpecs, delivery)
           : confinePlanToProject(buildQuickStartPlan(goal, template, roles, delivery), projectRoot)
+        assignRequirementCoverage(
+          basePlan.tasks,
+          clarification.constraints.length > 0 ? clarification.constraints : clarification.acceptance,
+          goal,
+        )
         // Solo run: no members are created; every task is assigned to the captain.
         const plan = payload.solo === true ? soloPlan(basePlan) : basePlan
         const replace = payload.replace === true

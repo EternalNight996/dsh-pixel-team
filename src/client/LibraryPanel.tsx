@@ -79,8 +79,6 @@ export function LibraryPanel({ sessionId, t }: {
         <span className={connected ? css.live : css.offline}>{connected ? t('library.connected') : t('library.disconnected')}</span>
       </header>
       {team.requirements.length > 0 && (() => {
-        const allDone = team.tasks.length > 0 && team.tasks.every(task => task.status === 'completed')
-        const anyFailed = team.tasks.some(task => task.status === 'failed')
         const totalFailures = team.tasks.reduce((sum, task) => sum + task.failures, 0)
         return (
           <section className={css.requirements}>
@@ -90,14 +88,21 @@ export function LibraryPanel({ sessionId, t }: {
                 <tr><th>#</th><th>{t('library.reqCol')}</th><th>{t('library.reqState')}</th><th>{t('library.reqFailures')}</th></tr>
               </thead>
               <tbody>
-                {team.requirements.map((item, index) => (
-                  <tr key={index} data-state={allDone ? 'pass' : anyFailed ? 'fail' : 'pending'}>
-                    <td className={css.reqIndex}>{index + 1}</td>
-                    <td className={css.reqText}>{item}</td>
-                    <td className={css.reqState}>{allDone ? 'PASS' : anyFailed ? 'FAIL' : t('library.inProgress')}</td>
-                    <td className={css.reqFailuresCell}>{totalFailures}</td>
-                  </tr>
-                ))}
+                {team.requirements.map((item, index) => {
+                  const mapped = team.tasks.filter(task => task.coverageOf.includes(item))
+                  const scoped = mapped.length > 0 ? mapped : team.tasks
+                  const itemDone = scoped.length > 0 && scoped.every(task => task.status === 'completed')
+                  const itemFailed = scoped.some(task => task.status === 'failed')
+                  const itemFailures = scoped.reduce((sum, task) => sum + task.failures, 0)
+                  return (
+                    <tr key={index} data-state={itemDone ? 'pass' : itemFailed ? 'fail' : 'pending'}>
+                      <td className={css.reqIndex}>{index + 1}</td>
+                      <td className={css.reqText}>{item}</td>
+                      <td className={css.reqState}>{itemDone ? 'PASS' : itemFailed ? 'FAIL' : t('library.inProgress')}</td>
+                      <td className={css.reqFailuresCell}>{itemFailures}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
               <tfoot>
                 <tr><td colSpan={3}>{t('library.reqFailuresTotal')}</td><td>{totalFailures}</td></tr>

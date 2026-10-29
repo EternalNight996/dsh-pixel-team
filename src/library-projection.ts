@@ -22,6 +22,8 @@ export interface LibraryTaskView {
   readonly description: string
   readonly dependencies: string[]
   readonly acceptance: LibraryAcceptance[]
+  /** Requirement items this task covers (for per-item status). */
+  readonly coverageOf: string[]
   /** Host audit passed; a human confirmation is pending. */
   readonly awaitingHuman: boolean
   /** Retries + hard failures observed for this task. */
@@ -130,6 +132,7 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
       description: task.description ?? '',
       dependencies: [...task.dependencies],
       acceptance: acceptanceOf(task),
+      coverageOf: task.coverageOf === undefined ? [] : [...task.coverageOf],
       awaitingHuman: task.awaitingHuman === true,
       failures: (task.retryCount ?? 0) + (task.status === 'failed' ? 1 : 0),
     }))

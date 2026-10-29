@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.52] - 2026-10-29
+
+### Added
+- Staged plan review: "重新生成计划" discards the draft and re-stages a plan from
+  the stored goal/clarification/roles (no manual re-interview).
+- Requirement coverage mapping: requirement items are assigned to gate tasks
+  (AI coverage preserved, uncovered items distributed), so the library shows
+  per-item PASS/FAIL and per-item failure counts instead of a plan-wide total.
+- Human review mode notifies the captain in the mailbox when a review is waiting
+  for confirmation.
+- quality.autoDetect: host verification adds the generated project's own
+  package.json test/typecheck command (default true).
+
 ## [0.1.51] - 2026-10-29
 
 ### Fixed

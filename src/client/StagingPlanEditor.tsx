@@ -12,6 +12,7 @@ import { Menu, type MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ActivityMember, ActivityTask, ActivityTeam } from './activity-monitor.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
 import { roleLabel } from './role-labels.ts'
+import { TEAM_CREATED_EVENT } from './team-reveal.ts'
 import { getModeSpec, isTeamMode, type TeamMode } from '../modes.ts'
 import css from './ActivityPanel.module.css'
 
@@ -707,6 +708,61 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
     }
   }
 
+  const regenerate = async (): Promise<void> => {
+    if (!window.confirm(t('plan.regenerateConfirm'))) return
+    setBusy(true)
+    setFeedback(undefined)
+    try {
+      const sourceResponse = await fetch('/plugins/dsh-pixel-team/plan/source?sessionId=' + encodeURIComponent(team.captainSessionId))
+      const source = await sourceResponse.json().catch(() => null) as {
+        goal?: string
+        clarification?: Record<string, unknown> | null
+        requirement?: Record<string, unknown> | null
+        roles?: string[]
+        solo?: boolean
+        error?: string
+      } | null
+      if (!sourceResponse.ok || source === null) throw new Error(source?.error ?? 'failed to load plan source')
+      if (source.clarification === undefined || source.clarification === null) {
+        throw new Error(t('plan.regenerateMissing'))
+      }
+      const discardResponse = await fetch('/plugins/dsh-pixel-team/plan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId: team.captainSessionId, teamId: team.teamId, action: 'discard' }),
+      })
+      if (!discardResponse.ok) {
+        const body = await discardResponse.json().catch(() => null) as { error?: string } | null
+        throw new Error(body?.error ?? 'discard failed')
+      }
+      const mode = typeof source.clarification['mode'] === 'string' ? source.clarification['mode'] : 'precision'
+      const response = await fetch('/plugins/dsh-pixel-team/quick-start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: team.captainSessionId,
+          mode,
+          goal: source.goal ?? '',
+          template: 'feat',
+          roles: source.solo === true ? [] : (source.roles ?? []),
+          solo: source.solo === true,
+          replace: false,
+          clarification: source.clarification,
+          ...(source.requirement === undefined || source.requirement === null ? {} : { requirement: source.requirement }),
+        }),
+      })
+      const body = await response.json().catch(() => null) as { teamId?: string; error?: string } | null
+      if (!response.ok) throw new Error(body?.error ?? 'regeneration failed')
+      if (body?.teamId !== undefined) {
+        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId } }))
+      }
+      onDiscarded()
+    } catch (error: unknown) {
+      setFeedback({ tone: 'error', message: t('plan.failed', { message: errorMessage(error) }) })
+      setBusy(false)
+    }
+  }
+
   const discard = async (): Promise<void> => {
     setBusy(true)
     setFeedback(undefined)
@@ -855,6 +911,9 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
             <span className={css.planSecondaryActions}>
               <button type="button" data-plan-continue disabled={busy} onClick={() => { void continueInChat() }}>
                 {t(waitingForFeedback ? 'plan.returnToChat' : 'plan.continue')}
+              </button>
+              <button type="button" data-plan-regenerate disabled={busy} onClick={() => { void regenerate() }}>
+                {t('plan.regenerate')}
               </button>
               <button type="button" data-plan-discard data-danger disabled={busy} onClick={() => { setDiscardArmed(true); setFeedback(undefined) }}>{t('plan.discard')}</button>
             </span>

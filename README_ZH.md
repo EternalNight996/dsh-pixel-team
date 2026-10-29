@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/EternalNight996/dsh-pixel-team/stargazers"><img src="https://img.shields.io/github/stars/EternalNight996/dsh-pixel-team?style=flat" alt="GitHub stars" /></a>
   <a href="https://www.npmjs.com/package/dsh-pixel-team"><img src="https://img.shields.io/npm/v/dsh-pixel-team" alt="npm" /></a>
-  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.51-FF7A45" alt="release" /></a>
+  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.52-FF7A45" alt="release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license" /></a>
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/DSH-Web%20%2B%20Headless-5B4CF0" alt="DSH" /></a>
 </p>
@@ -85,7 +85,7 @@
 
 **DeepSeek Harness（桌面 / Web）**
 
-    dsh plugin --profile desktop add dsh-pixel-team@0.1.51
+    dsh plugin --profile desktop add dsh-pixel-team@0.1.52
     # 重开 DSH → 打开 山门 · 名册
 
 然后：
@@ -104,7 +104,7 @@
     dsh --profile desktop
     # 直接说：用 AgentTeams 开一个团队做 …
 
-当前版本 **0.1.51**。推荐宿主：DeepSeek Harness **0.2.1-rc.3**（Web + Headless）。精确矩阵见 [compatibility.json](compatibility.json)。
+当前版本 **0.1.52**。推荐宿主：DeepSeek Harness **0.2.1-rc.3**（Web + Headless）。精确矩阵见 [compatibility.json](compatibility.json)。
 
 想先看效果？**[打开梦游官网的在线展示页](http://180.76.144.48/dsh-pixel-team)**。
 
@@ -164,6 +164,7 @@
 | `autoVerify` | `true` | 完成任务前，宿主重新执行任务声明的 `verify` 命令 |
 | `autoReview` | `false` | 当所有门禁、实现验收与宿主命令都通过后，宿主自动完成待审查任务 |
 | `requireAcceptance` | `true` | 自动审核要求被审实现的每条验收都通过 |
+| `autoDetect` | `true` | 自动探测产物目录 `package.json` 的 test/typecheck 脚本，纳入宿主验证 |
 | `reviewMode` | `"auto"` | `auto`：宿主直接完成审查；`human`：宿主审核通过后停在「待人工复核」，由人在藏经阁点「确认复核」 |
 | `commands` | `["git diff --check"]` | 生成项目的兜底验证命令；不再继承插件自身的脚本 |
 | `commandsByProject` | `{}` | 按产物根配置验证命令，如 `"projects/贪吃蛇": ["node projects/贪吃蛇/smoke.mjs"]` |

@@ -484,6 +484,28 @@ export function buildPlanFromSpecs(
   return { teamName: (SECT_NAMES[template.id] ?? '修仙宗') + '·' + stamp.slice(8), template: template.id, members, tasks }
 }
 
+/**
+ * Map confirmed requirement items onto tasks so the library can show per-item
+ * status. Existing AI coverage wins; uncovered items are distributed across
+ * gate tasks in order (deterministic, every item covered).
+ */
+export function assignRequirementCoverage(
+  tasks: QuickStartPlan['tasks'],
+  requirements: readonly string[],
+  goal: string,
+): void {
+  const gateTasks = tasks.filter(task => task.kind !== undefined)
+  if (gateTasks.length === 0 || requirements.length === 0) return
+  for (const [index, requirement] of requirements.entries()) {
+    if (tasks.some(task => task.coverageOf?.includes(requirement) === true)) continue
+    const task = gateTasks[index % gateTasks.length]
+    if (task === undefined) continue
+    const coverage = task.coverageOf === undefined ? [goal] : [...task.coverageOf]
+    if (!coverage.includes(requirement)) coverage.push(requirement)
+    task.coverageOf = coverage
+  }
+}
+
 /** Captain-only plan: drop the roster and route every task to the captain. */
 export function soloPlan(plan: QuickStartPlan): QuickStartPlan {
   return {

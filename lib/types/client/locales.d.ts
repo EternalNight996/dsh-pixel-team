@@ -203,6 +203,9 @@ export declare const zh: {
     'plan.align.ai': string;
     'plan.align.template': string;
     'plan.align.errorLabel': string;
+    'plan.regenerate': string;
+    'plan.regenerateConfirm': string;
+    'plan.regenerateMissing': string;
     'plan.tasks.title': string;
     'plan.tasks.count': string;
     'plan.tasks.empty': string;
@@ -964,6 +967,9 @@ export declare const en: {
     'plan.align.ai': string;
     'plan.align.template': string;
     'plan.align.errorLabel': string;
+    'plan.regenerate': string;
+    'plan.regenerateConfirm': string;
+    'plan.regenerateMissing': string;
     'plan.tasks.title': string;
     'plan.tasks.count': string;
     'plan.tasks.empty': string;

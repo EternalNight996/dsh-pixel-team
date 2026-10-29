@@ -7,6 +7,8 @@
  * the completion instead of letting a self-reported pass reach delivery.
  */
 import { execFile, spawn } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { CommandResult } from './types.ts'
 import { collectChangedPaths, isDefaultExcludedPath, normalizeWorkspacePath } from './quality-gates.ts'
@@ -100,6 +102,31 @@ export function missingDeclaredChanges(actual: readonly string[], declared: read
     if (set.has(target)) return false
     return !normalized.some((actualPath) => actualPath.startsWith(`${target}/`))
   })
+}
+
+/**
+ * Product-level verify commands detected from the generated project itself.
+ * Never falls back to the plugin's scripts: only a package.json inside the
+ * task's inScope root counts.
+ */
+export function productVerifyCommands(workspace: string, projectRoot: string | undefined): string[] {
+  const root = (projectRoot ?? '').replace(/^\.\//, '').replace(/\/+$/, '')
+  if (root === '' || root.split('/').includes('..')) return []
+  const dir = join(workspace, root)
+  const manifest = join(dir, 'package.json')
+  if (!existsSync(manifest)) return []
+  try {
+    const pkg = JSON.parse(readFileSync(manifest, 'utf8')) as { scripts?: Record<string, unknown> }
+    const scripts = pkg.scripts ?? {}
+    const script = ['test', 'typecheck', 'verify', 'build'].find(name => typeof scripts[name] === 'string')
+    if (script === undefined) return []
+    const manager = existsSync(join(dir, 'pnpm-lock.yaml'))
+      ? 'pnpm'
+      : existsSync(join(dir, 'yarn.lock')) ? 'yarn' : 'npm'
+    return ['cd "' + root + '" && ' + manager + ' run ' + script]
+  } catch {
+    return []
+  }
 }
 
 /** Run every declared verification command sequentially in the workspace. */

@@ -64,6 +64,8 @@ export interface ToolsConfig {
         verifyTimeoutMs?: number;
         /** Auto review requires every acceptance item to pass (default true). */
         requireAcceptance?: boolean;
+        /** Add the generated project's own package.json test/typecheck command (default true). */
+        autoDetect?: boolean;
         /** Who closes an auto-audited review: host directly or a human confirmation. */
         reviewMode?: 'auto' | 'human';
     };

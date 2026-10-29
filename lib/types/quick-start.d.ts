@@ -129,5 +129,11 @@ export declare function stageQuickStartTeam(plan: QuickStartPlan, goal: string, 
 export declare function quickStartRoles(templateId: string, requestedRoles?: readonly string[]): string[];
 /** Build the staged plan from AI-generated task specs instead of the template. */
 export declare function buildPlanFromSpecs(goal: string, templateId: string, requestedRoles: readonly string[] | undefined, specs: readonly PlanTaskSpec[], delivery?: QuickStartDelivery): QuickStartPlan;
+/**
+ * Map confirmed requirement items onto tasks so the library can show per-item
+ * status. Existing AI coverage wins; uncovered items are distributed across
+ * gate tasks in order (deterministic, every item covered).
+ */
+export declare function assignRequirementCoverage(tasks: QuickStartPlan['tasks'], requirements: readonly string[], goal: string): void;
 /** Captain-only plan: drop the roster and route every task to the captain. */
 export declare function soloPlan(plan: QuickStartPlan): QuickStartPlan;
