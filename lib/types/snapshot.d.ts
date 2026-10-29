@@ -76,6 +76,16 @@ export interface TeamActivitySnapshot {
     readonly createdAt: number;
     readonly phase: 'staged' | 'running';
     readonly planReviewState?: 'awaiting_review' | 'awaiting_feedback';
+    /** AI or template fallback, for the plan-review alignment card. */
+    readonly planSource?: 'ai' | 'template';
+    readonly planProjectRoot?: string;
+    /** Compact clarification summary (mode/constraints/platforms) for the review. */
+    readonly planSummary?: {
+        mode?: string;
+        scale?: string;
+        platforms?: string[];
+        constraints?: string[];
+    };
     readonly halted?: boolean;
     readonly members: readonly TeamActivityMember[];
     readonly tasks: readonly TeamActivityTask[];

@@ -1,0 +1,5 @@
+.planAlign { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; padding: 10px 12px; border: 1px solid rgba(111,182,255,0.35); border-radius: 10px; background: rgba(111,182,255,0.06); font-size: 12px; line-height: 1.5; }
+.planAlign p { margin: 0; color: #c9d1dc; }
+.planAlign span { color: #9aa4b2; margin-right: 4px; }
+.planAlign code { color: #6fb6ff; }
+.planAlign p[data-warn='true'] { color: #ffb86b; }

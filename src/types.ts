@@ -385,6 +385,10 @@ export interface TeamState {
    * ask what should change before editing this same draft.
    */
   planReviewState?: 'awaiting_review' | 'awaiting_feedback'
+  /** Which path produced the staged plan: AI generation or the template fallback. */
+  planSource?: 'ai' | 'template'
+  /** Workspace-relative product root this team may write. */
+  planProjectRoot?: string
   /** Timestamp written only after a staged plan is explicitly approved. */
   approvedAt?: number
   /**

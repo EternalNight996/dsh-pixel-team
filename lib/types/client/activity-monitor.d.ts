@@ -58,6 +58,15 @@ export interface ActivityTeam {
     readonly createdAt?: number;
     readonly phase: 'staged' | 'running';
     readonly planReviewState?: 'awaiting_review' | 'awaiting_feedback';
+    /** AI or template fallback, for the plan-review alignment card. */
+    readonly planSource?: 'ai' | 'template';
+    readonly planProjectRoot?: string;
+    readonly planSummary?: {
+        mode?: string;
+        scale?: string;
+        platforms?: string[];
+        constraints?: string[];
+    };
     readonly halted?: boolean;
     readonly members: readonly ActivityMember[];
     readonly tasks: readonly ActivityTask[];

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.38] - 2026-10-29
+
+### Added
+- Plan review shows a "需求对齐" card: goal, mode, platforms, interview
+  constraints, product root and plan source (AI-generated vs ⚠ template
+  fallback), so the user can judge whether the tasks match the request.
+- planSource / planProjectRoot are persisted on the staged team and exposed in
+  the activity snapshot.
+
+### Fixed
+- Solo plans (0 members) can be approved: the approve button is enabled when
+  every task is assigned to the captain, and the review copy says 掌门单干 /
+  唤醒掌门 / 0 名修士（掌门执行） instead of "0 名修士".
+
 ## [0.1.37] - 2026-10-29
 
 ### Changed

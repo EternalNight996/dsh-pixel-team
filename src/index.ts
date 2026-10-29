@@ -836,6 +836,22 @@ export function apply(ctx: Context, config: Config): void {
             createTask: taskDefinition,
             deleteTeam: tools?.get?.('agent_teams_delete'),
           }, { clarification, ...requirement === undefined ? {} : { requirement } })
+          // Persist how the plan was produced and where it may write, so the
+          // review can show alignment and flag template fallbacks.
+          if (value.teamId !== undefined && value.teamId !== '') {
+            const stateRoot = join(workspace, config.stateDir ?? '.agent-teams')
+            try {
+              await withTeamLock(teamLockKey(stateRoot, value.teamId), async () => {
+                const fresh = await readTeam(stateRoot, value.teamId as string)
+                if (fresh === undefined) return
+                fresh.planSource = planSpecs !== undefined ? 'ai' : 'template'
+                fresh.planProjectRoot = projectRoot
+                await writeTeam(stateRoot, fresh)
+              })
+            } catch (error: unknown) {
+              ctx.logger.warn('agent-teams: plan metadata write failed: ' + String(error))
+            }
+          }
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ ok: true, teamId: value.teamId, teamName: value.teamName, phase: value.phase, template: plan.template, tasks: plan.tasks.length }))
         } catch (error: unknown) {

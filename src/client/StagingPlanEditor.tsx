@@ -12,6 +12,7 @@ import { Menu, type MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ActivityMember, ActivityTask, ActivityTeam } from './activity-monitor.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
 import { roleLabel } from './role-labels.ts'
+import { getModeSpec, isTeamMode, type TeamMode } from '../modes.ts'
 import css from './ActivityPanel.module.css'
 
 const PLAN_URL = '/plugins/dsh-pixel-team/plan'
@@ -629,7 +630,9 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
   const [feedback, setFeedback] = useState<PlanFeedback>()
   useDismissSuccess(feedback, setFeedback)
   const dependencyLinks = team.tasks.reduce((total, task) => total + task.dependencies.length, 0)
-  const runnable = team.members.length > 0 && team.tasks.length > 0
+  const soloTeam = team.members.length === 0
+  // A solo plan is runnable when every task is owned by the captain.
+  const runnable = team.tasks.length > 0 && (!soloTeam || team.tasks.every(task => task.assignee === 'captain'))
   const hasPendingEdits = pendingEditors.size > 0 || newTask.trim() !== ''
   const waitingForFeedback = team.planReviewState === 'awaiting_feedback'
 
@@ -727,28 +730,54 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
         <span>
           <span>
             <strong>{t('plan.title')}</strong>
-            <small>{t('plan.readySummary', { members: team.members.length, tasks: team.tasks.length, links: dependencyLinks })}</small>
+            <small>{soloTeam
+              ? t('plan.readySummarySolo', { tasks: team.tasks.length, links: dependencyLinks })
+              : t('plan.readySummary', { members: team.members.length, tasks: team.tasks.length, links: dependencyLinks })}</small>
           </span>
           <em>{t('plan.badge')}</em>
         </span>
         <p>{t('plan.description')}</p>
       </header>
 
+      <section className={css.planAlign} data-plan-align>
+        <strong>{t('plan.align.title')}</strong>
+        <p><span>{t('plan.align.goal')}</span>{team.description ?? '—'}</p>
+        {team.planSummary?.mode !== undefined && isTeamMode(team.planSummary.mode) && (
+          <p>
+            <span>{t('plan.align.mode')}</span>
+            {getModeSpec(team.planSummary.mode as TeamMode).emoji} {t(getModeSpec(team.planSummary.mode as TeamMode).labelKey as Parameters<typeof t>[0])}
+          </p>
+        )}
+        {team.planSummary?.platforms !== undefined && team.planSummary.platforms.length > 0 && (
+          <p><span>{t('plan.align.platforms')}</span>{team.planSummary.platforms.join(' / ')}</p>
+        )}
+        {team.planSummary?.constraints !== undefined && team.planSummary.constraints.length > 0 && (
+          <p><span>{t('plan.align.constraints')}</span>{team.planSummary.constraints.join('；')}</p>
+        )}
+        {team.planProjectRoot !== undefined && (
+          <p><span>{t('plan.align.root')}</span><code>{team.planProjectRoot}</code></p>
+        )}
+        <p data-warn={team.planSource === 'template' || undefined}>
+          <span>{t('plan.align.source')}</span>
+          {team.planSource === 'template' ? t('plan.align.template') : t('plan.align.ai')}
+        </p>
+      </section>
+
       <ol className={css.planFlow} aria-label={t('plan.flow.aria')}>
         <li data-active><span>1</span>{t('plan.flow.review')}</li>
-        <li><span>2</span>{t('plan.flow.spawn')}</li>
+        <li><span>2</span>{soloTeam ? t('plan.flow.spawnSolo') : t('plan.flow.spawn')}</li>
         <li><span>3</span>{t('plan.flow.run')}</li>
       </ol>
 
       <section className={css.planSection}>
         <button type="button" className={css.planSectionToggle} aria-expanded={membersOpen} aria-controls={membersId} onClick={() => { setMembersOpen((current) => !current) }}>
-          <span><strong>{t('plan.members.title')}</strong><small>{t('plan.members.count', { count: team.members.length })}</small></span>
+          <span><strong>{t('plan.members.title')}</strong><small>{soloTeam ? t('plan.members.countSolo') : t('plan.members.count', { count: team.members.length })}</small></span>
           <DisclosureChevron open={membersOpen} />
         </button>
         {membersOpen && (
           <div id={membersId} className={css.planList}>
             {team.members.length === 0
-              ? <p className={css.planEmpty}>{t('plan.members.empty')}</p>
+              ? <p className={css.planEmpty}>{soloTeam ? t('plan.members.soloEmpty') : t('plan.members.empty')}</p>
               : team.members.map((member) => (
                 <StagedMemberEditor
                   key={member.name}
@@ -803,7 +832,9 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
               ? t('plan.feedbackHint')
               : hasPendingEdits
                 ? t('plan.pendingEdits')
-                : t('plan.approveHint', { members: team.members.length, tasks: team.tasks.length })}</small>
+                : soloTeam
+                  ? t('plan.approveHintSolo', { tasks: team.tasks.length })
+                  : t('plan.approveHint', { members: team.members.length, tasks: team.tasks.length })}</small>
         </span>
         <Feedback value={feedback} />
         {discardArmed ? (

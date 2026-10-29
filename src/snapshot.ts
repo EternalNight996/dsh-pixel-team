@@ -93,6 +93,11 @@ export interface TeamActivitySnapshot {
   readonly createdAt: number
   readonly phase: 'staged' | 'running'
   readonly planReviewState?: 'awaiting_review' | 'awaiting_feedback'
+  /** AI or template fallback, for the plan-review alignment card. */
+  readonly planSource?: 'ai' | 'template'
+  readonly planProjectRoot?: string
+  /** Compact clarification summary (mode/constraints/platforms) for the review. */
+  readonly planSummary?: { mode?: string; scale?: string; platforms?: string[]; constraints?: string[] }
   readonly halted?: boolean
   readonly members: readonly TeamActivityMember[]
   readonly tasks: readonly TeamActivityTask[]
@@ -247,6 +252,16 @@ export async function assembleTeamSnapshot(
     ...state.phase === 'staged'
       ? { planReviewState: state.planReviewState ?? 'awaiting_review' as const }
       : {},
+    ...state.planSource === undefined ? {} : { planSource: state.planSource },
+    ...state.planProjectRoot === undefined ? {} : { planProjectRoot: state.planProjectRoot },
+    ...state.clarification === undefined ? {} : {
+      planSummary: {
+        ...state.clarification.mode === undefined ? {} : { mode: state.clarification.mode },
+        scale: state.clarification.scale,
+        platforms: [...state.clarification.platforms],
+        constraints: [...state.clarification.constraints],
+      },
+    },
     ...state.halted === true ? { halted: true } : {},
     ...audit === undefined ? {} : {
       loopState: loop.state,
