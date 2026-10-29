@@ -179,6 +179,10 @@ export interface TeamTask {
   output?: string
   /** Explicit retry count; the mode's retry gate prompts human triage at its threshold. */
   retryCount?: number
+  /** Session event seq where the current attempt started (actual token metering). */
+  costStartSeq?: number
+  /** Agent/session id that owns costStartSeq. */
+  costOwnerId?: string
   /** Monotonic execution generation. Reassignment/retry invalidates every older attempt. */
   attempt?: number
   /** Capability for the current claimed/in-progress attempt. Members must present it when updating. */

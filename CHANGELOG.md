@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.58] - 2026-10-29
+
+### Added
+- Actual token metering: tasks record the session seq at in_progress and, on a
+  terminal transition, fold host `assistant/message.usage` (input/output tokens)
+  into a `usage-actual` cost entry using configurable per-1K rates. A task with
+  actual usage supersedes its provisional spawn estimate in the ledger.
+- `cost.usage` (actual|estimate) and `cost.pricing.inputPer1k/outputPer1k`
+  config fields.
+
 ## [0.1.57] - 2026-10-29
 
 ### Fixed

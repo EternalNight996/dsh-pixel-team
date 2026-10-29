@@ -24,7 +24,7 @@ import { describeClarification, normalizeClarification } from './clarify.ts'
 import { hardwarePoolText } from './clarify-hardware.ts'
 import { buildConstitution, writeConstitution } from './constitution.ts'
 import { recallMemory } from './memory.ts'
-import { appendCostLog, requestCostDecision } from './cost.ts'
+import { appendCostLog, requestCostDecision, usageCostUsd, usageFromEvents } from './cost.ts'
 import { DEFAULT_MODE, getModeSpec, isTeamMode } from './modes.ts'
 import {
   amendTaskContract,
@@ -134,7 +134,15 @@ export interface ToolsConfig {
   /** memory-eternal (or compatible) recall endpoint; empty uses the default. */
   memory?: { endpoint?: string }
   /** Soft cost gate thresholds forwarded to member spawns. */
-  cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
+  cost?: {
+    enabled?: boolean
+    perTaskUsd?: number
+    perDayUsd?: number
+    /** Meter real usage when the host reports tokens (default actual). */
+    usage?: 'actual' | 'estimate'
+    /** USD per 1K tokens for actual metering. */
+    pricing?: { inputPer1k?: number; outputPer1k?: number }
+  }
   /** Quality gate policy: host re-verification, auto review, product verify commands. */
   quality?: {
     /** Host re-runs declared verify commands before accepting a completion (default true). */
@@ -2289,6 +2297,10 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           const transition = transitionError(task.status, args.status)
           if (transition !== undefined) throw new Error(transition)
           task.status = args.status
+          if (args.status === 'in_progress') {
+            task.costStartSeq = caller.session.seq
+            task.costOwnerId = caller.id
+          }
         }
         if (args.output !== undefined) task.output = args.output
         if (args.verdict !== undefined) task.verdict = args.verdict as ReviewVerdict
@@ -2300,6 +2312,27 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         // later edit cannot leave the team advertising an unreviewed revision.
         bindClosingVerdict(workspace, fresh, task)
         task.updatedAt = Date.now()
+        let actualCost: { inputTokens: number; outputTokens: number; usd: number } | undefined
+        const terminalTransition = args.status === 'completed' || args.status === 'failed' || args.status === 'cancelled'
+        if (!wasCompleted && terminalTransition && config.cost?.usage !== 'estimate'
+          && task.costStartSeq !== undefined && task.costOwnerId === caller.id) {
+          try {
+            const events = caller.session.snapshotEvents(task.costStartSeq as never) as unknown as { type?: string; data?: unknown }[]
+            const usage = usageFromEvents(events)
+            if (usage.inputTokens + usage.outputTokens > 0) {
+              actualCost = {
+                ...usage,
+                usd: usageCostUsd(usage.inputTokens, usage.outputTokens, config.cost?.pricing),
+              }
+            }
+          } catch (error: unknown) {
+            ctx.logger.warn('agent-teams: usage metering skipped for ' + task.id + ': ' + String(error))
+          }
+        }
+        if (terminalTransition) {
+          delete task.costStartSeq
+          delete task.costOwnerId
+        }
         const priorDependencies = new Map(fresh.tasks.map(item => [item.id, [...item.dependencies]]))
         const followUp = (task.status === 'failed' && isQualityKind(taskKindOf(task)))
           ? applyQualityFollowUp(
@@ -2324,12 +2357,21 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           ))
         }
         await writeTeam(stateRoot, fresh)
-        if (!wasCompleted && args.status === 'completed' && task.assignee === CAPTAIN_KEY && isQualityKind(taskKindOf(task))) {
+        if (!wasCompleted && terminalTransition) {
           const mode = isTeamMode(fresh.clarification?.mode) ? fresh.clarification.mode : DEFAULT_MODE
-          await appendCostLog(workspace, {
-            ts: Date.now(), sessionId: caller.id, teamId: fresh.id, memberName: 'captain',
-            taskId: task.id, estimateUsd: 0, mode, decision: 'captain-unmetered',
-          })
+          if (actualCost !== undefined) {
+            await appendCostLog(workspace, {
+              ts: Date.now(), sessionId: caller.id, teamId: fresh.id,
+              memberName: task.assignee === CAPTAIN_KEY ? 'captain' : (task.assignee ?? identity.name),
+              taskId: task.id, estimateUsd: actualCost.usd, mode, decision: 'usage-actual',
+              inputTokens: actualCost.inputTokens, outputTokens: actualCost.outputTokens,
+            })
+          } else if (task.assignee === CAPTAIN_KEY && isQualityKind(taskKindOf(task))) {
+            await appendCostLog(workspace, {
+              ts: Date.now(), sessionId: caller.id, teamId: fresh.id, memberName: 'captain',
+              taskId: task.id, estimateUsd: 0, mode, decision: 'captain-unmetered',
+            })
+          }
         }
         if (followUpMessage !== undefined) await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, followUpMessage)
         for (const review of awaitingHuman) {

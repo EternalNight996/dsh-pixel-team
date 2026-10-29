@@ -16,6 +16,11 @@ export interface CostConfig {
   perDayUsd?: number
 }
 
+export interface TokenPricing {
+  inputPer1k?: number
+  outputPer1k?: number
+}
+
 export interface CostLogEntry {
   ts: number
   sessionId: string
@@ -26,7 +31,9 @@ export interface CostLogEntry {
   thresholdUsd?: number
   reason?: 'task' | 'day' | 'retry'
   mode?: TeamMode
-  decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered'
+  decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered' | 'usage-actual'
+  inputTokens?: number
+  outputTokens?: number
 }
 
 const DEFAULT_PER_TASK = 2
@@ -80,6 +87,32 @@ export function todayCostFromEntries(entries: readonly CostLogEntry[], now = Dat
     .filter(entry => entry.ts >= start && entry.ts <= now + 86_400_000)
     .reduce((sum, entry) => sum + entry.estimateUsd, 0)
   return Math.round(total * 10000) / 10000
+}
+
+/** Compute USD from host-reported token usage and configured rates. */
+export function usageCostUsd(inputTokens: number, outputTokens: number, pricing?: TokenPricing): number {
+  const inputPer1k = pricing?.inputPer1k ?? PRICE_INPUT_PER_1K
+  const outputPer1k = pricing?.outputPer1k ?? PRICE_OUTPUT_PER_1K
+  const usd = inputTokens / 1000 * inputPer1k + outputTokens / 1000 * outputPer1k
+  return Math.round(usd * 1000000) / 1000000
+}
+
+/** Sum assistant/message usage from one session event slice. */
+export function usageFromEvents(events: readonly { type?: string; data?: unknown }[]): { inputTokens: number; outputTokens: number } {
+  let inputTokens = 0
+  let outputTokens = 0
+  for (const event of events) {
+    if (event.type !== 'assistant/message') continue
+    const data = event.data
+    if (typeof data !== 'object' || data === null) continue
+    const usage = (data as { usage?: unknown }).usage
+    if (typeof usage !== 'object' || usage === null) continue
+    const input = (usage as { inputTokens?: unknown }).inputTokens
+    const output = (usage as { outputTokens?: unknown }).outputTokens
+    if (typeof input === 'number' && Number.isFinite(input) && input >= 0) inputTokens += input
+    if (typeof output === 'number' && Number.isFinite(output) && output >= 0) outputTokens += output
+  }
+  return { inputTokens, outputTokens }
 }
 
 /** Read every cost-log entry (oldest first); a torn line is skipped. */

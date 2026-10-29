@@ -93,6 +93,13 @@ export interface Config {
         enabled?: boolean;
         perTaskUsd?: number;
         perDayUsd?: number;
+        /** Meter real host usage when available (default actual). */
+        usage?: 'actual' | 'estimate';
+        /** USD per 1K tokens for actual metering. */
+        pricing?: {
+            inputPer1k?: number;
+            outputPer1k?: number;
+        };
     };
     /** Founding project boundary: product directory and extra read-only paths. */
     boundary?: {

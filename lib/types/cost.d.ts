@@ -5,6 +5,10 @@ export interface CostConfig {
     perTaskUsd?: number;
     perDayUsd?: number;
 }
+export interface TokenPricing {
+    inputPer1k?: number;
+    outputPer1k?: number;
+}
 export interface CostLogEntry {
     ts: number;
     sessionId: string;
@@ -15,7 +19,9 @@ export interface CostLogEntry {
     thresholdUsd?: number;
     reason?: 'task' | 'day' | 'retry';
     mode?: TeamMode;
-    decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered';
+    decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered' | 'usage-actual';
+    inputTokens?: number;
+    outputTokens?: number;
 }
 /** The mode's budget, with an optional owner override from the plugin config. */
 export declare function resolveModeBudget(mode: TeamMode | undefined, override?: CostConfig): {
@@ -30,6 +36,16 @@ export declare function costLogPath(workspace: string): string;
 export declare function mergeCostEntries(entries: readonly CostLogEntry[]): CostLogEntry[];
 /** Sum today's entries across a merged log (local calendar day). */
 export declare function todayCostFromEntries(entries: readonly CostLogEntry[], now?: number): number;
+/** Compute USD from host-reported token usage and configured rates. */
+export declare function usageCostUsd(inputTokens: number, outputTokens: number, pricing?: TokenPricing): number;
+/** Sum assistant/message usage from one session event slice. */
+export declare function usageFromEvents(events: readonly {
+    type?: string;
+    data?: unknown;
+}[]): {
+    inputTokens: number;
+    outputTokens: number;
+};
 /** Read every cost-log entry (oldest first); a torn line is skipped. */
 export declare function readCostLogEntries(workspace: string): Promise<CostLogEntry[]>;
 /** Sum today's logged estimates (local calendar day). */

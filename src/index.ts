@@ -134,7 +134,15 @@ export interface Config {
   /** memory-eternal (or compatible) recall endpoint for agent_teams_memory_recall. */
   memory?: { endpoint?: string }
   /** Soft cost gate: prompt thresholds; terminate cancels only the current spawn. */
-  cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
+  cost?: {
+    enabled?: boolean
+    perTaskUsd?: number
+    perDayUsd?: number
+    /** Meter real host usage when available (default actual). */
+    usage?: 'actual' | 'estimate'
+    /** USD per 1K tokens for actual metering. */
+    pricing?: { inputPer1k?: number; outputPer1k?: number }
+  }
   /** Founding project boundary: product directory and extra read-only paths. */
   boundary?: { productsDir?: string; forbidden?: string[] }
   /** Quality gate policy: host re-verification, auto review, product verify commands. */
@@ -222,7 +230,16 @@ export const Config: z<Config> = z.object({
   slashCommand: z.boolean().default(true),
   clarify: z.union([z.object({ enforce: z.boolean() }), z.const(undefined)]),
   memory: z.union([z.object({ endpoint: z.string() }), z.const(undefined)]),
-  cost: z.union([z.object({ enabled: z.boolean(), perTaskUsd: z.number(), perDayUsd: z.number() }), z.const(undefined)]),
+  cost: z.union([
+    z.object({
+      enabled: z.boolean().default(true),
+      perTaskUsd: z.number().default(3),
+      perDayUsd: z.number().default(50),
+      usage: z.union([z.const('actual'), z.const('estimate')]).default('actual'),
+      pricing: z.union([z.object({ inputPer1k: z.number(), outputPer1k: z.number() }), z.const(undefined)]),
+    }),
+    z.const(undefined),
+  ]),
   boundary: z.union([z.object({ productsDir: z.string(), forbidden: z.array(z.string()) }), z.const(undefined)]),
   quality: z.union([
     z.object({
@@ -495,8 +512,11 @@ export function apply(ctx: Context, config: Config): void {
           process.env.DSH_HOME ?? '',
         ].filter(root => root !== ''))]
         const allEntries = mergeCostEntries((await Promise.all(roots.map(root => readCostLogEntries(root)))).flat())
-        const entries = teamFilter === '' ? allEntries : allEntries.filter(entry => entry.teamId === teamFilter)
-        const todayUsd = todayCostFromEntries(allEntries)
+        // A task with actual usage supersedes its provisional spawn estimate.
+        const actualKeys = new Set(allEntries.filter(entry => entry.decision === 'usage-actual').map(entry => `${entry.teamId ?? ''}|${entry.taskId ?? ''}`))
+        const effectiveAll = allEntries.filter(entry => entry.decision === 'usage-actual' || !actualKeys.has(`${entry.teamId ?? ''}|${entry.taskId ?? ''}`))
+        const entries = teamFilter === '' ? effectiveAll : effectiveAll.filter(entry => entry.teamId === teamFilter)
+        const todayUsd = todayCostFromEntries(effectiveAll)
         const byTask = new Map<string, { taskId: string; usd: number; count: number }>()
         const byTeam = new Map<string, { teamId: string; usd: number }>()
         for (const entry of entries) {

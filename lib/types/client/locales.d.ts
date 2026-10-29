@@ -529,6 +529,7 @@ export declare const zh: {
     'cost.ledger.unlinked': string;
     'cost.ledger.unmetered': string;
     'cost.ledger.captainTask': string;
+    'cost.ledger.actual': string;
     'cost.ledger.empty': string;
     'cost.title': string;
     'cost.body': string;
@@ -1295,6 +1296,7 @@ export declare const en: {
     'cost.ledger.unlinked': string;
     'cost.ledger.unmetered': string;
     'cost.ledger.captainTask': string;
+    'cost.ledger.actual': string;
     'cost.ledger.empty': string;
     'cost.title': string;
     'cost.body': string;

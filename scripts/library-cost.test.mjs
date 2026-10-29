@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { projectLibraryTeam } from '../lib/library-projection.js'
 import { buildVerifierScript, splitAcceptance, verifierOutputContract } from '../lib/verifier-script.js'
-import { appendCostLog, estimateCost, mergeCostEntries, readTodayCost, resolveCostDecision, todayCostFromEntries } from '../lib/cost.js'
+import { appendCostLog, estimateCost, mergeCostEntries, readTodayCost, resolveCostDecision, todayCostFromEntries, usageCostUsd, usageFromEvents } from '../lib/cost.js'
 import { DEFAULT_MEMORY_ENDPOINT, probeMemory, resolveMemoryEndpoint } from '../lib/memory.js'
 import { buildQuickStartPlan } from '../lib/quick-start.js'
 
@@ -65,6 +65,17 @@ test('constitution acceptance reaches the quick-start verification task', () => 
   const verify = plan.tasks.find(task => task.id === 'verify')
   assert.ok(verify.acceptance.includes('连续72h无崩溃'))
   assert.ok(verify.description.includes('【PASS】'))
+})
+
+test('actual usage folds assistant messages and applies rates', () => {
+  const events = [
+    { type: 'assistant/message', data: { usage: { inputTokens: 1000, outputTokens: 500 } } },
+    { type: 'tool/result', data: {} },
+    { type: 'assistant/message', data: { usage: { inputTokens: 2000, outputTokens: 1500 } } },
+    { type: 'assistant/message', data: { usage: { inputTokens: -1, outputTokens: 'bad' } } },
+  ]
+  assert.deepEqual(usageFromEvents(events), { inputTokens: 3000, outputTokens: 2000 })
+  assert.equal(usageCostUsd(1000, 1000, { inputPer1k: 0.001, outputPer1k: 0.002 }), 0.003)
 })
 
 test('merged cost logs dedupe and sum today across roots', () => {

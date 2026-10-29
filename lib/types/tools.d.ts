@@ -49,6 +49,13 @@ export interface ToolsConfig {
         enabled?: boolean;
         perTaskUsd?: number;
         perDayUsd?: number;
+        /** Meter real usage when the host reports tokens (default actual). */
+        usage?: 'actual' | 'estimate';
+        /** USD per 1K tokens for actual metering. */
+        pricing?: {
+            inputPer1k?: number;
+            outputPer1k?: number;
+        };
     };
     /** Quality gate policy: host re-verification, auto review, product verify commands. */
     quality?: {
