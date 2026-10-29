@@ -21,6 +21,8 @@ export interface LibraryTaskView {
   readonly description: string
   readonly dependencies: string[]
   readonly acceptance: LibraryAcceptance[]
+  /** Retries + hard failures observed for this task. */
+  readonly failures: number
 }
 
 export interface LibraryEdgeView {
@@ -52,6 +54,8 @@ export interface LibraryTeamView {
   readonly gate: { readonly passed: number; readonly failed: number; readonly total: number }
   readonly todayCostUsd: number
   readonly updatedAt: number
+  /** Numbered requirement/interview checklist (constraints, else acceptance). */
+  readonly requirements: readonly string[]
   readonly tasks: readonly LibraryTaskView[]
   readonly edges: readonly LibraryEdgeView[]
   readonly blocker?: LibraryBlocker
@@ -121,6 +125,7 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
       description: task.description ?? '',
       dependencies: [...task.dependencies],
       acceptance: acceptanceOf(task),
+      failures: (task.retryCount ?? 0) + (task.status === 'failed' ? 1 : 0),
     }))
     .sort((left, right) => left.depth - right.depth || left.id.localeCompare(right.id))
   const edges: LibraryEdgeView[] = []
@@ -149,6 +154,7 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
       failed: allAcceptance.filter(item => item.status === 'fail').length,
       total: allAcceptance.length,
     },
+    requirements: clarification === undefined || clarification.constraints.length === 0 ? [...clarification?.acceptance ?? []] : [...clarification.constraints],
     todayCostUsd: Math.round(todayCostUsd * 10000) / 10000,
     updatedAt: Math.max(team.createdAt, ...team.tasks.map(task => task.updatedAt)),
     tasks,

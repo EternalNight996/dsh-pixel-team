@@ -504,6 +504,10 @@ export declare const zh: {
     'library.deps': string;
     'library.noDeps': string;
     'library.pending': string;
+    'library.inProgress': string;
+    'library.requirements': string;
+    'library.skeleton': string;
+    'library.failures': string;
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;
@@ -1252,6 +1256,10 @@ export declare const en: {
     'library.deps': string;
     'library.noDeps': string;
     'library.pending': string;
+    'library.inProgress': string;
+    'library.requirements': string;
+    'library.skeleton': string;
+    'library.failures': string;
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;

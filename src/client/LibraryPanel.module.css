@@ -48,3 +48,16 @@
 .acceptanceList li[data-status='pass'] { color: #7fd6a8; }
 .acceptanceList li[data-status='fail'] { color: #ff6b6b; }
 .acceptanceMark { display: inline-block; min-width: 42px; font-weight: 700; margin-right: 6px; }
+.requirements { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid rgba(111,182,255,0.3); border-radius: 10px; background: rgba(111,182,255,0.05); margin: 4px 0 2px; }
+.reqTitle { font-size: 12px; color: #9aa4b2; }
+.reqList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.reqItem { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.reqIndex { color: #f2c14e; font-weight: 700; min-width: 20px; }
+.reqText { flex: 1; color: #e8eef6; }
+.reqState { color: #9aa4b2; font-size: 11px; }
+.reqItem[data-state='pass'] .reqState { color: #7fd6a8; font-weight: 700; }
+.reqItem[data-state='fail'] .reqState { color: #ff6b6b; font-weight: 700; }
+.skeletonTitle { display: block; margin: 8px 0 2px; font-size: 12px; color: #9aa4b2; }
+.rowIndex { color: #f2c14e; font-weight: 700; min-width: 16px; }
+.rowFailures { color: #ffb86b; font-size: 11px; }
+.rowCost { color: #7fd6a8; font-size: 11px; font-variant-numeric: tabular-nums; }

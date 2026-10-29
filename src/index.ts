@@ -451,7 +451,9 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const workspace = captain.session.header.cwd ?? process.cwd()
-        const entries = await readCostLogEntries(workspace)
+        const teamFilter = url.searchParams.get('teamId')?.trim() ?? ''
+        const allEntries = await readCostLogEntries(workspace)
+        const entries = teamFilter === '' ? allEntries : allEntries.filter(entry => entry.teamId === teamFilter)
         const todayUsd = await readTodayCost(workspace)
         const byTask = new Map<string, { taskId: string; usd: number; count: number }>()
         const byTeam = new Map<string, { teamId: string; usd: number }>()

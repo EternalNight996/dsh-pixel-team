@@ -18,6 +18,8 @@ export interface LibraryTaskView {
     readonly description: string;
     readonly dependencies: string[];
     readonly acceptance: LibraryAcceptance[];
+    /** Retries + hard failures observed for this task. */
+    readonly failures: number;
 }
 export interface LibraryEdgeView {
     readonly from: string;
@@ -50,6 +52,8 @@ export interface LibraryTeamView {
     };
     readonly todayCostUsd: number;
     readonly updatedAt: number;
+    /** Numbered requirement/interview checklist (constraints, else acceptance). */
+    readonly requirements: readonly string[];
     readonly tasks: readonly LibraryTaskView[];
     readonly edges: readonly LibraryEdgeView[];
     readonly blocker?: LibraryBlocker;

@@ -1225,3 +1225,7 @@
 .tokenBadge { position: absolute; right: 2px; bottom: 16px; padding: 0 4px; border-radius: 999px; background: #f2c14e; color: #16241b; font-size: 9px; font-weight: 700; line-height: 14px; }
 @keyframes hall-token-pulse { 0%, 100% { filter: drop-shadow(0 0 7px rgb(242 193 78 / 35%)); } 50% { filter: drop-shadow(0 0 18px rgb(242 193 78 / 80%)); } }
 .historySelect { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2); background: #151a21; color: inherit; font: inherit; font-size: 13px; }
+.historyHead { display: flex; gap: 8px; align-items: center; }
+.historyHead .historySelect { flex: 1; }
+.historyStartSmall { flex: none; border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: inherit; border-radius: 8px; padding: 7px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.historyStartSmall:hover { border-color: #f2c14e; color: #f2c14e; }

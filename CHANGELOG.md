@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.42] - 2026-10-29
+
+### Changed
+- 名册 layout: the history dropdown is the header, every option shows that team's
+  spend, the selected team's details follow, and the cost detail sits at the
+  bottom (today total removed). The cost report route accepts teamId, so the
+  ledger follows the selected team.
+- 藏经阁: numbered requirement checklist from the interview (PASS/FAIL state),
+  then the numbered task skeleton with failure counts and each task's own spend;
+  the today-cost header line is gone — 藏经阁 shows only per-task cost, detail
+  lives in 名册.
+
 ## [0.1.41] - 2026-10-29
 
 ### Changed
