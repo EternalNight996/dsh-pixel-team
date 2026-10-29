@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.59] - 2026-10-29
+
+### Fixed
+- Cost ledger now falls back to the team's captain session when the app-level
+  hall overlay has no session prop, so the report is actually requested instead
+  of silently showing ¥0.00. The ledger header shows the selected team total and
+  refreshes every 15s.
+
 ## [0.1.58] - 2026-10-29
 
 ### Added

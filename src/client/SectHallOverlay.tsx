@@ -204,7 +204,10 @@ export function SectHallOverlay({
   const [equippedByCharacter, setEquippedByCharacter] = useState<Record<string, EquippedSlots>>({})
   const equipped: EquippedSlots = characterId === undefined ? {} : (equippedByCharacter[characterId] ?? {})
   useCultivationVersion()
-  const { report: costReport } = useCostReport(sessionId)
+  // The app-level overlay can miss the session prop; the team's captain session
+  // is a reliable fallback for the cost report.
+  const costSessionId = sessionId ?? team?.captainSessionId
+  const { report: costReport } = useCostReport(costSessionId)
   // 即使右侧活动面板未挂载，洞府也结算修为：掌门本人执行任务同样涨功德。
   useEffect(() => {
     const teams = team === undefined ? [...history] : [team, ...history]
@@ -990,7 +993,7 @@ export function SectHallOverlay({
                   </ul>
                 </div>
               )}
-              {selectedTeamId !== undefined && <CostDetail sessionId={sessionId} teamId={selectedTeamId} t={t} />}
+              {selectedTeamId !== undefined && <CostDetail sessionId={costSessionId} teamId={selectedTeamId} t={t} />}
             </div>
           ) : (
             !hasTeam

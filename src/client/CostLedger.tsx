@@ -61,11 +61,17 @@ export function CostDetail({ sessionId, teamId, t }: {
       .catch((caught: unknown) => { setError(caught instanceof Error ? caught.message : String(caught)) })
   }, [sessionId, teamId])
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const timer = window.setInterval(load, 15_000)
+    return () => { window.clearInterval(timer) }
+  }, [load])
   if (sessionId === undefined || teamId === undefined) return null
+  const totalUsd = report === undefined ? 0 : report.by_task.reduce((sum, item) => sum + item.usd, 0)
   return (
     <section className={css.ledger}>
       <header className={css.head}>
         <strong>{t('cost.ledger.title')}</strong>
+        <span className={css.total}>{t('cost.ledger.total')} {money(totalUsd)}</span>
         <button type="button" className={css.refresh} onClick={load}>{t('cost.ledger.refresh')}</button>
       </header>
       {error !== '' && <p className={css.error}>{error}</p>}

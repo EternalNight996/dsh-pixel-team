@@ -12,3 +12,4 @@
 .amount { color: #7fd6a8; font-variant-numeric: tabular-nums; }
 .error { color: #ff6b6b; margin: 0; }
 .empty { color: #9aa4b2; margin: 0; }
+.total { color: #f2c14e; font-weight: 700; font-size: 12px; margin-left: auto; }

@@ -523,6 +523,7 @@ export declare const zh: {
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;
+    'cost.ledger.total': string;
     'cost.ledger.refresh': string;
     'cost.ledger.byTask': string;
     'cost.ledger.recent': string;
@@ -1290,6 +1291,7 @@ export declare const en: {
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;
+    'cost.ledger.total': string;
     'cost.ledger.refresh': string;
     'cost.ledger.byTask': string;
     'cost.ledger.recent': string;
