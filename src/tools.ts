@@ -402,7 +402,12 @@ function memberRelaxableDeny(config: ToolsConfig, member: TeamMember): readonly 
 /** Validate references and cycles before a staged graph can be saved or run. */
 function validateStagedGraph(team: TeamState, requireRunnable: boolean): void {
   const members = team.members.filter((member) => member.status !== 'removed')
-  if (requireRunnable && members.length === 0) throw new Error('add at least one member before approving the plan')
+  // A solo plan (zero members) is runnable when every task is owned by the
+  // captain; otherwise approval would have nobody to dispatch to.
+  if (requireRunnable && members.length === 0) {
+    const captainOnly = team.tasks.length > 0 && team.tasks.every(task => task.assignee === CAPTAIN_KEY)
+    if (!captainOnly) throw new Error('add at least one member before approving the plan')
+  }
   if (requireRunnable && team.tasks.length === 0) throw new Error('add at least one task before approving the plan')
   const memberNames = new Set(members.map((member) => member.name))
   const taskIds = new Set(team.tasks.map((task) => task.id))

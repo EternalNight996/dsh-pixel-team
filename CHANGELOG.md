@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.39] - 2026-10-29
+
+### Fixed
+- Solo plans can actually be approved: the staged-graph runnable check no longer
+  demands a member when every task is assigned to the captain, so a zero-member
+  plan no longer fails with "add at least one member before approving the plan".
+
 ## [0.1.38] - 2026-10-29
 
 ### Added
