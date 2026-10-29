@@ -15,9 +15,16 @@ function files(root, directory) {
     return [path]
   }).sort()
 }
+const TEXT_FILE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|map|css|html|md|yml|yaml|txt)$/i
+/** Read a build input with LF normalization so Windows CRLF and Linux LF agree. */
+function content(root, path) {
+  const buffer = readFileSync(join(root, path))
+  if (!TEXT_FILE.test(path)) return buffer
+  return Buffer.from(buffer.toString('utf8').replace(/\r\n/g, '\n'), 'utf8')
+}
 function digest(root, paths, prefix = '') {
   const hash = createHash('sha256').update(prefix)
-  for (const path of [...paths].sort()) hash.update(path).update('\0').update(readFileSync(join(root, path))).update('\0')
+  for (const path of [...paths].sort()) hash.update(path).update('\0').update(content(root, path)).update('\0')
   return hash.digest('hex')
 }
 function current(root) {
