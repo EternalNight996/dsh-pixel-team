@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.60] - 2026-10-29
+
+### Changed
+- Roster dropdown cost totals now refresh every 15s together with the ledger.
+- Package slimmed from 6.95 MB / 378 files to 1.42 MB / 309 files by excluding
+  marketing-only assets/app-icons and assets/readme from the runtime package
+  (they stay in the repo; the app icon used by the client is embedded).
+
 ## [0.1.59] - 2026-10-29
 
 ### Fixed

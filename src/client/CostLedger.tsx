@@ -43,7 +43,11 @@ export function useCostReport(sessionId?: string): { report?: CostReport; reload
     if (sessionId === undefined || sessionId === '') return
     void loadReport(sessionId).then(setReport).catch(() => undefined)
   }, [sessionId])
-  useEffect(() => { reload() }, [reload])
+  useEffect(() => {
+    reload()
+    const timer = window.setInterval(reload, 15_000)
+    return () => { window.clearInterval(timer) }
+  }, [reload])
   return { report, reload }
 }
 

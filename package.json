@@ -1,6 +1,6 @@
 {
   "name": "dsh-pixel-team",
-  "version": "0.1.59",
+  "version": "0.1.60",
   "description": "DSH Pixel Team：DeepSeek Harness 的像素洞府多智能体团队协作与交付流水线（AgentTeams 衍生，MIT）。",
   "type": "module",
   "main": "lib/index.js",
@@ -20,7 +20,6 @@
   "files": [
     "lib",
     "assets/agent-teams",
-    "assets/readme",
     "assets/support",
     "SPONSOR.md",
     "cordis.patch.yml",
@@ -34,8 +33,7 @@
     "scripts/legacy-session-source-repair.mjs",
     "dsh-plugin.naming.json",
     "assets/zhulong.ico",
-    "assets/zhulong-icon.png",
-    "assets/app-icons"
+    "assets/zhulong-icon.png"
   ],
   "license": "MIT",
   "author": {
