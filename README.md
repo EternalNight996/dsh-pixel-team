@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/EternalNight996/dsh-pixel-team/stargazers"><img src="https://img.shields.io/github/stars/EternalNight996/dsh-pixel-team?style=flat" alt="GitHub stars" /></a>
   <a href="https://www.npmjs.com/package/dsh-pixel-team"><img src="https://img.shields.io/npm/v/dsh-pixel-team" alt="npm" /></a>
-  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.47-FF7A45" alt="release" /></a>
+  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.48-FF7A45" alt="release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license" /></a>
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/DSH-Web%20%2B%20Headless-5B4CF0" alt="DSH" /></a>
 </p>
@@ -85,7 +85,7 @@ It is a real team runtime in a pixel coat:
 
 **DeepSeek Harness (desktop / web)**
 
-    dsh plugin --profile desktop add dsh-pixel-team@0.1.47
+    dsh plugin --profile desktop add dsh-pixel-team@0.1.48
     # reopen DSH → open 山门 · 名册
 
 Then:
@@ -104,7 +104,7 @@ Then:
     dsh --profile desktop
     # ask: 用 AgentTeams 开一个团队做 …
 
-Package version **0.1.47**. Recommended host: DeepSeek Harness **0.2.1-rc.3** (web + headless). Exact matrix: [compatibility.json](compatibility.json).
+Package version **0.1.48**. Recommended host: DeepSeek Harness **0.2.1-rc.3** (web + headless). Exact matrix: [compatibility.json](compatibility.json).
 
 Prefer to look first? **[Open the live product page](http://180.76.144.48/en/dsh-pixel-team)** on the Mengyou website.
 
@@ -163,13 +163,18 @@ The plugin config field `quality` controls how gates are audited:
 |---|---|---|
 | `autoVerify` | `true` | The host re-runs every declared `verify` command before accepting a completed quality task |
 | `autoReview` | `false` | The host auto-completes ready review tasks after all gates, the target acceptance and host commands pass |
-| `commands` | `["git diff --check"]` | Verify commands for generated projects; the plugin's own scripts are never inherited |
+| `requireAcceptance` | `true` | Auto review requires every acceptance item of the reviewed task to pass |
+| `commands` | `["git diff --check"]` | Fallback verify commands for generated projects; plugin scripts are never inherited |
+| `commandsByProject` | `{}` | Per-product verify commands keyed by root, e.g. `"projects/snake": ["node projects/snake/smoke.mjs"]` |
+| `verifyTimeoutMs` | `120000` | Host timeout per verify command |
+
+Every field is optional; omitted fields use the defaults above (omit `quality` entirely to disable all overrides).
 
 ```yaml
 quality:
-  autoVerify: true
   autoReview: true
-  commands: ["git diff --check"]
+  commandsByProject:
+    "projects/贪吃蛇": ["node projects/贪吃蛇/smoke.mjs"]
 ```
 
 ## 🛡️ Boundaries

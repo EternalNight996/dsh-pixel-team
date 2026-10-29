@@ -140,6 +140,12 @@ export interface ToolsConfig {
     autoReview?: boolean
     /** Verify commands for generated projects; overrides inherited workspace scripts. */
     commands?: string[]
+    /** Per-project verify commands keyed by product root (e.g. "projects/贪吃蛇"). */
+    commandsByProject?: Record<string, string[]>
+    /** Host verify timeout per command (default 120000ms). */
+    verifyTimeoutMs?: number
+    /** Auto review requires every acceptance item to pass (default true). */
+    requireAcceptance?: boolean
   }
 }
 
@@ -252,8 +258,9 @@ function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsC
     if (review.dependencies.some(id => team.tasks.find(task => task.id === id)?.status !== 'completed')) continue
     const target = reviewedTargetOf(team, review)
     if (target === undefined || target.status !== 'completed') continue
+    const requireAcceptance = config.quality?.requireAcceptance !== false
     const targetAcceptance = target.acceptanceResults ?? []
-    if (targetAcceptance.length === 0 || targetAcceptance.some(item => item.status !== 'passed')) continue
+    if (requireAcceptance && (targetAcceptance.length === 0 || targetAcceptance.some(item => item.status !== 'passed'))) continue
     if ((target.commandsRun ?? []).some(item => item.status !== 'passed')) continue
     const otherGates = team.tasks.filter(task => task.id !== review.id && task.id !== target.id && isQualityKind(taskKindOf(task)))
     if (otherGates.some(task => task.status !== 'completed')) continue
@@ -2212,7 +2219,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             }
           }
           if (config.quality?.autoVerify !== false && (task.verify?.length ?? 0) > 0) {
-            const hostResults = await runHostVerification(workspace, task.verify ?? [])
+            const hostResults = await runHostVerification(workspace, task.verify ?? [], config.quality?.verifyTimeoutMs)
             const failed = hostResults.find((item) => item.status === 'failed')
             if (failed !== undefined) {
               throw new Error(`host verification failed for "${failed.command}"\n${failed.evidence ?? ''}`)

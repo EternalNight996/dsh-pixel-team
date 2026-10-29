@@ -107,6 +107,12 @@ export interface Config {
         autoReview?: boolean;
         /** Verify commands for generated projects; overrides inherited workspace scripts. */
         commands?: string[];
+        /** Per-project verify commands keyed by product root (e.g. "projects/贪吃蛇"). */
+        commandsByProject?: Record<string, string[]>;
+        /** Host verify timeout per command (default 120000ms). */
+        verifyTimeoutMs?: number;
+        /** Auto review requires every acceptance item to pass (default true). */
+        requireAcceptance?: boolean;
     };
 }
 export declare const Config: z<Config>;

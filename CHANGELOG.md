@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.48] - 2026-10-29
+
+### Changed
+- Every quality option is now an individually optional config field with a
+  default: autoVerify, autoReview, requireAcceptance, commands,
+  commandsByProject (per product root) and verifyTimeoutMs.
+
 ## [0.1.47] - 2026-10-29
 
 ### Added

@@ -145,6 +145,12 @@ export interface Config {
     autoReview?: boolean
     /** Verify commands for generated projects; overrides inherited workspace scripts. */
     commands?: string[]
+    /** Per-project verify commands keyed by product root (e.g. "projects/贪吃蛇"). */
+    commandsByProject?: Record<string, string[]>
+    /** Host verify timeout per command (default 120000ms). */
+    verifyTimeoutMs?: number
+    /** Auto review requires every acceptance item to pass (default true). */
+    requireAcceptance?: boolean
   }
 }
 
@@ -214,7 +220,17 @@ export const Config: z<Config> = z.object({
   memory: z.union([z.object({ endpoint: z.string() }), z.const(undefined)]),
   cost: z.union([z.object({ enabled: z.boolean(), perTaskUsd: z.number(), perDayUsd: z.number() }), z.const(undefined)]),
   boundary: z.union([z.object({ productsDir: z.string(), forbidden: z.array(z.string()) }), z.const(undefined)]),
-  quality: z.union([z.object({ autoVerify: z.boolean(), autoReview: z.boolean(), commands: z.array(z.string()) }), z.const(undefined)]),
+  quality: z.union([
+    z.object({
+      autoVerify: z.boolean().default(true),
+      autoReview: z.boolean().default(false),
+      commands: z.array(z.string()).default(['git diff --check']),
+      commandsByProject: z.dict(z.array(z.string())).default({}),
+      verifyTimeoutMs: z.natural().default(120000),
+      requireAcceptance: z.boolean().default(true),
+    }),
+    z.const(undefined),
+  ]),
 })
 
 /** The model-facing usage policy: when and how to drive AgentTeams. */
@@ -814,17 +830,24 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const workspace = captain.session.header.cwd ?? process.cwd()
+        // Every founding project lives under projects/<slug>/; platform files are
+        // off-limits unless the user explicitly asks to change the plugin.
+        const projectRoot = projectRootFor(goal, config.boundary?.productsDir)
         // Module 5: executable acceptance lines become verifier commands; the
         // prose criteria stay on the verification/review tasks.
         const acceptance = splitAcceptance(clarification.acceptance)
         const modeSpec = getModeSpec(clarification.mode)
         const delivery = quickStartDeliveryDefaults(workspace)
         // Generated projects live under projects/<slug>/: the plugin's own
-        // scripts (pnpm typecheck) do NOT verify the product. Use configured
-        // commands, else a product-neutral check; never inherit plugin scripts.
-        delivery.verify = config.quality?.commands !== undefined && config.quality.commands.length > 0
-          ? [...config.quality.commands]
-          : ['git diff --check']
+        // scripts (pnpm typecheck) do NOT verify the product. Prefer per-project
+        // commands, then global commands, else a product-neutral check.
+        const projectKey = projectRoot.replace(/^\.\//, '').replace(/\/+$/, '')
+        const perProject = config.quality?.commandsByProject?.[projectKey]
+        delivery.verify = perProject !== undefined && perProject.length > 0
+          ? [...perProject]
+          : config.quality?.commands !== undefined && config.quality.commands.length > 0
+            ? [...config.quality.commands]
+            : ['git diff --check']
         delivery.verify = [...delivery.verify, ...acceptance.commands]
         delivery.mode = clarification.mode
         // Mode acceptance baseline + constitution prose criteria land on the gates.
@@ -851,9 +874,6 @@ export function apply(ctx: Context, config: Config): void {
         // Derive the DAG from the real goal + interview answers + mode; the
         // fixed template is only the fallback when generation is unusable.
         const planRoles = quickStartRoles(template, roles)
-        // Every founding project lives under projects/<slug>/; platform files are
-        // off-limits unless the user explicitly asks to change the plugin.
-        const projectRoot = projectRootFor(goal, config.boundary?.productsDir)
         const forbiddenPaths = derivePlatformPaths(workspace, config.boundary?.forbidden)
         delivery.inScope = [projectRoot]
         const planFacts = await describeWorkspaceFacts(workspace)

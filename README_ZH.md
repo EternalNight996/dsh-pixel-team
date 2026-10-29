@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/EternalNight996/dsh-pixel-team/stargazers"><img src="https://img.shields.io/github/stars/EternalNight996/dsh-pixel-team?style=flat" alt="GitHub stars" /></a>
   <a href="https://www.npmjs.com/package/dsh-pixel-team"><img src="https://img.shields.io/npm/v/dsh-pixel-team" alt="npm" /></a>
-  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.47-FF7A45" alt="release" /></a>
+  <a href="https://github.com/EternalNight996/dsh-pixel-team/releases"><img src="https://img.shields.io/badge/release-v0.1.48-FF7A45" alt="release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license" /></a>
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/DSH-Web%20%2B%20Headless-5B4CF0" alt="DSH" /></a>
 </p>
@@ -85,7 +85,7 @@
 
 **DeepSeek Harness（桌面 / Web）**
 
-    dsh plugin --profile desktop add dsh-pixel-team@0.1.47
+    dsh plugin --profile desktop add dsh-pixel-team@0.1.48
     # 重开 DSH → 打开 山门 · 名册
 
 然后：
@@ -104,7 +104,7 @@
     dsh --profile desktop
     # 直接说：用 AgentTeams 开一个团队做 …
 
-当前版本 **0.1.47**。推荐宿主：DeepSeek Harness **0.2.1-rc.3**（Web + Headless）。精确矩阵见 [compatibility.json](compatibility.json)。
+当前版本 **0.1.48**。推荐宿主：DeepSeek Harness **0.2.1-rc.3**（Web + Headless）。精确矩阵见 [compatibility.json](compatibility.json)。
 
 想先看效果？**[打开梦游官网的在线展示页](http://180.76.144.48/dsh-pixel-team)**。
 
@@ -163,13 +163,18 @@
 |---|---|---|
 | `autoVerify` | `true` | 完成任务前，宿主重新执行任务声明的 `verify` 命令 |
 | `autoReview` | `false` | 当所有门禁、实现验收与宿主命令都通过后，宿主自动完成待审查任务 |
-| `commands` | `["git diff --check"]` | 生成项目的验证命令；不再继承插件自身的脚本 |
+| `requireAcceptance` | `true` | 自动审核要求被审实现的每条验收都通过 |
+| `commands` | `["git diff --check"]` | 生成项目的兜底验证命令；不再继承插件自身的脚本 |
+| `commandsByProject` | `{}` | 按产物根配置验证命令，如 `"projects/贪吃蛇": ["node projects/贪吃蛇/smoke.mjs"]` |
+| `verifyTimeoutMs` | `120000` | 宿主执行每条验证命令的超时 |
+
+每个字段都可单独省略，省略即用默认值（整个 `quality` 不写则全部用默认行为）。
 
 ```yaml
 quality:
-  autoVerify: true
   autoReview: true
-  commands: ["git diff --check"]
+  commandsByProject:
+    "projects/贪吃蛇": ["node projects/贪吃蛇/smoke.mjs"]
 ```
 
 ## 🛡️ 边界
