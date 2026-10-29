@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.33] - 2026-10-29
+
+### Removed
+- Removed the accidental 贪吃蛇大作战 panel from the plugin: it was a task
+  product of a founding run, not platform code. The component, hall sheet/floor
+  entry, its test and the task docs are gone.
+
+### Changed
+- Plan generation guardrail: task products must be written under
+  projects/<short-name>/ in the workspace; the plugin's own src/, lib/,
+  scripts/, package.json and tsconfig are off-limits unless the goal explicitly
+  asks to change the plugin.
+
 ## [0.1.32] - 2026-10-29
 
 ### Changed

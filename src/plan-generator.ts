@@ -51,6 +51,8 @@ export function buildPlanPrompt(input: {
     '6. 禁止边界（写入相关任务描述或验收）：' + spec.defaultExcluded.join('；') + '。',
     '7. 开发模式：' + spec.emoji + ' ' + spec.name + '。' + spec.philosophy + ' 验证策略：' + verifierStrategyText(input.mode),
     '8. 禁止编造用户没说的功能；不确定的写进 description 的风险/假设，不要加任务。',
+    '9. 这是 dsh-pixel-team 平台仓库：任务产物必须输出到 workspace 下的 projects/<需求短名>/（新建目录）；禁止修改本仓库的 src/、lib/、scripts/、package.json、tsconfig 等平台文件，除非用户明确要求改造插件本身。',
+    '10. 产物可独立运行时，verify 只针对 projects/<短名>/ 内的文件（如 cd projects/xxx && pnpm test），不要用平台仓库的构建命令冒充产物验证。',
   ].join('\n')
   const user = [
     '任务目标：' + input.goal,
