@@ -73,3 +73,19 @@
 .archText { margin: 6px 0 0; padding: 8px; max-height: 260px; overflow: auto; white-space: pre-wrap; background: rgba(0,0,0,0.18); border-radius: 8px; font-size: 11px; line-height: 1.5; }
 .rowHead { flex-wrap: wrap; }
 .rowSubject { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.4; }
+
+/* Task subject gets a full-width second line, clamped to two lines. */
+.rowHead { flex-wrap: wrap; align-items: center; row-gap: 4px; }
+.rowSubject {
+  order: 10;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}

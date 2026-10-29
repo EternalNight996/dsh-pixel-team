@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.46] - 2026-10-29
+
+### Fixed
+- 藏经阁 task subject wraps to a full-width second line (clamped to two lines)
+  instead of stacking one character per line in narrow panels.
+
 ## [0.1.45] - 2026-10-29
 
 ### Fixed
