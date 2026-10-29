@@ -26,7 +26,7 @@ export interface CostLogEntry {
   thresholdUsd?: number
   reason?: 'task' | 'day' | 'retry'
   mode?: TeamMode
-  decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout'
+  decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered'
 }
 
 const DEFAULT_PER_TASK = 2

@@ -5,6 +5,13 @@ function list(value: readonly string[] | undefined): string[] {
   return Array.isArray(value) ? [...value] : []
 }
 
+/** Workspace-relative product root the architecture belongs to. */
+export function architectureRoot(team: TeamState): string | undefined {
+  const tasks = Array.isArray(team.tasks) ? team.tasks : []
+  const implementationRoot = tasks.find(task => task.kind === 'implementation' && Array.isArray(task.inScope) && task.inScope.length > 0)?.inScope?.[0]
+  return implementationRoot ?? team.planProjectRoot
+}
+
 /** Build the "core architecture" text from the confirmed requirement + DAG. */
 export function buildArchitecture(team: TeamState): string {
   const clarification = team.clarification

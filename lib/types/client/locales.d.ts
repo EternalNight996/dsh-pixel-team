@@ -527,6 +527,8 @@ export declare const zh: {
     'cost.ledger.byTask': string;
     'cost.ledger.recent': string;
     'cost.ledger.unlinked': string;
+    'cost.ledger.unmetered': string;
+    'cost.ledger.captainTask': string;
     'cost.ledger.empty': string;
     'cost.title': string;
     'cost.body': string;
@@ -1291,6 +1293,8 @@ export declare const en: {
     'cost.ledger.byTask': string;
     'cost.ledger.recent': string;
     'cost.ledger.unlinked': string;
+    'cost.ledger.unmetered': string;
+    'cost.ledger.captainTask': string;
     'cost.ledger.empty': string;
     'cost.title': string;
     'cost.body': string;

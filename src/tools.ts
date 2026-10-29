@@ -66,6 +66,7 @@ import {
 } from './state.ts'
 import { appendTaskEvidence, reviewedTargetOf } from './quality-gates.ts'
 import { autoReviewCandidates } from './auto-review.ts'
+import { syncArchitectureFile } from './architecture-file.ts'
 import { confirmHumanReview } from './human-review.ts'
 import { randomUUID } from 'node:crypto'
 import { actualChangedPaths, missingDeclaredChanges, productVerifyCommands, runHostVerification } from './host-verify.ts'
@@ -918,6 +919,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       } else fresh.planReviewState = 'awaiting_review'
       signal?.throwIfAborted()
       await writeTeam(stateRoot, fresh)
+      syncArchitectureFile(workspaceOf(captain), fresh)
       return fresh
     })
   }
@@ -957,6 +959,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       delete fresh.planReviewState
       fresh.approvedAt = Date.now()
       await writeTeam(stateRoot, fresh)
+      syncArchitectureFile(workspace, fresh)
       return { teamId: fresh.id, members: fresh.members.length, tasks: fresh.tasks.length }
     })
     try {
@@ -2281,6 +2284,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           commandsRun,
         })
         if (!gate.ok) throw new Error(gate.error ?? 'update_task rejected by quality gates')
+        const wasCompleted = task.status === 'completed'
         if (args.status !== undefined) {
           const transition = transitionError(task.status, args.status)
           if (transition !== undefined) throw new Error(transition)
@@ -2320,6 +2324,13 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           ))
         }
         await writeTeam(stateRoot, fresh)
+        if (!wasCompleted && args.status === 'completed' && task.assignee === CAPTAIN_KEY && isQualityKind(taskKindOf(task))) {
+          const mode = isTeamMode(fresh.clarification?.mode) ? fresh.clarification.mode : DEFAULT_MODE
+          await appendCostLog(workspace, {
+            ts: Date.now(), sessionId: caller.id, teamId: fresh.id, memberName: 'captain',
+            taskId: task.id, estimateUsd: 0, mode, decision: 'captain-unmetered',
+          })
+        }
         if (followUpMessage !== undefined) await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, followUpMessage)
         for (const review of awaitingHuman) {
           await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, createMessage(

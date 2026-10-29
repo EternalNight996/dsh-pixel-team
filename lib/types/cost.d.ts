@@ -15,7 +15,7 @@ export interface CostLogEntry {
     thresholdUsd?: number;
     reason?: 'task' | 'day' | 'retry';
     mode?: TeamMode;
-    decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout';
+    decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered';
 }
 /** The mode's budget, with an optional owner override from the plugin config. */
 export declare function resolveModeBudget(mode: TeamMode | undefined, override?: CostConfig): {

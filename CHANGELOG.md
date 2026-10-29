@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.55] - 2026-10-29
+
+### Changed
+- ARCHITECTURE.md is refreshed whenever the staged plan is edited, regenerated or
+  approved (not only at founding), so the injected baseline follows the current
+  task graph.
+- Captain-executed quality tasks append an explicit `captain-unmetered` cost
+  entry; the roster ledger shows the task as "未计量" instead of hiding it.
+
 ## [0.1.54] - 2026-10-29
 
 ### Changed

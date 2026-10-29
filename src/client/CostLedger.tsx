@@ -77,7 +77,7 @@ export function CostDetail({ sessionId, teamId, t }: {
               <li key={item.taskId} className={css.row}>
                 <span className={css.key}>{item.taskId === '(spawn)' ? t('cost.ledger.unlinked') : item.taskId}</span>
                 <span className={css.meta}>{item.count}×</span>
-                <span className={css.amount}>{money(item.usd)}</span>
+                <span className={css.amount}>{item.usd === 0 ? t('cost.ledger.unmetered') : money(item.usd)}</span>
               </li>
             ))}
           </ul>
@@ -90,7 +90,7 @@ export function CostDetail({ sessionId, teamId, t }: {
             {report.entries.slice(0, 12).map((entry, index) => (
               <li key={String(entry.ts) + index} className={css.row}>
                 <span className={css.key}>{new Date(entry.ts).toLocaleTimeString('zh-CN', { hour12: false })}</span>
-                <span className={css.meta}>{entry.memberName ?? '—'} · {entry.taskId ?? t('cost.ledger.unlinked')} · {entry.decision ?? '—'}</span>
+                <span className={css.meta}>{entry.memberName ?? '—'} · {entry.taskId ?? t('cost.ledger.unlinked')} · {entry.decision === 'captain-unmetered' ? t('cost.ledger.captainTask') : entry.decision ?? '—'}</span>
                 <span className={css.amount}>{money(entry.estimateUsd)}</span>
               </li>
             ))}
