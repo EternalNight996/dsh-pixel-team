@@ -31,3 +31,15 @@
 .detailId { color: #6fb6ff; margin-right: 6px; }
 .detailMeta { display: block; color: #9aa4b2; font-size: 11px; margin-top: 2px; }
 .detailDesc { display: block; color: #c9d1dc; font-size: 11px; margin-top: 2px; white-space: pre-wrap; }
+.list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.row { position: relative; border: 1px solid #2c3442; border-radius: 8px; background: rgba(10,14,22,0.35); }
+.row[data-status='completed'] { border-color: rgba(127,214,168,0.55); }
+.row[data-status='failed'] { border-color: rgba(255,107,107,0.6); }
+.row[data-status='claimed'], .row[data-status='in_progress'] { border-color: rgba(242,193,78,0.6); }
+.rowHead { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 86px 8px 10px; background: transparent; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.rowChevron { width: 12px; color: #9aa4b2; }
+.rowId { color: #6fb6ff; font-size: 11px; }
+.rowSubject { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.rowMeta, .rowStatus, .rowAcceptance { font-size: 11px; color: #9aa4b2; white-space: nowrap; }
+.rowAcceptance[data-failed='true'] { color: #ff6b6b; }
+.rowDetail { display: flex; flex-direction: column; gap: 4px; padding: 0 10px 10px 30px; }

@@ -1,7 +1,6 @@
-/** Module 3: 道通藏书阁 — live DAG projection pushed over SSE. */
-import { useMemo, useState } from 'react'
+/** Module 3: 道统·藏经阁 — live task progress list (single column, expand on click). */
+import { useState } from 'react'
 import css from './LibraryPanel.module.css'
-import { layoutLibrary, CARD_W, CARD_H } from './library-model.ts'
 import { useLibraryState } from './library-stream.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
 import { PLUGIN_VERSION } from './version.ts'
@@ -15,21 +14,14 @@ const STATUS_KEY: Record<string, Parameters<AgentTeamsTranslate>[0]> = {
   failed: 'library.status.failed',
 }
 
-const EDGE_COLOR: Record<string, string> = {
-  satisfied: '#7fd6a8',
-  running: '#f2c14e',
-  unlocked: '#6fb6ff',
-  waiting: '#5b6472',
-}
-
 export function LibraryPanel({ sessionId, t }: {
   readonly sessionId: string
   readonly t: AgentTeamsTranslate
 }) {
   const { team, todayCostUsd, connected } = useLibraryState(sessionId)
   const [stopping, setStopping] = useState<Record<string, boolean>>({})
-  const layout = useMemo(() => (team === null ? undefined : layoutLibrary(team)), [team])
-  if (team === null || layout === undefined) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  if (team === null) {
     return <p className={css.empty}>{t('library.empty')}</p>
   }
   const stopTask = async (taskId: string): Promise<void> => {
@@ -56,40 +48,29 @@ export function LibraryPanel({ sessionId, t }: {
         <span className={css.version}>v{PLUGIN_VERSION}</span>
         <span className={connected ? css.live : css.offline}>{connected ? t('library.connected') : t('library.disconnected')}</span>
       </header>
-      <div className={css.canvas} style={{ width: layout.width, height: layout.height }}>
-        <svg className={css.edges} width={layout.width} height={layout.height} aria-hidden>
-          {layout.edges.map((edge) => (
-            <path
-              key={edge.from + '->' + edge.to}
-              d={'M ' + edge.x1 + ' ' + edge.y1 + ' C ' + (edge.x1 + 24) + ' ' + edge.y1 + ', ' + (edge.x2 - 24) + ' ' + edge.y2 + ', ' + edge.x2 + ' ' + edge.y2}
-              stroke={EDGE_COLOR[edge.state] ?? EDGE_COLOR.waiting}
-              strokeWidth={2}
-              fill="none"
-              strokeDasharray={edge.state === 'waiting' ? '4 4' : undefined}
-            />
-          ))}
-        </svg>
-        {team.tasks.map((task) => {
-          const position = layout.lanes.flatMap(lane => lane.cards).find(card => card.taskId === task.id)
-          if (position === undefined) return null
+      <div className={css.list}>
+        {team.tasks.map(task => {
           const passed = task.acceptance.filter(item => item.status === 'pass').length
           const failed = task.acceptance.filter(item => item.status === 'fail').length
           const active = task.status === 'claimed' || task.status === 'in_progress'
+          const open = expanded[task.id] === true
           return (
-            <article
-              key={task.id}
-              className={css.card}
-              data-status={task.status}
-              style={{ left: position.x, top: position.y, width: CARD_W, height: CARD_H }}
-            >
-              <span className={css.subject} title={task.subject}>{task.subject}</span>
-              <span className={css.meta}>
-                <span className={css.assignee}>{task.assignee || t('library.unassigned')}</span>
-                <span className={css.status}>{t(STATUS_KEY[task.status] ?? 'library.status.pending')}</span>
-              </span>
-              <span className={css.acceptance} data-failed={failed > 0 || undefined}>
-                {t('library.acceptance', { pass: passed, total: task.acceptance.length })}
-              </span>
+            <div key={task.id} className={css.row} data-status={task.status}>
+              <button
+                type="button"
+                className={css.rowHead}
+                aria-expanded={open}
+                onClick={() => { setExpanded(previous => ({ ...previous, [task.id]: !open })) }}
+              >
+                <span className={css.rowChevron} aria-hidden>{open ? '▾' : '▸'}</span>
+                <code className={css.rowId}>{task.id}</code>
+                <span className={css.rowSubject} title={task.subject}>{task.subject}</span>
+                <span className={css.rowMeta}>{task.assignee || t('library.unassigned')}</span>
+                <span className={css.rowStatus}>{t(STATUS_KEY[task.status] ?? 'library.status.pending')}</span>
+                <span className={css.rowAcceptance} data-failed={failed > 0 || undefined}>
+                  {t('library.acceptance', { pass: passed, total: task.acceptance.length })}
+                </span>
+              </button>
               {active && (
                 <button
                   type="button"
@@ -101,7 +82,15 @@ export function LibraryPanel({ sessionId, t }: {
                   {stopping[task.id] === true ? t('library.stopping') : '■ ' + t('library.stop')}
                 </button>
               )}
-            </article>
+              {open && (
+                <div className={css.rowDetail}>
+                  {task.description !== '' && <span className={css.detailDesc}>{task.description}</span>}
+                  <span className={css.detailMeta}>
+                    {t('library.deps')}: {task.dependencies.join(', ') || t('library.noDeps')} · {task.kind}
+                  </span>
+                </div>
+              )}
+            </div>
           )
         })}
       </div>
@@ -111,23 +100,6 @@ export function LibraryPanel({ sessionId, t }: {
           ? <span>{t('library.noBlocker')}</span>
           : <span>{team.blocker.subject}：{team.blocker.reason}</span>}
       </footer>
-      <details className={css.details}>
-        <summary>{t('library.details')}</summary>
-        <ol className={css.detailList}>
-          {team.tasks.map(task => (
-            <li key={task.id}>
-              <code className={css.detailId}>{task.id}</code>
-              <strong>{task.subject}</strong>
-              <span className={css.detailMeta}>
-                {task.assignee || t('library.unassigned')} · {t(STATUS_KEY[task.status] ?? 'library.status.pending')}
-                {' · '}{t('library.deps')}: {task.dependencies.join(', ') || t('library.noDeps')}
-              </span>
-              {task.description !== '' && <span className={css.detailDesc}>{task.description}</span>}
-            </li>
-          ))}
-        </ol>
-      </details>
-      <span hidden>{CARD_H}</span>
     </div>
   )
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.32] - 2026-10-29
+
+### Changed
+- The panel is renamed 道统·藏经阁 (was 道通藏书阁).
+- Task progress is a single-column list instead of swimlanes: one row per task
+  (id / subject / assignee / status / acceptance); click a row to expand its
+  description, dependencies and kind. Stop-task and live SSE updates unchanged.
+
 ## [0.1.31] - 2026-10-29
 
 ### Added
