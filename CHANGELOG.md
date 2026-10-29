@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.43] - 2026-10-29
+
+### Fixed
+- Hall scene no longer leaves large bands: the office 640px height cap is removed
+  and the hall window is capped near the scene's own aspect, so the canvas fills
+  the panel instead of being letterboxed when the panel is enlarged.
+- The collapse control is an icon button (— with tooltip), not a text button.
+- The collapsed token no longer covers the icon with a 4/4 badge.
+
 ## [0.1.42] - 2026-10-29
 
 ### Changed

@@ -1229,3 +1229,5 @@
 .historyHead .historySelect { flex: 1; }
 .historyStartSmall { flex: none; border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: inherit; border-radius: 8px; padding: 7px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .historyStartSmall:hover { border-color: #f2c14e; color: #f2c14e; }
+.window { max-width: min(780px, calc(100vw - 32px)); max-height: min(860px, calc(100vh - 32px)); }
+.collapseIcon { font-size: 16px; line-height: 1; font-weight: 700; }

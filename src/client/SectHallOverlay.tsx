@@ -1024,7 +1024,6 @@ export function SectHallOverlay({
               {APP_ICON === ''
                 ? <span className={css.tokenGlyph} aria-hidden>⛩</span>
                 : <img className={css.tokenIcon} src={APP_ICON} alt="" />}
-              {hasTeam && <span className={css.tokenBadge} aria-hidden>{done}/{total}</span>}
             </span>
             <span className={css.tokenTassel} aria-hidden />
           </span>
@@ -1073,8 +1072,16 @@ export function SectHallOverlay({
                   : `◈ ${t('office.viewingMember', { name: viewingMember?.name ?? '' })}`}
               </button>
             )}
-            <button type="button" className={css.headButton} data-control="hall-collapse" aria-expanded onClick={toggleCollapsed}>
-              {t('office.collapse')}
+            <button
+              type="button"
+              className={css.headButton}
+              data-control="hall-collapse"
+              aria-expanded
+              aria-label={t('office.collapse')}
+              title={t('office.collapse')}
+              onClick={toggleCollapsed}
+            >
+              <span className={css.collapseIcon} aria-hidden>—</span>
             </button>
           </header>
           <div className={css.canvas}>
