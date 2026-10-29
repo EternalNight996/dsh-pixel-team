@@ -66,6 +66,9 @@ export function buildPlanPrompt(input: {
     '访谈确认的需求：',
     describeClarification(claims),
     '',
+    '用户访谈约束（由问题与选择整理，必须体现在任务里）：',
+    claims.constraints.length === 0 ? '（无）' : claims.constraints.join('；'),
+    '',
     '工作区事实：' + input.workspaceFacts.slice(0, 1200),
   ].join('\n')
   return { system, user }

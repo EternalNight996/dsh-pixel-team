@@ -266,24 +266,17 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     setBusy(true)
     setError('')
     try {
-      // Turn the interview answers into the clarification object (AI); on
-      // failure fall back to the mode's constraints/acceptance baseline.
-      let clarification: Record<string, unknown> = fallbackClarification(mode)
-      if (interviewQuestions.length > 0) {
-        const answers = interviewQuestions
-          .map(question => ({ question: question.prompt, answer: interviewAnswers[question.id] ?? [] }))
-          .filter(item => item.answer.length > 0)
-        try {
-          const answerResponse = await fetch('/plugins/dsh-pixel-team/interview/answers', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sessionId, mode, requirement: goalTrimmed, answers }),
-          })
-          const answerBody = await answerResponse.json().catch(() => null) as { ok?: boolean; clarification?: Record<string, unknown> } | null
-          if (answerResponse.ok && answerBody?.ok === true && answerBody.clarification !== undefined) {
-            clarification = answerBody.clarification
-          }
-        } catch { /* keep the fallback */ }
+      // Build the clarification deterministically from the mode baseline + the
+      // interview answers, so founding needs only ONE model round (plan
+      // generation) instead of two and the wait is shorter.
+      const interviewNotes = interviewQuestions
+        .map(question => ({ question: question.prompt, answer: interviewAnswers[question.id] ?? [] }))
+        .filter(item => item.answer.length > 0)
+        .map(item => item.question + '：' + item.answer.join(' / '))
+      const base = fallbackClarification(mode)
+      const clarification: Record<string, unknown> = {
+        ...base,
+        constraints: [...(base.constraints as string[]), ...interviewNotes].slice(0, 20),
       }
       const response = await fetch('/plugins/dsh-pixel-team/quick-start', {
         method: 'POST',

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.37] - 2026-10-29
+
+### Changed
+- Founding now needs only ONE model round: the interview answers are folded into
+  the clarification deterministically (constraints) and fed to plan generation,
+  removing the separate answers→clarification AI call. The plan prompt lists the
+  interview constraints explicitly.
+
 ## [0.1.36] - 2026-10-29
 
 ### Fixed
