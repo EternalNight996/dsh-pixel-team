@@ -64,6 +64,8 @@ export interface ToolsConfig {
         verifyTimeoutMs?: number;
         /** Auto review requires every acceptance item to pass (default true). */
         requireAcceptance?: boolean;
+        /** Who closes an auto-audited review: host directly or a human confirmation. */
+        reviewMode?: 'auto' | 'human';
     };
 }
 /** Browser/UI mutations allowed while a plan is waiting for approval. */
@@ -106,6 +108,11 @@ export interface AgentTeamsRuntime {
         teamId: string;
         members: number;
         tasks: number;
+    }>;
+    /** Human confirmation for a review the host audited in reviewMode=human. */
+    confirmReview(captain: Agent, teamId: string, taskId: string): Promise<{
+        taskId: string;
+        status: string;
     }>;
     continueStagedPlanning(captain: Agent, teamId: string): Promise<{
         teamId: string;

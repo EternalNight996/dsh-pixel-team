@@ -513,6 +513,10 @@ export declare const zh: {
     'library.reqFailures': string;
     'library.reqFailuresTotal': string;
     'library.architecture': string;
+    'library.awaitingHuman': string;
+    'library.confirmReview': string;
+    'library.confirming': string;
+    'library.confirmFailed': string;
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;
@@ -1270,6 +1274,10 @@ export declare const en: {
     'library.reqFailures': string;
     'library.reqFailuresTotal': string;
     'library.architecture': string;
+    'library.awaitingHuman': string;
+    'library.confirmReview': string;
+    'library.confirming': string;
+    'library.confirmFailed': string;
     'library.description': string;
     'cost.ledger.title': string;
     'cost.ledger.today': string;

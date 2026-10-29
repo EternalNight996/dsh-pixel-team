@@ -113,6 +113,8 @@ export interface Config {
         verifyTimeoutMs?: number;
         /** Auto review requires every acceptance item to pass (default true). */
         requireAcceptance?: boolean;
+        /** Who closes an auto-audited review: host directly or a human confirmation. */
+        reviewMode?: 'auto' | 'human';
     };
 }
 export declare const Config: z<Config>;

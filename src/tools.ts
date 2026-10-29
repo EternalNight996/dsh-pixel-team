@@ -146,6 +146,8 @@ export interface ToolsConfig {
     verifyTimeoutMs?: number
     /** Auto review requires every acceptance item to pass (default true). */
     requireAcceptance?: boolean
+    /** Who closes an auto-audited review: host directly or a human confirmation. */
+    reviewMode?: 'auto' | 'human'
   }
 }
 
@@ -186,6 +188,8 @@ export interface AgentTeamsRuntime {
   updateStagedPlan(captain: Agent, teamId: string, mutation: StagedPlanMutation, signal?: AbortSignal): Promise<TeamState>
   updateStagedPlanBatch(captain: Agent, teamId: string, mutations: readonly StagedPlanMutation[], signal?: AbortSignal): Promise<TeamState>
   approveStagedTeam(captain: Agent, teamId: string, signal?: AbortSignal): Promise<{ teamId: string; members: number; tasks: number }>
+  /** Human confirmation for a review the host audited in reviewMode=human. */
+  confirmReview(captain: Agent, teamId: string, taskId: string): Promise<{ taskId: string; status: string }>
   continueStagedPlanning(captain: Agent, teamId: string): Promise<{ teamId: string; alreadyWaiting: boolean }>
   discardStagedTeam(captain: Agent, teamId: string): Promise<{ teamId: string }>
 }
@@ -264,8 +268,15 @@ function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsC
     if ((target.commandsRun ?? []).some(item => item.status !== 'passed')) continue
     const otherGates = team.tasks.filter(task => task.id !== review.id && task.id !== target.id && isQualityKind(taskKindOf(task)))
     if (otherGates.some(task => task.status !== 'completed')) continue
+    if (config.quality?.reviewMode === 'human') {
+      // Audit passed, but a human must confirm before the verdict exists.
+      review.awaitingHuman = true
+      review.updatedAt = Date.now()
+      continue
+    }
     review.status = 'completed'
     review.verdict = 'pass'
+    delete review.awaitingHuman
     review.assignee = CAPTAIN_KEY
     review.attempt = 1
     review.attemptId = randomUUID()
@@ -941,6 +952,35 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       ctx.logger.warn(`agent-teams: post-approval kick failed for "${teamId}": ${String(error)}`)
     }
     return approved
+  }
+
+  const confirmReview: AgentTeamsRuntime['confirmReview'] = async (captain, teamId, taskId) => {
+    const workspace = workspaceOf(captain)
+    const stateRoot = stateRootOf(workspace, config)
+    return withTeamLock(teamLockKey(stateRoot, teamId), async () => {
+      const fresh = await requireFreshCaptainTeam(ctx, stateRoot, teamId, captain.id)
+      const task = fresh.tasks.find(item => item.id === taskId)
+      if (task === undefined) throw new Error('review task not found')
+      if (taskKindOf(task) !== 'review') throw new Error('task is not a review')
+      if (task.awaitingHuman !== true) throw new Error('task is not awaiting human review')
+      if (task.dependencies.some(id => fresh.tasks.find(item => item.id === id)?.status !== 'completed')) {
+        throw new Error('review dependencies are not completed')
+      }
+      if (fresh.tasks.some(item => item.status === 'failed')) {
+        throw new Error('a failed task exists; fix it before confirming the review')
+      }
+      delete task.awaitingHuman
+      task.status = 'completed'
+      task.verdict = 'pass'
+      task.assignee = CAPTAIN_KEY
+      task.attempt = (task.attempt ?? 0) + 1
+      task.attemptId = randomUUID()
+      task.output = '人工复核确认通过（宿主审核证据已绑定）'
+      task.updatedAt = Date.now()
+      bindClosingVerdict(workspace, fresh, task)
+      await writeTeam(stateRoot, fresh)
+      return { taskId, status: 'completed' }
+    })
   }
 
   const continueStagedPlanning: AgentTeamsRuntime['continueStagedPlanning'] = async (captain, teamId) => {
@@ -2974,6 +3014,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
     updateStagedPlan,
     updateStagedPlanBatch,
     approveStagedTeam,
+    confirmReview,
     continueStagedPlanning,
     discardStagedTeam,
   }

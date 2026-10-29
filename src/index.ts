@@ -151,6 +151,8 @@ export interface Config {
     verifyTimeoutMs?: number
     /** Auto review requires every acceptance item to pass (default true). */
     requireAcceptance?: boolean
+    /** Who closes an auto-audited review: host directly or a human confirmation. */
+    reviewMode?: 'auto' | 'human'
   }
 }
 
@@ -228,6 +230,7 @@ export const Config: z<Config> = z.object({
       commandsByProject: z.dict(z.array(z.string())).default({}),
       verifyTimeoutMs: z.natural().default(120000),
       requireAcceptance: z.boolean().default(true),
+      reviewMode: z.union([z.const('auto'), z.const('human')]).default('auto'),
     }),
     z.const(undefined),
   ]),
@@ -569,6 +572,56 @@ export function apply(ctx: Context, config: Config): void {
         res.end(JSON.stringify({ ok: true, stopped }))
       },
     }), 'agent-teams: stop task route')
+
+    // Human confirmation for an auto-audited review (quality.reviewMode=human).
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/task/review-confirm',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const taskId = typeof payload.taskId === 'string' ? payload.taskId.trim() : ''
+        if (sessionId === '' || taskId === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId and taskId are required' }))
+          return
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const stateRoot = join(workspace, config.stateDir ?? '.agent-teams')
+        const team = await findTeamByCaptain(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
+        if (team === undefined) {
+          res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'no active team for this session' }))
+          return
+        }
+        try {
+          const result = await agentTeamsRuntime.confirmReview(captain, team.id, taskId)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ ok: true, ...result }))
+        } catch (error: unknown) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
+        }
+      },
+    }), 'agent-teams: confirm review route')
 
     ctx.effect(() => webServer.register({
       kind: 'exact',

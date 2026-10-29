@@ -22,6 +22,8 @@ export interface LibraryTaskView {
   readonly description: string
   readonly dependencies: string[]
   readonly acceptance: LibraryAcceptance[]
+  /** Host audit passed; a human confirmation is pending. */
+  readonly awaitingHuman: boolean
   /** Retries + hard failures observed for this task. */
   readonly failures: number
 }
@@ -128,6 +130,7 @@ export function projectLibraryTeam(team: TeamState, todayCostUsd = 0): LibraryTe
       description: task.description ?? '',
       dependencies: [...task.dependencies],
       acceptance: acceptanceOf(task),
+      awaitingHuman: task.awaitingHuman === true,
       failures: (task.retryCount ?? 0) + (task.status === 'failed' ? 1 : 0),
     }))
     .sort((left, right) => left.depth - right.depth || left.id.localeCompare(right.id))

@@ -154,6 +154,8 @@ export interface TeamTask {
     /** Review / requirements / repair loop index, 1-based when present. */
     round?: number;
     verdict?: ReviewVerdict;
+    /** Host audit passed but a human must confirm the review in the library. */
+    awaitingHuman?: boolean;
     findings?: ReviewFinding[];
     objective?: string;
     inScope?: string[];

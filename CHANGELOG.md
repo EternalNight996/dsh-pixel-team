@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.49] - 2026-10-29
+
+### Added
+- quality.reviewMode: "auto" (host closes the review) or "human" (host audits,
+  then the review waits for a human "Confirm review" click in 藏经阁). The
+  confirmation route binds the verdict to the same artifact revision.
+
 ## [0.1.48] - 2026-10-29
 
 ### Changed

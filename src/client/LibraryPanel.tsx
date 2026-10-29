@@ -20,6 +20,7 @@ export function LibraryPanel({ sessionId, t }: {
 }) {
   const { team, connected } = useLibraryState(sessionId)
   const [stopping, setStopping] = useState<Record<string, boolean>>({})
+  const [confirming, setConfirming] = useState<Record<string, boolean>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [costByTask, setCostByTask] = useState<Record<string, number>>({})
   useEffect(() => {
@@ -37,6 +38,22 @@ export function LibraryPanel({ sessionId, t }: {
   }, [sessionId, team?.tasks.length ?? 0])
   if (team === null) {
     return <p className={css.empty}>{t('library.empty')}</p>
+  }
+  const confirmReview = async (taskId: string): Promise<void> => {
+    setConfirming(previous => ({ ...previous, [taskId]: true }))
+    try {
+      const response = await fetch('/plugins/dsh-pixel-team/task/review-confirm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId, taskId }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { error?: string } | null
+        window.alert(body?.error ?? t('library.confirmFailed'))
+      }
+    } finally {
+      setConfirming(previous => ({ ...previous, [taskId]: false }))
+    }
   }
   const stopTask = async (taskId: string): Promise<void> => {
     if (!window.confirm(t('library.stopConfirm'))) return
@@ -119,10 +136,22 @@ export function LibraryPanel({ sessionId, t }: {
                   {t('library.acceptance', { pass: passed, total: task.acceptance.length })}
                 </span>
                 {task.failures > 0 && <span className={css.rowFailures}>{t('library.failures', { count: task.failures })}</span>}
+                {task.awaitingHuman && <span className={css.rowHuman}>{t('library.awaitingHuman')}</span>}
                 {taskCost !== undefined && taskCost > 0 && (
                   <span className={css.rowCost}>{'¥' + usdToCny(taskCost).toFixed(2)}</span>
                 )}
               </button>
+              {task.awaitingHuman && (
+                <button
+                  type="button"
+                  className={css.confirmReview}
+                  disabled={confirming[task.id] === true}
+                  title={t('library.confirmReview')}
+                  onClick={() => { void confirmReview(task.id) }}
+                >
+                  {confirming[task.id] === true ? t('library.confirming') : '✓ ' + t('library.confirmReview')}
+                </button>
+              )}
               {active && (
                 <button
                   type="button"

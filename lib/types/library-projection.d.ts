@@ -18,6 +18,8 @@ export interface LibraryTaskView {
     readonly description: string;
     readonly dependencies: string[];
     readonly acceptance: LibraryAcceptance[];
+    /** Host audit passed; a human confirmation is pending. */
+    readonly awaitingHuman: boolean;
     /** Retries + hard failures observed for this task. */
     readonly failures: number;
 }
