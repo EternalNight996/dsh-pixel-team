@@ -30,6 +30,9 @@ const files = walk(libRoot).map(file => relative(root, file).replace(/\\/g, '/')
 const tracked = new Set(execFileSync('git', ['ls-files', '-z', 'lib'], { encoding: 'utf8' }).split('\0').filter(Boolean))
 const untracked = files.filter(file => !tracked.has(file))
 const dirty = execFileSync('git', ['status', '--porcelain', '--', 'lib'], { encoding: 'utf8' }).trim()
+// Task products are runtime data, never part of a plugin release.
+const headFiles = execFileSync('git', ['show', '--name-only', '--format=', 'HEAD'], { encoding: 'utf8' }).split('\n')
+const committedProducts = headFiles.filter(path => path.startsWith('projects/'))
 
 const missing = []
 for (const file of files.filter(file => file.endsWith('.js'))) {
@@ -49,6 +52,7 @@ const declaresLib = Array.isArray(pkg.files) && pkg.files.some(entry => String(e
 const problems = []
 if (untracked.length > 0) problems.push('untracked lib files (git will not ship them): ' + untracked.join(', '))
 if (dirty !== '') problems.push('lib has uncommitted changes; commit before tagging: ' + dirty.replace(/\n/g, ' | '))
+if (committedProducts.length > 0) problems.push('HEAD commit contains task products: ' + committedProducts.join(', '))
 if (!declaresLib) problems.push('package.json files must include "lib"')
 if (missing.length > 0) problems.push('unresolved relative imports: ' + missing.join(', '))
 if (problems.length > 0) {
