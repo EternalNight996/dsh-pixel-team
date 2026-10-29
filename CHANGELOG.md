@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.56] - 2026-10-29
+
+### Fixed
+- 藏经阁 per-task cost now queries the report with the current team id; before it
+  aggregated task ids across every team, so a new team could show another
+  team's spend (found by the full browser E2E).
+
 ## [0.1.55] - 2026-10-29
 
 ### Changed

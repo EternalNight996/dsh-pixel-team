@@ -25,7 +25,8 @@ export function LibraryPanel({ sessionId, t }: {
   const [costByTask, setCostByTask] = useState<Record<string, number>>({})
   useEffect(() => {
     let cancelled = false
-    void fetch('/plugins/dsh-pixel-team/cost/report?sessionId=' + encodeURIComponent(sessionId))
+    const teamQuery = team?.teamId === undefined ? '' : '&teamId=' + encodeURIComponent(team.teamId)
+    void fetch('/plugins/dsh-pixel-team/cost/report?sessionId=' + encodeURIComponent(sessionId) + teamQuery)
       .then(response => response.json())
       .then((body: { by_task?: { taskId: string; usd: number }[] }) => {
         if (cancelled || body.by_task === undefined) return
@@ -35,7 +36,7 @@ export function LibraryPanel({ sessionId, t }: {
       })
       .catch(() => undefined)
     return () => { cancelled = true }
-  }, [sessionId, team?.tasks.length ?? 0])
+  }, [sessionId, team?.teamId, team?.tasks.length ?? 0])
   if (team === null) {
     return <p className={css.empty}>{t('library.empty')}</p>
   }
