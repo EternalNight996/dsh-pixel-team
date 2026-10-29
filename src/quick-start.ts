@@ -478,7 +478,7 @@ export function buildPlanFromSpecs(
       ...needsScope ? { inScope: [...(spec.inScope ?? inScope)] } : {},
       ...needsVerify ? { verify: [...(spec.verify ?? verify)] } : {},
       ...kind === 'review' && spec.reviewedTaskId !== undefined ? { reviewedTaskId: spec.reviewedTaskId } : {},
-      ...kind === undefined ? {} : { coverageOf: [goal] },
+      ...kind === undefined ? {} : { coverageOf: spec.coverageOf !== undefined && spec.coverageOf.length > 0 ? [goal, ...spec.coverageOf] : [goal] },
     }
   })
   return { teamName: (SECT_NAMES[template.id] ?? '修仙宗') + '·' + stamp.slice(8), template: template.id, members, tasks }

@@ -18,6 +18,8 @@ export interface PlanTaskSpec {
     verify?: string[];
     dependencies: string[];
     reviewedTaskId?: string;
+    /** Requirement/interview items this task covers (exact source strings). */
+    coverageOf?: string[];
 }
 export declare function buildPlanPrompt(input: {
     goal: string;

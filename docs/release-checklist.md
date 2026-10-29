@@ -1,6 +1,6 @@
 # Release checklist (dsh-pixel-team)
 
-Date: 2026-10-29 (v0.1.53). Automated gates are reproducible; manual gates are
+Date: 2026-10-29 (v0.1.54). Automated gates are reproducible; manual gates are
 still required before a public release.
 
 ## Automated (green)

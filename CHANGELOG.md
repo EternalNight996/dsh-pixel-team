@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.54] - 2026-10-29
+
+### Changed
+- AI plan generation may declare per-task `coverageOf` (exact interview items);
+  the plan prompt asks for it, parsing carries it into the staged plan, and the
+  library uses it for per-requirement PASS/FAIL. Uncovered items still fall back
+  to deterministic distribution.
+
 ## [0.1.53] - 2026-10-29
 
 ### Changed
