@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>贪吃蛇开启</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #10151c; color: #e8eef6; font-family: system-ui, sans-serif; }
+    .app { display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 20px; }
+    .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .bar strong { color: #f2c14e; font-size: 18px; }
+    .bar span { color: #9aa4b2; font-size: 13px; }
+    canvas { background: #0b1016; border: 1px solid #2c3442; border-radius: 10px; display: block; }
+    .overlay { position: absolute; inset: 0; display: none; place-items: center; text-align: center; background: rgb(8 10 16 / 72%); border-radius: 10px; }
+    .stage { position: relative; width: 320px; height: 320px; }
+    .overlay[data-visible='true'] { display: grid; }
+    .overlay p { margin: 0; font-size: 16px; }
+    .pad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 48px); gap: 6px; }
+    .pad button { border: 1px solid #2c3442; background: #151a21; color: #e8eef6; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    button { cursor: pointer; }
+    .license { display: flex; gap: 8px; align-items: center; font-size: 13px; color: #9aa4b2; }
+    .license input { width: 180px; padding: 6px 8px; border-radius: 8px; border: 1px solid #2c3442; background: #151a21; color: #e8eef6; }
+    .license button { padding: 6px 14px; border-radius: 8px; border: 1px solid #f2c14e; background: #f2c14e; color: #16241b; font-weight: 700; }
+    .error { color: #ff6b6b; font-size: 12px; min-height: 16px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1 style="margin:0;font-size:20px">🐍 贪吃蛇开启</h1>
+    <section class="license" id="license-gate">
+      <label>授权码 <input id="license-key" value="SNAKE-DEMO-2026" /></label>
+      <button id="license-start" type="button">开始游戏</button>
+      <span id="license-error" class="error"></span>
+    </section>
+    <section class="hidden" id="game-root">
+      <div class="bar">
+        <strong data-score>0</strong><span>分</span>
+        <span data-length>3</span><span>节</span>
+        <button id="pause" type="button">暂停 / 继续</button>
+        <button id="restart" type="button">重开</button>
+      </div>
+      <div class="stage">
+        <canvas id="board" width="320" height="320"></canvas>
+        <div class="overlay" id="overlay" data-visible="false"><p id="overlay-text"></p></div>
+      </div>
+      <div class="pad">
+        <span></span><button data-dir="up" type="button">↑</button><span></span>
+        <button data-dir="left" type="button">←</button><span></span><button data-dir="right" type="button">→</button>
+        <span></span><button data-dir="down" type="button">↓</button><span></span>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import { CELL, COLS, ROWS, TICK_MS, createGame, step, togglePause, restart, isLicensed } from './game.mjs'
+    const canvas = document.getElementById('board')
+    const ctx = canvas.getContext('2d')
+    const scoreEl = document.querySelector('[data-score]')
+    const lengthEl = document.querySelector('[data-length]')
+    const overlay = document.getElementById('overlay')
+    const overlayText = document.getElementById('overlay-text')
+    const gate = document.getElementById('license-gate')
+    const root = document.getElementById('game-root')
+    const licenseInput = document.getElementById('license-key')
+    const licenseError = document.getElementById('license-error')
+    let state = createGame()
+    let timer
+    let nextDir
+    const DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } }
+
+    function draw() {
+      ctx.fillStyle = '#0b1016'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)'
+      for (let i = 1; i < COLS; i += 1) {
+        ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, canvas.height); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(canvas.width, i * CELL); ctx.stroke()
+      }
+      if (state.food !== undefined) {
+        ctx.fillStyle = '#ff6b6b'
+        ctx.fillRect(state.food.x * CELL + 2, state.food.y * CELL + 2, CELL - 4, CELL - 4)
+      }
+      state.snake.forEach((cell, index) => {
+        ctx.fillStyle = index === 0 ? '#f2c14e' : '#7fd6a8'
+        ctx.fillRect(cell.x * CELL + 1, cell.y * CELL + 1, CELL - 2, CELL - 2)
+      })
+      scoreEl.textContent = String(state.score)
+      lengthEl.textContent = String(state.snake.length)
+      if (state.status === 'over') {
+        overlay.dataset.visible = 'true'
+        overlayText.textContent = '游戏结束 · 得分 ' + state.score
+      } else if (state.paused) {
+        overlay.dataset.visible = 'true'
+        overlayText.textContent = '已暂停（空格继续）'
+      } else {
+        overlay.dataset.visible = 'false'
+      }
+    }
+
+    function tick() {
+      state = step(state, nextDir)
+      nextDir = undefined
+      draw()
+      if (state.status === 'over') { clearInterval(timer); timer = undefined }
+    }
+
+    function start() {
+      if (timer !== undefined) return
+      timer = setInterval(tick, TICK_MS)
+      draw()
+    }
+
+    function stop() {
+      if (timer !== undefined) { clearInterval(timer); timer = undefined }
+    }
+
+    function beginGame() {
+      if (!isLicensed(licenseInput.value)) {
+        licenseError.textContent = '授权码无效'
+        return
+      }
+      licenseError.textContent = ''
+      gate.classList.add('hidden')
+      root.classList.remove('hidden')
+      start()
+    }
+
+    document.getElementById('license-start').addEventListener('click', beginGame)
+    document.getElementById('pause').addEventListener('click', () => { state = togglePause(state); draw() })
+    document.getElementById('restart').addEventListener('click', () => { state = restart(); draw(); start() })
+    for (const button of document.querySelectorAll('[data-dir]')) {
+      button.addEventListener('pointerdown', (event) => { event.preventDefault(); nextDir = DIRS[button.dataset.dir] })
+    }
+    window.addEventListener('keydown', (event) => {
+      const target = event.target
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' }
+      if (map[event.key] !== undefined) { event.preventDefault(); nextDir = DIRS[map[event.key]] }
+      if (event.key === ' ') { event.preventDefault(); state = togglePause(state); draw() }
+    })
+    draw()
+    window.addEventListener('pagehide', stop)
+  </script>
+</body>
+</html>

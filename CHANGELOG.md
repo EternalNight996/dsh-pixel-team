@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.40] - 2026-10-29
+
+### Fixed
+- Solo teams no longer report "captain is busy with <other task>" when starting a
+  task: with zero members every task is pre-assigned to the captain, so the
+  captain-busy guard is skipped for solo teams and tasks run one after another.
+
 ## [0.1.39] - 2026-10-29
 
 ### Fixed

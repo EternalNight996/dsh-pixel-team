@@ -1814,7 +1814,10 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         }
         const targetMember = target === CAPTAIN_KEY ? undefined : requireMember(fresh, target)
         if (target === CAPTAIN_KEY) {
-          const busy = captainOpenTask(fresh, task.id)
+          // A solo team pre-assigns every task to the captain; only the task
+          // being started counts as an open attempt there.
+          const soloTeam = fresh.members.filter(member => member.status !== 'removed').length === 0
+          const busy = soloTeam ? undefined : captainOpenTask(fresh, task.id)
           if (busy !== undefined) {
             throw new Error(`captain is busy with ${busy.id}; complete or reassign it before taking over ${task.id}`)
           }
