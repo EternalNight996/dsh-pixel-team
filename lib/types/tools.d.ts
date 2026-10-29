@@ -116,6 +116,8 @@ export declare function haltTeamWork(input: {
 }>;
 /** Web approval has no tool result in the captain's conversation. */
 export declare function stagedPlanApprovedContext(teamName: string): string;
+/** Context queued after a solo (captain-only) team is approved. */
+export declare function soloExecutionContext(teamName: string): string;
 /** Context queued after the human rejects a staged plan. */
 export declare function stagedPlanDiscardContext(teamName: string): string;
 /** Model-facing continuation that turns the review UI back into a conversation. */

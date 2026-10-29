@@ -94,6 +94,11 @@ export interface Config {
         perTaskUsd?: number;
         perDayUsd?: number;
     };
+    /** Founding project boundary: product directory and extra read-only paths. */
+    boundary?: {
+        productsDir?: string;
+        forbidden?: string[];
+    };
 }
 export declare const Config: z<Config>;
 /** The model-facing usage policy: when and how to drive AgentTeams. */

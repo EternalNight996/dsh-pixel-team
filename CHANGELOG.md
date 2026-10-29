@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.35] - 2026-10-29
+
+### Changed
+- Solo mode is a single-click item (no checkbox): one click clears the roster and
+  enters solo; a second click leaves it. Member chips are hidden while solo.
+- Solo teams really run: approving a team with zero members wakes the captain
+  with explicit solo execution steps (status → reassign to captain → work →
+  update → next task).
+- The protected platform paths are no longer hard-coded: they are derived from
+  the workspace manifest (main/files/bin/tsconfig/existing roots) and can be
+  overridden by config boundary.forbidden / boundary.productsDir.
+- The collapsed hall is an icon (app icon, else ⛩) with a glow pulse and a task
+  count badge.
+
 ## [0.1.34] - 2026-10-29
 
 ### Added

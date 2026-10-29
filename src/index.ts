@@ -28,6 +28,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type { WorkspaceRegistry } from '@deepseek-ai/dsh-workspace'
 import {
   haltTeamWork,
+  soloExecutionContext,
   stagedPlanApprovedContext,
   registerAgentTeamsTools,
   teamLockKey,
@@ -45,7 +46,7 @@ import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
 import { buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
 import { generatePlanSpecs } from './plan-generator.ts'
-import { confinePlanToProject, projectRootFor } from './project-boundary.ts'
+import { confinePlanToProject, derivePlatformPaths, projectRootFor } from './project-boundary.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
 import { generateClarifyOptions } from './clarify-options.ts'
@@ -133,6 +134,8 @@ export interface Config {
   memory?: { endpoint?: string }
   /** Soft cost gate: prompt thresholds; terminate cancels only the current spawn. */
   cost?: { enabled?: boolean; perTaskUsd?: number; perDayUsd?: number }
+  /** Founding project boundary: product directory and extra read-only paths. */
+  boundary?: { productsDir?: string; forbidden?: string[] }
 }
 
 // `z.object()` has an implicit `{}` default in Schemastery.  Fallback routes
@@ -200,6 +203,7 @@ export const Config: z<Config> = z.object({
   clarify: z.union([z.object({ enforce: z.boolean() }), z.const(undefined)]),
   memory: z.union([z.object({ endpoint: z.string() }), z.const(undefined)]),
   cost: z.union([z.object({ enabled: z.boolean(), perTaskUsd: z.number(), perDayUsd: z.number() }), z.const(undefined)]),
+  boundary: z.union([z.object({ productsDir: z.string(), forbidden: z.array(z.string()) }), z.const(undefined)]),
 })
 
 /** The model-facing usage policy: when and how to drive AgentTeams. */
@@ -781,7 +785,8 @@ export function apply(ctx: Context, config: Config): void {
         const planRoles = quickStartRoles(template, roles)
         // Every founding project lives under projects/<slug>/; platform files are
         // off-limits unless the user explicitly asks to change the plugin.
-        const projectRoot = projectRootFor(goal)
+        const projectRoot = projectRootFor(goal, config.boundary?.productsDir)
+        const forbiddenPaths = derivePlatformPaths(workspace, config.boundary?.forbidden)
         delivery.inScope = [projectRoot]
         const planFacts = await describeWorkspaceFacts(workspace)
         const planAbort = new AbortController()
@@ -795,6 +800,7 @@ export function apply(ctx: Context, config: Config): void {
             roles: planRoles.map(role => ({ role, name: ROLE_NAMES[role] ?? role })),
             workspaceFacts: planFacts,
             projectRoot,
+            forbiddenPaths,
           }, planAbort.signal)
         } finally {
           clearTimeout(planTimeout)
@@ -1142,7 +1148,7 @@ export function apply(ctx: Context, config: Config): void {
             // step; the tool approve path already returns to the model itself.
             try {
               captain.steer(createUserMessage({
-                content: [{ type: 'text', text: stagedPlanApprovedContext(team.name) }],
+                content: [{ type: 'text', text: stagedPlanApprovedContext(team.name) + (approved.members === 0 ? '\n\n' + soloExecutionContext(team.name) : '') }],
                 source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
               }))
             } catch (error) {

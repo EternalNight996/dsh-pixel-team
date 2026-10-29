@@ -627,3 +627,6 @@
 .soloRow { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 12px; }
 .soloRow label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .soloRow small { color: #9aa4b2; font-size: 11px; }
+.soloButton { align-self: flex-start; border: 1px solid #7f6a3a; background: transparent; color: #f2c14e; border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; }
+.soloButton[data-active='true'] { border-color: #f2c14e; background: rgba(242,193,78,0.16); font-weight: 700; }
+.soloButton:disabled { opacity: 0.55; cursor: default; }

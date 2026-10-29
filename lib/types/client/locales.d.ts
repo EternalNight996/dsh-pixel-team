@@ -504,6 +504,8 @@ export declare const zh: {
     'quickstart.vowHint': string;
     'quickstart.sectHint': string;
     'quickstart.solo': string;
+    'quickstart.soloActive': string;
+    'quickstart.soloCleared': string;
     'quickstart.soloHint': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;
@@ -1226,6 +1228,8 @@ export declare const en: {
     'quickstart.vowHint': string;
     'quickstart.sectHint': string;
     'quickstart.solo': string;
+    'quickstart.soloActive': string;
+    'quickstart.soloCleared': string;
     'quickstart.soloHint': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;

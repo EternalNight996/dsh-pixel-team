@@ -1027,7 +1027,10 @@ export function SectHallOverlay({
         >
           <span className={css.tokenInner} style={{ transform: `scale(${tokenScale})` }} aria-hidden>
             <span className={css.tokenBody}>
-              <span className={css.tokenGlyph} aria-hidden>山</span>
+              {APP_ICON === ''
+                ? <span className={css.tokenGlyph} aria-hidden>⛩</span>
+                : <img className={css.tokenIcon} src={APP_ICON} alt="" />}
+              {hasTeam && <span className={css.tokenBadge} aria-hidden>{done}/{total}</span>}
             </span>
             <span className={css.tokenTassel} aria-hidden />
           </span>

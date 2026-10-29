@@ -1,12 +1,16 @@
-/** Founding boundary: project root, platform paths and plan confinement. */
+/** Founding boundary: project root, protected paths and plan confinement. */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { boundaryViolations, confinePlanToProject, isInsideProject, isPlatformPath, projectRootFor, projectSlug } from '../lib/project-boundary.js'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { boundaryViolations, confinePlanToProject, derivePlatformPaths, isInsideProject, isPlatformPath, projectRootFor, projectSlug } from '../lib/project-boundary.js'
 import { parsePlanSpecs } from '../lib/plan-generator.js'
 import { buildPlanFromSpecs } from '../lib/quick-start.js'
 
 const roles = ['planner', 'implementer', 'verifier', 'reviewer']
 const root = projectRootFor('做个贪吃蛇')
+const forbidden = ['src/', 'lib/', 'scripts/', 'package.json']
 
 function specsFor(scope) {
   return [
@@ -21,22 +25,38 @@ test('project roots are inside projects/ and traversal is rejected', () => {
   assert.match(root, /^projects\//)
   assert.equal(root.endsWith('/'), true)
   assert.ok(projectSlug('做个贪吃蛇').length > 0)
+  assert.equal(projectRootFor('贪吃蛇', 'works/'), 'works/贪吃蛇/')
   assert.equal(isInsideProject(root, root + 'src/game.js'), true)
   assert.equal(isInsideProject(root, 'projects/other/src/game.js'), false)
   assert.equal(isInsideProject(root, '../src/game.js'), false)
   assert.equal(isInsideProject(root, 'C:/Windows/system32'), false)
-  assert.equal(isPlatformPath('src/client/SectHallOverlay.tsx'), true)
-  assert.equal(isPlatformPath(root + 'src/game.js'), false)
-  assert.deepEqual(boundaryViolations(['src/'], root), ['src/ is a platform path'])
-  assert.deepEqual(boundaryViolations([root + 'src/'], root), [])
+  assert.equal(isPlatformPath('src/client/SectHallOverlay.tsx', forbidden), true)
+  assert.equal(isPlatformPath(root + 'src/game.js', forbidden), false)
+  assert.deepEqual(boundaryViolations(['src/'], root, forbidden), ['src/ is a platform path'])
+  assert.deepEqual(boundaryViolations([root + 'src/'], root, forbidden), [])
+})
+
+test('protected paths are derived from the workspace manifest', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pixel-boundary-'))
+  try {
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ main: 'lib/index.js', files: ['lib', 'assets', 'README.md'], bin: { 'x-doctor': 'scripts/doctor.mjs' } }), 'utf8')
+    writeFileSync(join(dir, 'tsconfig.json'), '{}', 'utf8')
+    mkdirSync(join(dir, 'src'))
+    const derived = derivePlatformPaths(dir)
+    for (const expected of ['lib/', 'assets/', 'README.md', 'scripts/', 'package.json', 'tsconfig.json', 'src/']) {
+      assert.ok(derived.includes(expected), 'missing ' + expected + ' in ' + JSON.stringify(derived))
+    }
+    assert.deepEqual(derivePlatformPaths(dir, ['only/']), ['only'])
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('plan specs must keep inScope inside the project root', () => {
-  const ok = parsePlanSpecs(JSON.stringify({ tasks: specsFor([root + 'src/']) }), roles, root)
+  const ok = parsePlanSpecs(JSON.stringify({ tasks: specsFor([root + 'src/']) }), roles, root, forbidden)
   assert.ok(ok !== undefined)
-  const escaped = specsFor(['src/'])
-  assert.equal(parsePlanSpecs(JSON.stringify({ tasks: escaped }), roles, root), undefined)
-  const filled = parsePlanSpecs(JSON.stringify({ tasks: specsFor(undefined) }), roles, root)
+  assert.equal(parsePlanSpecs(JSON.stringify({ tasks: specsFor(['src/']) }), roles, root, forbidden), undefined)
+  const filled = parsePlanSpecs(JSON.stringify({ tasks: specsFor(undefined) }), roles, root, forbidden)
   assert.ok(filled !== undefined)
   assert.deepEqual(filled.find(item => item.id === 'b')?.inScope, [root])
 })

@@ -459,16 +459,21 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
             <section className={css.stepPane} data-step="sect">
               <p className={css.hint}>{t('quickstart.sectHint')}</p>
               <p className={css.soloRow}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={solo}
-                    disabled={busy}
-                    onChange={(event) => { setSolo(event.target.checked) }}
-                  />
-                  {t('quickstart.solo')}
-                </label>
-                <small>{t('quickstart.soloHint')}</small>
+                <button
+                  type="button"
+                  className={css.soloButton}
+                  data-active={solo || undefined}
+                  disabled={busy}
+                  onClick={() => {
+                    const next = !solo
+                    setSolo(next)
+                    // Single-click item: entering solo immediately clears the roster.
+                    if (next) { setRoles([]) }
+                  }}
+                >
+                  {solo ? t('quickstart.soloActive') : t('quickstart.solo')}
+                </button>
+                <small>{solo ? t('quickstart.soloCleared') : t('quickstart.soloHint')}</small>
               </p>
               <div className={css.field}>
                 <span>{t('quickstart.sect')}</span>
@@ -499,13 +504,13 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                       ? t('quickstart.sectRolled', { sect: activeSect === undefined ? '' : t(activeSect.nameKey) })
                       : activeSect === undefined ? '' : t(activeSect.descKey)}
                 </small>
-                {sectMode !== 'custom' && (
+                {!solo && sectMode !== 'custom' && (
                   <span className={css.sectRoster}>
                     {sectRoles.map(personChip)}
                   </span>
                 )}
               </div>
-              {sectMode === 'custom' && (
+              {!solo && sectMode === 'custom' && (
                 <div className={css.field}>
                   <span>{t('quickstart.roles')}</span>
                   <div className={css.multi} ref={multiRef}>

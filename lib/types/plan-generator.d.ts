@@ -30,12 +30,14 @@ export declare function buildPlanPrompt(input: {
     workspaceFacts: string;
     /** Workspace-relative product root every writable path must stay inside. */
     projectRoot: string;
+    /** Protected platform paths derived from the workspace/config. */
+    forbiddenPaths: readonly string[];
 }): {
     system: string;
     user: string;
 };
 /** Parse + validate the model plan; undefined means "fall back to the template". */
-export declare function parsePlanSpecs(raw: string, roles: readonly string[], projectRoot?: string): PlanTaskSpec[] | undefined;
+export declare function parsePlanSpecs(raw: string, roles: readonly string[], projectRoot?: string, forbiddenPaths?: readonly string[]): PlanTaskSpec[] | undefined;
 /** One-shot plan generation; undefined asks the caller to use the template. */
 export declare function generatePlanSpecs(ctx: Context, captain: Agent, input: {
     goal: string;
@@ -47,4 +49,5 @@ export declare function generatePlanSpecs(ctx: Context, captain: Agent, input: {
     }[];
     workspaceFacts: string;
     projectRoot: string;
+    forbiddenPaths: readonly string[];
 }, signal?: AbortSignal): Promise<PlanTaskSpec[] | undefined>;

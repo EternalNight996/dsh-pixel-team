@@ -38,6 +38,8 @@ export function buildPlanPrompt(input: {
   workspaceFacts: string
   /** Workspace-relative product root every writable path must stay inside. */
   projectRoot: string
+  /** Protected platform paths derived from the workspace/config. */
+  forbiddenPaths: readonly string[]
 }): { system: string; user: string } {
   const spec = getModeSpec(input.mode)
   const claims = input.clarification
@@ -55,7 +57,7 @@ export function buildPlanPrompt(input: {
     '7. 开发模式：' + spec.emoji + ' ' + spec.name + '。' + spec.philosophy + ' 验证策略：' + verifierStrategyText(input.mode),
     '8. 禁止编造用户没说的功能；不确定的写进 description 的风险/假设，不要加任务。',
     '9. 产物根目录固定为 ' + input.projectRoot + '；所有 inScope 必须写在该目录内，禁止写 workspace 根或其他目录。',
-    '10. 禁止修改平台/其他插件文件：src/、lib/、scripts/、assets/、docs/、package.json、tsconfig*、cordis.patch.yml 等一律只读；除非用户明确要求改造插件本身。',
+    '10. 禁止修改平台/其他插件文件，以下路径只读（除非用户明确要求改造插件本身）：' + input.forbiddenPaths.join('、') + '。',
     '11. 产物可独立运行时，verify 只针对 ' + input.projectRoot + ' 内的文件；不要用平台仓库的构建命令冒充产物验证。',
   ].join('\n')
   const user = [
@@ -87,7 +89,7 @@ function isAcyclic(ids: readonly string[], deps: Map<string, string[]>): boolean
 }
 
 /** Parse + validate the model plan; undefined means "fall back to the template". */
-export function parsePlanSpecs(raw: string, roles: readonly string[], projectRoot?: string): PlanTaskSpec[] | undefined {
+export function parsePlanSpecs(raw: string, roles: readonly string[], projectRoot?: string, forbiddenPaths: readonly string[] = []): PlanTaskSpec[] | undefined {
   let parsed: unknown
   try {
     const text = raw.trim()
@@ -154,7 +156,7 @@ export function parsePlanSpecs(raw: string, roles: readonly string[], projectRoo
   if (projectRoot !== undefined) {
     for (const spec of specs) {
       if (spec.inScope !== undefined) {
-        if (boundaryViolations(spec.inScope, projectRoot).length > 0) return undefined
+        if (boundaryViolations(spec.inScope, projectRoot, forbiddenPaths).length > 0) return undefined
       } else if (spec.kind === 'implementation' || spec.kind === 'repair') {
         spec.inScope = [projectRoot]
       }
@@ -174,6 +176,7 @@ export async function generatePlanSpecs(
     roles: readonly { role: string; name: string }[]
     workspaceFacts: string
     projectRoot: string
+    forbiddenPaths: readonly string[]
   },
   signal?: AbortSignal,
 ): Promise<PlanTaskSpec[] | undefined> {
@@ -194,7 +197,7 @@ export async function generatePlanSpecs(
     })
     let text = ''
     for await (const chunk of stream) if (chunk.type === 'text-delta') text += chunk.text
-    return parsePlanSpecs(text, input.roles.map(item => item.role), input.projectRoot)
+    return parsePlanSpecs(text, input.roles.map(item => item.role), input.projectRoot, input.forbiddenPaths)
   } catch (error: unknown) {
     ctx.logger.warn('agent-teams: plan generation degraded: ' + (error instanceof Error ? error.message : String(error)))
     return undefined
