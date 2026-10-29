@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.45] - 2026-10-29
+
+### Fixed
+- 0.1.44 could not load: its generated lib/architecture.js and
+  lib/types/architecture.d.ts were untracked, so the GitHub tag installed a
+  package whose lib/members.js imported a missing module. Both artifacts are now
+  committed (and the broken 0.1.44 release removed).
+
 ## [0.1.44] - 2026-10-29
 
 ### Added
