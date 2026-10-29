@@ -50,12 +50,11 @@ test('doctor runs through an installed bin symlink and reports success or failur
   writeFileSync(join(host, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh', version: policy.recommendedHost }))
   const bin = join(root, 'dsh-agent-teams-doctor')
   symlinkSync(fileURLToPath(new URL('./doctor.mjs', import.meta.url)), bin, 'file')
-  // Unix executes the installed shebang directly. Windows does not implement
-  // shebangs: invoke Node with the same symlink path, retaining the argv[1]
-  // versus import.meta.url regression without relying on a command shell.
-  const windows = process.platform === 'win32'
-  const executable = windows ? process.execPath : bin
-  const args = [...(windows ? [bin] : []), '--host-root', host, '--json']
+  // Invoke Node with the installed bin path on every platform: this keeps the
+  // argv[1] versus import.meta.url regression and the relative import beside
+  // the real script, without depending on an executable bit / shebang runner.
+  const executable = process.execPath
+  const args = [bin, '--host-root', host, '--json']
   const run = () => spawnSync(executable, args, { encoding: 'utf8', timeout: 5_000 })
   const supported = run()
   assert.equal(supported.error, undefined)
