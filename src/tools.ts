@@ -66,6 +66,7 @@ import {
 } from './state.ts'
 import { appendTaskEvidence, reviewedTargetOf } from './quality-gates.ts'
 import { autoReviewCandidates } from './auto-review.ts'
+import { confirmHumanReview } from './human-review.ts'
 import { randomUUID } from 'node:crypto'
 import { actualChangedPaths, missingDeclaredChanges, productVerifyCommands, runHostVerification } from './host-verify.ts'
 import { buildDeliveryReport, writeDeliveryReport } from './delivery-report.ts'
@@ -974,25 +975,9 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
     const stateRoot = stateRootOf(workspace, config)
     return withTeamLock(teamLockKey(stateRoot, teamId), async () => {
       const fresh = await requireFreshCaptainTeam(ctx, stateRoot, teamId, captain.id)
-      const task = fresh.tasks.find(item => item.id === taskId)
-      if (task === undefined) throw new Error('review task not found')
-      if (taskKindOf(task) !== 'review') throw new Error('task is not a review')
-      if (task.awaitingHuman !== true) throw new Error('task is not awaiting human review')
-      if (task.dependencies.some(id => fresh.tasks.find(item => item.id === id)?.status !== 'completed')) {
-        throw new Error('review dependencies are not completed')
-      }
-      if (fresh.tasks.some(item => item.status === 'failed')) {
-        throw new Error('a failed task exists; fix it before confirming the review')
-      }
-      delete task.awaitingHuman
-      task.status = 'completed'
-      task.verdict = 'pass'
-      task.assignee = CAPTAIN_KEY
-      task.attempt = (task.attempt ?? 0) + 1
-      task.attemptId = randomUUID()
-      task.output = '人工复核确认通过（宿主审核证据已绑定）'
-      task.updatedAt = Date.now()
-      bindClosingVerdict(workspace, fresh, task)
+      const result = confirmHumanReview(fresh, taskId)
+      if (!result.ok) throw new Error(result.error)
+      bindClosingVerdict(workspace, fresh, result.task)
       await writeTeam(stateRoot, fresh)
       return { taskId, status: 'completed' }
     })

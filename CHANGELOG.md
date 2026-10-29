@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.53] - 2026-10-29
+
+### Changed
+- Human review confirmation extracted into a pure module (`confirmHumanReview`)
+  with tests for success, missing/ordinary review, incomplete dependencies and a
+  failed sibling task.
+- Staged plan regeneration source extracted into `planSourceOf` with tests
+  (staged vs running, roles, solo, requirement preserved).
+
 ## [0.1.52] - 2026-10-29
 
 ### Added

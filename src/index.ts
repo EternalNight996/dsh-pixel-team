@@ -44,7 +44,7 @@ import { archiveTeamDir, findTeamByCaptain, invalidateTaskAttempt, readTeam, wit
 import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
-import { assignRequirementCoverage, buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
+import { assignRequirementCoverage, buildPlanFromSpecs, buildQuickStartPlan, planSourceOf, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
 import { generatePlanSpecs } from './plan-generator.ts'
 import { confinePlanToProject, derivePlatformPaths, projectRootFor } from './project-boundary.ts'
 import { buildArchitecture } from './architecture.ts'
@@ -657,21 +657,14 @@ export function apply(ctx: Context, config: Config): void {
           res.end(JSON.stringify({ error: 'no active team for this session' }))
           return
         }
-        if (team.phase !== 'staged') {
+        const source = planSourceOf(team)
+        if (source === undefined) {
           res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ error: 'only a staged plan can be regenerated' }))
           return
         }
-        const roles = team.members.filter(member => member.status !== 'removed').map(member => member.role).filter((role): role is string => role !== undefined && role !== '')
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-        res.end(JSON.stringify({
-          ok: true,
-          goal: team.description ?? '',
-          clarification: team.clarification ?? null,
-          requirement: team.requirement ?? null,
-          roles,
-          solo: team.members.filter(member => member.status !== 'removed').length === 0,
-        }))
+        res.end(JSON.stringify({ ok: true, ...source }))
       },
     }), 'agent-teams: plan source route')
 

@@ -1,4 +1,4 @@
-import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts';
+import type { TaskKind, TeamClarification, TeamRequirement, TeamState } from './types.ts';
 import { type TeamMode } from './modes.ts';
 import type { PlanTaskSpec } from './plan-generator.ts';
 /** One built-in template: default roles and a small task DAG. */
@@ -135,5 +135,15 @@ export declare function buildPlanFromSpecs(goal: string, templateId: string, req
  * gate tasks in order (deterministic, every item covered).
  */
 export declare function assignRequirementCoverage(tasks: QuickStartPlan['tasks'], requirements: readonly string[], goal: string): void;
+/** Stored inputs a staged plan can be regenerated from. */
+export interface PlanSourceView {
+    readonly goal: string;
+    readonly clarification: TeamClarification | null;
+    readonly requirement: TeamRequirement | null;
+    readonly roles: string[];
+    readonly solo: boolean;
+}
+/** Read the regeneration source from a staged team (undefined when not staged). */
+export declare function planSourceOf(team: TeamState): PlanSourceView | undefined;
 /** Captain-only plan: drop the roster and route every task to the captain. */
 export declare function soloPlan(plan: QuickStartPlan): QuickStartPlan;

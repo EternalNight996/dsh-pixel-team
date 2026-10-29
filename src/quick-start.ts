@@ -7,7 +7,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { TaskKind, TeamClarification, TeamRequirement } from './types.ts'
+import type { TaskKind, TeamClarification, TeamRequirement, TeamState } from './types.ts'
 import { verifierOutputContract, verifierStrategyText } from './verifier-script.ts'
 import { getModeSpec, type TeamMode } from './modes.ts'
 import type { PlanTaskSpec } from './plan-generator.ts'
@@ -503,6 +503,28 @@ export function assignRequirementCoverage(
     const coverage = task.coverageOf === undefined ? [goal] : [...task.coverageOf]
     if (!coverage.includes(requirement)) coverage.push(requirement)
     task.coverageOf = coverage
+  }
+}
+
+/** Stored inputs a staged plan can be regenerated from. */
+export interface PlanSourceView {
+  readonly goal: string
+  readonly clarification: TeamClarification | null
+  readonly requirement: TeamRequirement | null
+  readonly roles: string[]
+  readonly solo: boolean
+}
+
+/** Read the regeneration source from a staged team (undefined when not staged). */
+export function planSourceOf(team: TeamState): PlanSourceView | undefined {
+  if (team.phase !== 'staged') return undefined
+  const members = team.members.filter(member => member.status !== 'removed')
+  return {
+    goal: team.description ?? '',
+    clarification: team.clarification ?? null,
+    requirement: team.requirement ?? null,
+    roles: members.map(member => member.role).filter((role): role is string => role !== undefined && role !== ''),
+    solo: members.length === 0,
   }
 }
 
