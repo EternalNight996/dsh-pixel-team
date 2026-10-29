@@ -45,6 +45,7 @@ import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
 import { buildPlanFromSpecs, buildQuickStartPlan, quickStartDeliveryDefaults, quickStartRoles, ROLE_NAMES, soloPlan, stageQuickStartTeam } from './quick-start.ts'
 import { generatePlanSpecs } from './plan-generator.ts'
+import { confinePlanToProject, projectRootFor } from './project-boundary.ts'
 import { normalizeClarification } from './clarify.ts'
 import { polishRequirement } from './polish.ts'
 import { generateClarifyOptions } from './clarify-options.ts'
@@ -778,6 +779,10 @@ export function apply(ctx: Context, config: Config): void {
         // Derive the DAG from the real goal + interview answers + mode; the
         // fixed template is only the fallback when generation is unusable.
         const planRoles = quickStartRoles(template, roles)
+        // Every founding project lives under projects/<slug>/; platform files are
+        // off-limits unless the user explicitly asks to change the plugin.
+        const projectRoot = projectRootFor(goal)
+        delivery.inScope = [projectRoot]
         const planFacts = await describeWorkspaceFacts(workspace)
         const planAbort = new AbortController()
         const planTimeout = setTimeout(() => { planAbort.abort() }, 60_000)
@@ -789,13 +794,14 @@ export function apply(ctx: Context, config: Config): void {
             clarification,
             roles: planRoles.map(role => ({ role, name: ROLE_NAMES[role] ?? role })),
             workspaceFacts: planFacts,
+            projectRoot,
           }, planAbort.signal)
         } finally {
           clearTimeout(planTimeout)
         }
         const basePlan = planSpecs !== undefined
           ? buildPlanFromSpecs(goal, template, planRoles, planSpecs, delivery)
-          : buildQuickStartPlan(goal, template, roles, delivery)
+          : confinePlanToProject(buildQuickStartPlan(goal, template, roles, delivery), projectRoot)
         // Solo run: no members are created; every task is assigned to the captain.
         const plan = payload.solo === true ? soloPlan(basePlan) : basePlan
         const replace = payload.replace === true

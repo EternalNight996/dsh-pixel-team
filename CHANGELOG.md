@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.34] - 2026-10-29
+
+### Added
+- Founding project boundary: every generated project is confined to
+  projects/<slug>/; platform/plugin paths (src/, lib/, scripts/, assets/, docs/,
+  package.json, tsconfig*, cordis.patch.yml, ...) are read-only unless the user
+  explicitly asks to change the plugin.
+- Plan generation validates inScope against the project root (rejects escapes
+  and platform paths), fills a missing implementation scope with the root, and
+  confines the template fallback to the same root.
+- scripts/project-boundary.test.mjs wired into verify:web-routes.
+
 ## [0.1.33] - 2026-10-29
 
 ### Removed

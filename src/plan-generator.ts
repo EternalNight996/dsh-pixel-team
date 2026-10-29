@@ -11,6 +11,7 @@ import { resolveMemberLlmSelection } from './members.ts'
 import { describeClarification } from './clarify.ts'
 import { getModeSpec, type TeamMode } from './modes.ts'
 import { verifierStrategyText } from './verifier-script.ts'
+import { boundaryViolations } from './project-boundary.ts'
 import type { TaskKind, TeamClarification } from './types.ts'
 
 export interface PlanTaskSpec {
@@ -35,6 +36,8 @@ export function buildPlanPrompt(input: {
   clarification: TeamClarification
   roles: readonly { role: string; name: string }[]
   workspaceFacts: string
+  /** Workspace-relative product root every writable path must stay inside. */
+  projectRoot: string
 }): { system: string; user: string } {
   const spec = getModeSpec(input.mode)
   const claims = input.clarification
@@ -51,8 +54,9 @@ export function buildPlanPrompt(input: {
     '6. 禁止边界（写入相关任务描述或验收）：' + spec.defaultExcluded.join('；') + '。',
     '7. 开发模式：' + spec.emoji + ' ' + spec.name + '。' + spec.philosophy + ' 验证策略：' + verifierStrategyText(input.mode),
     '8. 禁止编造用户没说的功能；不确定的写进 description 的风险/假设，不要加任务。',
-    '9. 这是 dsh-pixel-team 平台仓库：任务产物必须输出到 workspace 下的 projects/<需求短名>/（新建目录）；禁止修改本仓库的 src/、lib/、scripts/、package.json、tsconfig 等平台文件，除非用户明确要求改造插件本身。',
-    '10. 产物可独立运行时，verify 只针对 projects/<短名>/ 内的文件（如 cd projects/xxx && pnpm test），不要用平台仓库的构建命令冒充产物验证。',
+    '9. 产物根目录固定为 ' + input.projectRoot + '；所有 inScope 必须写在该目录内，禁止写 workspace 根或其他目录。',
+    '10. 禁止修改平台/其他插件文件：src/、lib/、scripts/、assets/、docs/、package.json、tsconfig*、cordis.patch.yml 等一律只读；除非用户明确要求改造插件本身。',
+    '11. 产物可独立运行时，verify 只针对 ' + input.projectRoot + ' 内的文件；不要用平台仓库的构建命令冒充产物验证。',
   ].join('\n')
   const user = [
     '任务目标：' + input.goal,
@@ -83,7 +87,7 @@ function isAcyclic(ids: readonly string[], deps: Map<string, string[]>): boolean
 }
 
 /** Parse + validate the model plan; undefined means "fall back to the template". */
-export function parsePlanSpecs(raw: string, roles: readonly string[]): PlanTaskSpec[] | undefined {
+export function parsePlanSpecs(raw: string, roles: readonly string[], projectRoot?: string): PlanTaskSpec[] | undefined {
   let parsed: unknown
   try {
     const text = raw.trim()
@@ -147,6 +151,15 @@ export function parsePlanSpecs(raw: string, roles: readonly string[]): PlanTaskS
   if (!hasImplementation || !hasReview) return undefined
   const deps = new Map(specs.map(spec => [spec.id, spec.dependencies]))
   if (!isAcyclic(specs.map(spec => spec.id), deps)) return undefined
+  if (projectRoot !== undefined) {
+    for (const spec of specs) {
+      if (spec.inScope !== undefined) {
+        if (boundaryViolations(spec.inScope, projectRoot).length > 0) return undefined
+      } else if (spec.kind === 'implementation' || spec.kind === 'repair') {
+        spec.inScope = [projectRoot]
+      }
+    }
+  }
   return specs
 }
 
@@ -160,6 +173,7 @@ export async function generatePlanSpecs(
     clarification: TeamClarification
     roles: readonly { role: string; name: string }[]
     workspaceFacts: string
+    projectRoot: string
   },
   signal?: AbortSignal,
 ): Promise<PlanTaskSpec[] | undefined> {
@@ -180,7 +194,7 @@ export async function generatePlanSpecs(
     })
     let text = ''
     for await (const chunk of stream) if (chunk.type === 'text-delta') text += chunk.text
-    return parsePlanSpecs(text, input.roles.map(item => item.role))
+    return parsePlanSpecs(text, input.roles.map(item => item.role), input.projectRoot)
   } catch (error: unknown) {
     ctx.logger.warn('agent-teams: plan generation degraded: ' + (error instanceof Error ? error.message : String(error)))
     return undefined
