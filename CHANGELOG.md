@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.36] - 2026-10-29
+
+### Fixed
+- Solo founding no longer fails with "no active member named captain": create_task
+  accepts the captain as an assignee (the captain, like a member, may own tasks).
+- Founding now shows a clear loading note ("正在生成开宗计划，通常 10-60 秒") while
+  the AI plan is generated, and switches to the plan review as soon as the team is
+  staged (delay 1400ms -> 300ms) instead of lingering on the pre-founding view.
+
 ## [0.1.35] - 2026-10-29
 
 ### Changed

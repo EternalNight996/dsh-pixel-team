@@ -319,7 +319,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
       if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId } }))
       setBlocked(false)
       setGoal('')
-      foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 1400)
+      foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 300)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
@@ -578,6 +578,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           )}
 
           {error !== '' && <p className={css.error} role="alert">{error}</p>}
+          {busy && <p className={css.busyNote} role="status">{t('quickstart.generating')}</p>}
           {created !== undefined && <p className={css.success} role="status">{created}</p>}
       </div>
       <div className={css.wizardActions}>

@@ -1671,7 +1671,8 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             throw new Error(`dependency "${dependency}" does not exist in team "${fresh.name}"`)
           }
         }
-        if (args.assignee !== undefined) requireMember(fresh, args.assignee)
+        // The captain may own tasks directly (solo teams have no members).
+        if (args.assignee !== undefined && args.assignee !== CAPTAIN_KEY) requireMember(fresh, args.assignee)
         const kind = gate.kind ?? 'work'
         const objective = kind === 'review' || kind === 'requirements'
           ? sanitizeReviewObjective(input.objective)

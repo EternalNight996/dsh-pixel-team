@@ -619,6 +619,7 @@ export declare const zh: {
     'quickstart.cancel': string;
     'quickstart.submit': string;
     'quickstart.busy': string;
+    'quickstart.generating': string;
     'quickstart.goalRequired': string;
     'quickstart.created': string;
     'workspace.tabBoard': string;
@@ -1343,6 +1344,7 @@ export declare const en: {
     'quickstart.cancel': string;
     'quickstart.submit': string;
     'quickstart.busy': string;
+    'quickstart.generating': string;
     'quickstart.goalRequired': string;
     'quickstart.created': string;
     'workspace.tabBoard': string;
