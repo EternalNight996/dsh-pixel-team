@@ -29,6 +29,7 @@ if (!existsSync(libRoot)) {
 const files = walk(libRoot).map(file => relative(root, file).replace(/\\/g, '/'))
 const tracked = new Set(execFileSync('git', ['ls-files', '-z', 'lib'], { encoding: 'utf8' }).split('\0').filter(Boolean))
 const untracked = files.filter(file => !tracked.has(file))
+const dirty = execFileSync('git', ['status', '--porcelain', '--', 'lib'], { encoding: 'utf8' }).trim()
 
 const missing = []
 for (const file of files.filter(file => file.endsWith('.js'))) {
@@ -47,6 +48,7 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const declaresLib = Array.isArray(pkg.files) && pkg.files.some(entry => String(entry).replace(/^\//, '').replace(/\/$/, '') === 'lib')
 const problems = []
 if (untracked.length > 0) problems.push('untracked lib files (git will not ship them): ' + untracked.join(', '))
+if (dirty !== '') problems.push('lib has uncommitted changes; commit before tagging: ' + dirty.replace(/\n/g, ' | '))
 if (!declaresLib) problems.push('package.json files must include "lib"')
 if (missing.length > 0) problems.push('unresolved relative imports: ' + missing.join(', '))
 if (problems.length > 0) {

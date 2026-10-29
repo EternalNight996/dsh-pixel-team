@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.51] - 2026-10-29
+
+### Fixed
+- Auto review no longer waits for unrelated quality gates: eligibility is decided
+  on the review's own dependency closure (parallel branches may still be running).
+  A failure outside that closure does not block this branch's review.
+- Auto-review eligibility moved to a pure module with six regression tests
+  (parallel branch, unrelated failure, failed dependency, acceptance policy,
+  failed host command, attempted/without-deps/incomplete cases).
+- release-guard now also rejects a dirty lib tree, so a tag cannot ship
+  uncommitted generated files.
+
 ## [0.1.50] - 2026-10-29
 
 ### Added

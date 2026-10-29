@@ -65,6 +65,7 @@ import {
   taskKindOf,
 } from './state.ts'
 import { appendTaskEvidence, reviewedTargetOf } from './quality-gates.ts'
+import { autoReviewCandidates } from './auto-review.ts'
 import { randomUUID } from 'node:crypto'
 import { actualChangedPaths, missingDeclaredChanges, runHostVerification } from './host-verify.ts'
 import { buildDeliveryReport, writeDeliveryReport } from './delivery-report.ts'
@@ -256,18 +257,12 @@ function bindClosingVerdict(workspace: string, team: TeamState, task: TeamTask):
  */
 function autoReviewReadyTasks(workspace: string, team: TeamState, config: ToolsConfig): void {
   if (config.quality?.autoReview !== true) return
-  if (team.tasks.some(task => task.status === 'failed')) return
-  for (const review of team.tasks) {
-    if (taskKindOf(review) !== 'review' || review.status !== 'pending' || (review.attempt ?? 0) > 0) continue
-    if (review.dependencies.some(id => team.tasks.find(task => task.id === id)?.status !== 'completed')) continue
+  const candidates = autoReviewCandidates(team, {
+    requireAcceptance: config.quality?.requireAcceptance !== false,
+  })
+  for (const review of candidates) {
     const target = reviewedTargetOf(team, review)
-    if (target === undefined || target.status !== 'completed') continue
-    const requireAcceptance = config.quality?.requireAcceptance !== false
-    const targetAcceptance = target.acceptanceResults ?? []
-    if (requireAcceptance && (targetAcceptance.length === 0 || targetAcceptance.some(item => item.status !== 'passed'))) continue
-    if ((target.commandsRun ?? []).some(item => item.status !== 'passed')) continue
-    const otherGates = team.tasks.filter(task => task.id !== review.id && task.id !== target.id && isQualityKind(taskKindOf(task)))
-    if (otherGates.some(task => task.status !== 'completed')) continue
+    if (target === undefined) continue
     if (config.quality?.reviewMode === 'human') {
       // Audit passed, but a human must confirm before the verdict exists.
       review.awaitingHuman = true
