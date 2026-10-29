@@ -14,6 +14,7 @@ still required before a public release.
 | Tracked lib + import graph | pnpm verify:release-guard | pass (run after `git add` of every new lib file, before tagging) |
 | Source/build/config stamps | node scripts/verify.mjs | pass |
 | Full suite | pnpm verify | exit 0 |
+| CI | .github/workflows/verify.yml | typecheck + build + committed lib + verify + release-guard on push/PR |
 
 ## Package smoke
 
