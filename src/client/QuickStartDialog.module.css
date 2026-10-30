@@ -632,3 +632,4 @@
 .soloButton:disabled { opacity: 0.55; cursor: default; }
 .busyNote { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(242,193,78,0.5); background: rgba(242,193,78,0.08); color: #f2c14e; font-size: 12px; line-height: 1.5; animation: busy-pulse 1.4s ease-in-out infinite; }
 @keyframes busy-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.wizardActions { margin-top: auto; }

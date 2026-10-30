@@ -37,6 +37,54 @@ const TEMPLATES: readonly QuickTemplate[] = [
   { id: 'debate', labelKey: 'quickstart.tplDebate', descKey: 'quickstart.desc.debate', roles: ['researcher', 'analyst', 'reviewer'] },
 ]
 
+type QuickStartDraft = {
+  step: number
+  mode: TeamMode
+  goal: string
+  template: string
+  roles: string[]
+  sectMode: string
+  rolledSect: string
+  solo: boolean
+  superFast: boolean
+  questions: InterviewQuestionView[]
+  answers: Record<string, string[]>
+}
+
+const QUICK_START_DRAFT_PREFIX = 'dsh-pixel-team.quickstart.'
+
+function readQuickStartDraft(sessionId: string): QuickStartDraft | undefined {
+  try {
+    const raw = window.localStorage.getItem(QUICK_START_DRAFT_PREFIX + sessionId)
+    if (raw === null) return undefined
+    const value = JSON.parse(raw) as Partial<QuickStartDraft>
+    if (typeof value !== 'object' || value === null) return undefined
+    return {
+      step: typeof value.step === 'number' ? value.step : 0,
+      mode: typeof value.mode === 'string' && (TEAM_MODES as readonly string[]).includes(value.mode) ? value.mode as TeamMode : DEFAULT_MODE,
+      goal: typeof value.goal === 'string' ? value.goal : '',
+      template: typeof value.template === 'string' ? value.template : (TEMPLATES[0]?.id ?? 'fix'),
+      roles: Array.isArray(value.roles) ? value.roles.filter((role): role is string => typeof role === 'string') : [...(TEMPLATES[0]?.roles ?? [])],
+      sectMode: typeof value.sectMode === 'string' ? value.sectMode : 'random',
+      rolledSect: typeof value.rolledSect === 'string' ? value.rolledSect : randomSect().id,
+      solo: value.solo === true,
+      superFast: value.superFast === true,
+      questions: Array.isArray(value.questions) ? value.questions as InterviewQuestionView[] : [],
+      answers: typeof value.answers === 'object' && value.answers !== null ? value.answers as Record<string, string[]> : {},
+    }
+  } catch {
+    return undefined
+  }
+}
+
+function saveQuickStartDraft(sessionId: string, draft: QuickStartDraft): void {
+  try { window.localStorage.setItem(QUICK_START_DRAFT_PREFIX + sessionId, JSON.stringify(draft)) } catch { /* private mode */ }
+}
+
+function clearQuickStartDraft(sessionId: string): void {
+  try { window.localStorage.removeItem(QUICK_START_DRAFT_PREFIX + sessionId) } catch { /* private mode */ }
+}
+
 /** 开宗五步：道统 → 立派之志 → AI 访谈 → 宗门 → 立誓。 */
 const STEPS = ['doctrine', 'vow', 'interview', 'sect', 'oath'] as const
 type Step = typeof STEPS[number]
@@ -87,20 +135,21 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   readonly onDone?: () => void
   readonly onFounded?: () => void
 }) {
-  const [step, setStep] = useState(0)
+  const [draft] = useState(() => readQuickStartDraft(sessionId))
+  const [step, setStep] = useState(() => draft?.step ?? 0)
   // Development mode drives polish, options, constitution and the member persona.
-  const [mode, setMode] = useState<TeamMode>(DEFAULT_MODE)
-  const [goal, setGoal] = useState('')
-  const [template, setTemplate] = useState<string>(TEMPLATES[0]?.id ?? 'fix')
-  const [roles, setRoles] = useState<string[]>([...(TEMPLATES[0]?.roles ?? [])])
+  const [mode, setMode] = useState<TeamMode>(() => draft?.mode ?? DEFAULT_MODE)
+  const [goal, setGoal] = useState(() => draft?.goal ?? '')
+  const [template, setTemplate] = useState<string>(() => draft?.template ?? TEMPLATES[0]?.id ?? 'fix')
+  const [roles, setRoles] = useState<string[]>(() => draft?.roles ?? [...(TEMPLATES[0]?.roles ?? [])])
   // 门派有两种玩法：用户选一个预设，或让系统随机动态分配（再点一次重抽）。
-  const [sectMode, setSectMode] = useState<'random' | 'custom' | string>('random')
-  const [rolledSect, setRolledSect] = useState<string>(() => randomSect().id)
+  const [sectMode, setSectMode] = useState<'random' | 'custom' | string>(() => draft?.sectMode ?? 'random')
+  const [rolledSect, setRolledSect] = useState<string>(() => draft?.rolledSect ?? randomSect().id)
   const [customRole, setCustomRole] = useState('')
   const [rolesOpen, setRolesOpen] = useState(false)
   // Solo run: no members are spawned; the captain executes every task itself.
-  const [solo, setSolo] = useState(false)
-  const [superFast, setSuperFast] = useState(false)
+  const [solo, setSolo] = useState(() => draft?.solo ?? false)
+  const [superFast, setSuperFast] = useState(() => draft?.superFast ?? false)
   const [developerMode] = useState<boolean>(() => {
     try { return window.localStorage.getItem('dsh-pixel-team.dev') === '1' } catch { return false }
   })
@@ -112,18 +161,49 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const [polishBusy, setPolishBusy] = useState(false)
   const [polishError, setPolishError] = useState('')
   // Module 1: the model generates its own questions from this requirement.
-  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestionView[]>([])
-  const [interviewAnswers, setInterviewAnswers] = useState<Record<string, string[]>>({})
-  const [interviewState, setInterviewState] = useState<'loading' | 'ready' | 'fallback'>('loading')
+  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestionView[]>(() => draft?.questions ?? [])
+  const [interviewAnswers, setInterviewAnswers] = useState<Record<string, string[]>>(() => draft?.answers ?? {})
+  const [interviewState, setInterviewState] = useState<'loading' | 'ready' | 'fallback'>(() => draft?.questions?.length ? 'ready' : 'loading')
   const [interviewError, setInterviewError] = useState('')
   const [interviewNonce, setInterviewNonce] = useState(0)
   const multiRef = useRef<HTMLDivElement | null>(null)
   const goalRef = useRef<HTMLTextAreaElement | null>(null)
+  const sessionRef = useRef(sessionId)
+  const hydratingDraft = useRef(false)
   const foundedTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => () => {
     if (foundedTimer.current !== undefined) window.clearTimeout(foundedTimer.current)
   }, [])
+
+  useEffect(() => {
+    if (sessionRef.current === sessionId) return
+    sessionRef.current = sessionId
+    hydratingDraft.current = true
+    const next = readQuickStartDraft(sessionId)
+    setStep(next?.step ?? 0)
+    setMode(next?.mode ?? DEFAULT_MODE)
+    setGoal(next?.goal ?? '')
+    setTemplate(next?.template ?? TEMPLATES[0]?.id ?? 'fix')
+    setRoles(next?.roles ?? [...(TEMPLATES[0]?.roles ?? [])])
+    setSectMode(next?.sectMode ?? 'random')
+    setRolledSect(next?.rolledSect ?? randomSect().id)
+    setSolo(next?.solo ?? false)
+    setSuperFast(next?.superFast ?? false)
+    setInterviewQuestions(next?.questions ?? [])
+    setInterviewAnswers(next?.answers ?? {})
+    setInterviewState(next?.questions?.length ? 'ready' : 'loading')
+  }, [sessionId])
+
+  // 同一会话的草稿跨切换保留：访谈问题、答案、当前步骤都不重新生成。
+  useEffect(() => {
+    if (sessionRef.current !== sessionId) return
+    if (hydratingDraft.current) { hydratingDraft.current = false; return }
+    saveQuickStartDraft(sessionId, {
+      step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast,
+      questions: interviewQuestions, answers: interviewAnswers,
+    })
+  }, [sessionId, step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast, interviewQuestions, interviewAnswers])
 
   useEffect(() => {
     if (!rolesOpen) return
@@ -220,7 +300,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
 
   // Ask the model for template-like questions when the interview step opens.
   useEffect(() => {
-    if (STEPS[step] !== 'interview' || goalTrimmed === '') return
+    if (STEPS[step] !== 'interview' || goalTrimmed === '' || interviewQuestions.length > 0) return
     const controller = new AbortController()
     setInterviewState('loading')
     setInterviewError('')
@@ -314,6 +394,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
       }))
       if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId } }))
+      clearQuickStartDraft(sessionId)
       setBlocked(false)
       setGoal('')
       foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 300)
@@ -415,12 +496,23 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                   autoFocus
                   disabled={busy || polishBusy}
                   placeholder={t('quickstart.goalPlaceholder')}
-                  onChange={(event) => { setGoal(event.target.value); setPolishError('') }}
+                  onChange={(event) => { setGoal(event.target.value); setPolishError(''); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
                   onKeyDown={(event) => {
                     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); next() }
                   }}
                 />
               </label>
+              <div className={css.polishRow}>
+                <button
+                  type="button"
+                  className={css.polishButton}
+                  disabled={busy || polishBusy || goalTrimmed === ''}
+                  onClick={() => { void runPolish() }}
+                >
+                  {polishBusy ? t('polish.busy') : t('polish.button')}
+                </button>
+                {polishError !== '' && <span className={css.polishError} role="alert">{polishError}</span>}
+              </div>
               <div className={css.modeRow}>
                 <span className={css.modeLabel}>{t('mode.select')}</span>
                 {TEAM_MODES.map(item => {
@@ -450,17 +542,6 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                   ⚡ {t('quickstart.superFast')}
                 </button>
               </div>
-              {developerMode && <div className={css.polishRow}>
-                <button
-                  type="button"
-                  className={css.polishButton}
-                  disabled={busy || polishBusy || goalTrimmed === ''}
-                  onClick={() => { void runPolish() }}
-                >
-                  {polishBusy ? t('polish.busy') : t('polish.button')}
-                </button>
-                {polishError !== '' && <span className={css.polishError} role="alert">{polishError}</span>}
-              </div>}
             </section>
           )}
 
@@ -474,7 +555,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                 error={interviewError}
                 mode={mode}
                 disabled={busy}
-                onRetry={() => { setInterviewState('loading'); setInterviewNonce((value) => value + 1) }}
+                onRetry={() => { setInterviewQuestions([]); setInterviewState('loading'); setInterviewNonce((value) => value + 1) }}
                 t={t}
               />
             </section>

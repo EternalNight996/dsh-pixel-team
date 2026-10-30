@@ -28,7 +28,12 @@ export function InterviewSheet({ questions, answers, onChange, state, error, mod
   const setAnswer = (id: string, values: string[]): void => { onChange({ ...answers, [id]: values }) }
   const toggle = (id: string, value: string, multi: boolean): void => {
     const current = answers[id] ?? []
-    setAnswer(id, multi ? (current.includes(value) ? current.filter(item => item !== value) : [...current, value]) : [value])
+    if (multi) {
+      setAnswer(id, current.includes(value) ? current.filter(item => item !== value) : [...current, value])
+      return
+    }
+    // Single-select options must be deselectable: clicking the active chip clears it.
+    setAnswer(id, current.includes(value) ? [] : [value])
   }
   const addCustom = (id: string): void => {
     const value = (custom[id] ?? '').trim()
@@ -60,17 +65,39 @@ export function InterviewSheet({ questions, answers, onChange, state, error, mod
                 {option}
               </button>
             ))}
+            {(answers[question.id] ?? []).filter(value => !question.options.includes(value)).map(value => (
+              <button
+                key={value}
+                type="button"
+                className={css.chip}
+                data-active
+                disabled={disabled}
+                onClick={() => { setAnswer(question.id, (answers[question.id] ?? []).filter(item => item !== value)) }}
+              >
+                {value} ×
+              </button>
+            ))}
           </div>
-          <input
-            className={css.input}
-            value={custom[question.id] ?? ''}
-            disabled={disabled}
-            placeholder={t('interview.customPlaceholder')}
-            onChange={(event) => { setCustom(current => ({ ...current, [question.id]: event.target.value })) }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') { event.preventDefault(); addCustom(question.id) }
-            }}
-          />
+          <div className={css.customRow}>
+            <input
+              className={css.input}
+              value={custom[question.id] ?? ''}
+              disabled={disabled}
+              placeholder={t('interview.customPlaceholder')}
+              onChange={(event) => { setCustom(current => ({ ...current, [question.id]: event.target.value })) }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') { event.preventDefault(); addCustom(question.id) }
+              }}
+            />
+            <button
+              type="button"
+              className={css.addCustom}
+              disabled={disabled || (custom[question.id] ?? '').trim() === ''}
+              onClick={() => { addCustom(question.id) }}
+            >
+              +
+            </button>
+          </div>
         </section>
       ))}
       {state === 'fallback' && (

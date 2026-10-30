@@ -97,13 +97,7 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
     : [...snapshots.teams, ...snapshots.archivedTeams].find(team => team.members.some(member => member.id === current))
   // 洞府常驻：只要会话里还有队伍，浮层就保持存在——即使队伍 0 任务、
   // 或任务全部已弃（已停止），也不自动收起（用户明确要求）。
-  // A staged plan created before a session switch/restart can otherwise be
-  // invisible while it waits for review. Surface it as a workspace fallback.
-  const stagedFallback = sessionTeams.length === 0
-    ? snapshots.teams.find(team => team.phase === 'staged')
-    : undefined
-  const hallTeam = sessionTeams.find(team => team.teamId === wanted) ?? sessionTeams[0] ?? linkedTeam ?? stagedFallback
-  const hallSessionId = current ?? (hallTeam?.captainSessionId as SessionId | undefined)
+  const hallTeam = sessionTeams.find(team => team.teamId === wanted) ?? sessionTeams[0] ?? linkedTeam
   // 名册页看历史：同一掌门会话下已经归档的宗门。
   const ownerCaptain = hallTeam?.captainSessionId ?? current
   const historyTeams = ownerCaptain === undefined
@@ -181,7 +175,7 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
       team={hallTeam}
       history={historyTeams}
       t={t}
-      sessionId={hallSessionId}
+      sessionId={current}
       modelDirectories={modelDirectories}
       openMember={openMember}
       openCaptain={openCaptain}

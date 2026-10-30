@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.78] - 2026-10-30
+
+### Fixed
+- Rolled back the 0.1.77 staged-plan/session fallback that could crash the
+  renderer; the known-good 0.1.76 workspace activity layout is restored.
+- Interview answers: single-select options can be deselected, custom answers can
+  be added and removed as chips, and switching conversations no longer
+  regenerates the interview; per-session drafts keep questions/answers/step.
+- Wizard footer is pinned to the bottom; AI polish sits above the mode row;
+  super-fast execution is available and skips the AI interview.
+
 ## [0.1.77] - 2026-10-30
 
 ### Changed
