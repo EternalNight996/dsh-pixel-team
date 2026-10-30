@@ -83,6 +83,7 @@ export interface ActivityTeam {
     };
     readonly acceptedAt?: number;
     readonly acceptedBy?: string;
+    readonly acceptanceStale?: boolean;
     readonly members: readonly ActivityMember[];
     readonly tasks: readonly ActivityTask[];
     readonly messageCount: number;

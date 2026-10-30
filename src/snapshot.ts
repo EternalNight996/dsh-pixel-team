@@ -12,7 +12,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { memberActivity } from './members.ts'
-import { canDeclareDelivery, describeQualityLoop, verdictAuditNotes } from './quality-gates.ts'
+import { canDeclareDelivery, deliveryArtifactPaths, describeQualityLoop, verdictAuditNotes } from './quality-gates.ts'
+import { digestWorkspacePaths } from './artifacts.ts'
 import type { DeliveryEvidence } from './quality-gates.ts'
 import { buildDeliveryReport } from './delivery-report.ts'
 import { auditTeamWorkspace } from './workspace-audit.ts'
@@ -119,6 +120,8 @@ export interface TeamActivitySnapshot {
   readonly goal?: { readonly id: string; readonly objective: string; readonly phase: string; readonly roundsStarted: number; readonly maxGoalRounds: number }
   readonly acceptedAt?: number
   readonly acceptedBy?: string
+  /** True when the accepted artifact bytes changed after sign-off. */
+  readonly acceptanceStale?: boolean
   readonly delivery?: { readonly ok: boolean; readonly blockers: readonly string[]; readonly warnings: readonly string[]; readonly evidence: DeliveryEvidence; readonly report?: string }
 }
 
@@ -246,6 +249,14 @@ export async function assembleTeamSnapshot(
   const audit = options.workspacePath === undefined ? undefined : auditTeamWorkspace(options.workspacePath, state)
   const deliveryCheck = audit === undefined ? canDeclareDelivery(state) : canDeclareDelivery(state, audit)
   const loop = audit === undefined ? describeQualityLoop(state) : describeQualityLoop(state, audit)
+  const acceptanceStale = options.workspacePath === undefined || state.acceptedDigests === undefined
+    ? undefined
+    : (() => {
+        const current = Object.fromEntries(digestWorkspacePaths(options.workspacePath!, deliveryArtifactPaths(state)).map((digest) => [digest.path, digest.sha256 ?? String(digest.mtimeMs ?? 'missing')]))
+        const expected = state.acceptedDigests
+        if (Object.keys(current).length !== Object.keys(expected).length) return true
+        return Object.entries(expected).some(([path, digest]) => current[path] !== digest)
+      })()
   const goalAgent = options.historic === true ? undefined : ctx.agents.get(state.captainSessionId as never)
   const goalView = goalAgent === undefined ? undefined : (ctx as unknown as { goals?: { get(agent: unknown): { id: string; objective: string; phase: string; roundsStarted: number; maxGoalRounds: number } | undefined } }).goals?.get(goalAgent)
   const staleById = new Map<string, string[]>()
@@ -280,6 +291,7 @@ export async function assembleTeamSnapshot(
     ...goalView === undefined ? {} : { goal: { id: goalView.id, objective: goalView.objective, phase: goalView.phase, roundsStarted: goalView.roundsStarted, maxGoalRounds: goalView.maxGoalRounds } },
     ...state.acceptedAt === undefined ? {} : { acceptedAt: state.acceptedAt },
     ...state.acceptedBy === undefined ? {} : { acceptedBy: state.acceptedBy },
+    ...acceptanceStale === undefined ? {} : { acceptanceStale },
     ...audit === undefined ? {} : {
       loopState: loop.state,
       deliverable: loop.deliverable,

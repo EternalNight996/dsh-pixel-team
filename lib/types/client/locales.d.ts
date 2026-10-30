@@ -52,6 +52,7 @@ export declare const zh: {
     'team.accept': string;
     'team.acceptHint': string;
     'team.accepted': string;
+    'team.acceptStale': string;
     'team.stop': string;
     'team.stopped': string;
     'team.stopTitle': string;
@@ -838,6 +839,7 @@ export declare const en: {
     'team.accept': string;
     'team.acceptHint': string;
     'team.accepted': string;
+    'team.acceptStale': string;
     'team.stop': string;
     'team.stopped': string;
     'team.stopTitle': string;

@@ -113,6 +113,8 @@ export interface TeamActivitySnapshot {
     };
     readonly acceptedAt?: number;
     readonly acceptedBy?: string;
+    /** True when the accepted artifact bytes changed after sign-off. */
+    readonly acceptanceStale?: boolean;
     readonly delivery?: {
         readonly ok: boolean;
         readonly blockers: readonly string[];

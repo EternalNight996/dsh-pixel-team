@@ -790,6 +790,7 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
               {acceptedAt === undefined ? (accepting ? '…' : t('team.accept')) : t('team.accepted')}
             </button>
           )}
+          {team.acceptanceStale === true && <span className={css.cleanupMessage} role="alert">{t('team.acceptStale')}</span>}
           {acceptError !== '' && <span className={css.cleanupMessage} role="alert">{acceptError}</span>}
           {canStop && (
             <div className={css.stopAnchor} ref={stopAnchorRef}>

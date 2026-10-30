@@ -1083,6 +1083,7 @@ function isTeamState(value: unknown, expectedId: string): value is TeamState {
     && (value['escalated'] === undefined || typeof value['escalated'] === 'boolean')
     && (value['acceptedAt'] === undefined || isFiniteNumber(value['acceptedAt']))
     && isOptionalString(value['acceptedBy'])
+    && (value['acceptedDigests'] === undefined || (isRecord(value['acceptedDigests']) && Object.values(value['acceptedDigests']).every((digest) => typeof digest === 'string')))
   if (!validShape) return false
 
   const members = value['members'] as TeamMember[]

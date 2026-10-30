@@ -76,6 +76,7 @@ export interface ActivityTeam {
   readonly goal?: { readonly id: string; readonly objective: string; readonly phase: string; readonly roundsStarted: number; readonly maxGoalRounds: number }
   readonly acceptedAt?: number
   readonly acceptedBy?: string
+  readonly acceptanceStale?: boolean
   readonly members: readonly ActivityMember[]
   readonly tasks: readonly ActivityTask[]
   readonly messageCount: number

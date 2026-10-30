@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.72] - 2026-10-30
+
+### Added
+- Delivery acceptance now records artifact digests. If the delivered bytes change
+  after sign-off, the team snapshot reports `acceptanceStale` and the panel warns
+  that acceptance must be re-verified.
+
 ## [0.1.71] - 2026-10-30
 
 ### Added

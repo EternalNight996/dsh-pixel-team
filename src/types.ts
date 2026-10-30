@@ -420,6 +420,8 @@ export interface TeamState {
   acceptedAt?: number
   /** Captain session that confirmed the acceptance. */
   acceptedBy?: string
+  /** Artifact digests captured at acceptance; a later change invalidates it. */
+  acceptedDigests?: Record<string, string>
   /** Read-only constitution generated from the clarification. */
   constitution?: { path: string; checksum: string; project: string }
 }

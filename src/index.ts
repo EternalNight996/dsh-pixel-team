@@ -42,6 +42,8 @@ import { fileURLToPath } from 'node:url'
 import { collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
 import { archiveTeamDir, canDeclareDelivery, findTeamByCaptain, invalidateTaskAttempt, readTeam, withTeamLock, writeTeam } from './state.ts'
 import { auditTeamWorkspace } from './workspace-audit.ts'
+import { digestWorkspacePaths } from './artifacts.ts'
+import { deliveryArtifactPaths } from './quality-gates.ts'
 import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
@@ -868,8 +870,10 @@ export function apply(ctx: Context, config: Config): void {
             if (!check.ok) throw new Error('delivery is not ready: ' + check.blockers.join('; '))
             if (team.acceptedAt !== undefined) return team.acceptedAt
             const now = Date.now()
+            const digests = digestWorkspacePaths(workspace, deliveryArtifactPaths(team))
             team.acceptedAt = now
             team.acceptedBy = captain.id
+            team.acceptedDigests = Object.fromEntries(digests.map((digest) => [digest.path, digest.sha256 ?? String(digest.mtimeMs ?? 'missing')]))
             await writeTeam(stateRoot, team)
             return now
           })
