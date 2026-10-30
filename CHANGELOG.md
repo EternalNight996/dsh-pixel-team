@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.65] - 2026-10-30
+
+### Fixed
+- After archiving old teams the roster dropdown selection is cleared; with no
+  current team and no remaining history it shows a single empty placeholder
+  instead of keeping an archived entry.
+
 ## [0.1.64] - 2026-10-30
 
 ### Changed

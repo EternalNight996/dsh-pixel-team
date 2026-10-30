@@ -535,7 +535,8 @@ export function SectHallOverlay({
       const result = await request(false)
       const archived = result.archived ?? []
       setArchivedTeamIds(current => [...new Set([...current, ...archived])])
-      if (historyTeamId !== undefined && archived.includes(historyTeamId)) setHistoryTeamId(undefined)
+      // 归档后清空下拉选择，避免继续停留在已归档宗门上。
+      setHistoryTeamId(undefined)
       setCleanupNotice(t('office.archiveCleanupDone', { count: archived.length }))
     } catch {
       setCleanupNotice(t('office.archiveCleanupFailed'))
@@ -980,6 +981,9 @@ export function SectHallOverlay({
                   value={viewingCurrent ? CURRENT_TEAM_SENTINEL : selectedHistory?.teamId ?? ''}
                   onChange={(event) => { setHistoryTeamId(event.currentTarget.value) }}
                 >
+                  {!hasTeam && visibleHistory.length === 0 && (
+                    <option value="">{t('office.historyEmpty')}</option>
+                  )}
                   {hasTeam && (
                     <option value={CURRENT_TEAM_SENTINEL}>
                       {stateDot(teamVisualState(hall))} {hall.name} · {t('office.historyCurrent')} · {done}/{total} · {money(costByTeam.get(hall.teamId) ?? 0)}
