@@ -99,6 +99,14 @@ export interface Config {
         pricing?: {
             inputPer1k?: number;
             outputPer1k?: number;
+            cacheReadPer1k?: number;
+            cacheWritePer1k?: number;
+            models?: Record<string, {
+                inputPer1k?: number;
+                outputPer1k?: number;
+                cacheReadPer1k?: number;
+                cacheWritePer1k?: number;
+            }>;
         };
     };
     /** Founding project boundary: product directory and extra read-only paths. */

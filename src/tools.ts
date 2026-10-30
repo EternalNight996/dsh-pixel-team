@@ -24,7 +24,7 @@ import { describeClarification, normalizeClarification } from './clarify.ts'
 import { hardwarePoolText } from './clarify-hardware.ts'
 import { buildConstitution, writeConstitution } from './constitution.ts'
 import { recallMemory } from './memory.ts'
-import { appendCostLog, requestCostDecision, usageCostUsd, usageFromEvents } from './cost.ts'
+import { appendCostLog, requestCostDecision, usageCost, usageFromEvents } from './cost.ts'
 import { DEFAULT_MODE, getModeSpec, isTeamMode } from './modes.ts'
 import {
   amendTaskContract,
@@ -141,7 +141,13 @@ export interface ToolsConfig {
     /** Meter real usage when the host reports tokens (default actual). */
     usage?: 'actual' | 'estimate'
     /** USD per 1K tokens for actual metering. */
-    pricing?: { inputPer1k?: number; outputPer1k?: number }
+    pricing?: {
+      inputPer1k?: number
+      outputPer1k?: number
+      cacheReadPer1k?: number
+      cacheWritePer1k?: number
+      models?: Record<string, { inputPer1k?: number; outputPer1k?: number; cacheReadPer1k?: number; cacheWritePer1k?: number }>
+    }
   }
   /** Quality gate policy: host re-verification, auto review, product verify commands. */
   quality?: {
@@ -2312,18 +2318,19 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         // later edit cannot leave the team advertising an unreviewed revision.
         bindClosingVerdict(workspace, fresh, task)
         task.updatedAt = Date.now()
-        let actualCost: { inputTokens: number; outputTokens: number; usd: number } | undefined
+        let actualCost: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; usd: number } | undefined
         const terminalTransition = args.status === 'completed' || args.status === 'failed' || args.status === 'cancelled'
         if (!wasCompleted && terminalTransition && config.cost?.usage !== 'estimate'
           && task.costStartSeq !== undefined && task.costOwnerId === caller.id) {
           try {
             const events = caller.session.snapshotEvents(task.costStartSeq as never) as unknown as { type?: string; data?: unknown }[]
             const usage = usageFromEvents(events)
-            if (usage.inputTokens + usage.outputTokens > 0) {
-              actualCost = {
-                ...usage,
-                usd: usageCostUsd(usage.inputTokens, usage.outputTokens, config.cost?.pricing),
-              }
+            if (usage.inputTokens + usage.outputTokens + usage.cacheReadTokens + usage.cacheWriteTokens > 0) {
+              const model = (caller.session.requestHeader() as { config?: { model?: string } } | undefined)?.config?.model
+              const basePricing = config.cost?.pricing
+              const modelPricing = typeof model === 'string' ? basePricing?.models?.[model] : undefined
+              const pricing = modelPricing === undefined ? basePricing : { ...basePricing, ...modelPricing }
+              actualCost = { ...usage, usd: usageCost(usage, pricing) }
             }
           } catch (error: unknown) {
             ctx.logger.warn('agent-teams: usage metering skipped for ' + task.id + ': ' + String(error))
@@ -2365,6 +2372,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
               memberName: task.assignee === CAPTAIN_KEY ? 'captain' : (task.assignee ?? identity.name),
               taskId: task.id, estimateUsd: actualCost.usd, mode, decision: 'usage-actual',
               inputTokens: actualCost.inputTokens, outputTokens: actualCost.outputTokens,
+              cacheReadTokens: actualCost.cacheReadTokens, cacheWriteTokens: actualCost.cacheWriteTokens,
             })
           } else if (task.assignee === CAPTAIN_KEY && isQualityKind(taskKindOf(task))) {
             await appendCostLog(workspace, {

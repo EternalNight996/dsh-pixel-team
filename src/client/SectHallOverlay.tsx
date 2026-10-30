@@ -199,6 +199,7 @@ export function SectHallOverlay({
   const [historyTeamId, setHistoryTeamId] = useState<string | undefined>()
   const [cleanupBusy, setCleanupBusy] = useState(false)
   const [cleanupNotice, setCleanupNotice] = useState('')
+  const [archivedTeamIds, setArchivedTeamIds] = useState<readonly string[]>([])
   const [characterId, setCharacterId] = useState<string | undefined>()
   const previousSessionRef = useRef(sessionId)
   // 法器 / 坐骑 / 技能各选各的，互不覆盖；按角色分开记，来回切换不会丢装备。
@@ -532,8 +533,10 @@ export function SectHallOverlay({
       }
       if (!window.confirm(t('office.archiveCleanupConfirm', { count: candidates.length }))) return
       const result = await request(false)
-      setCleanupNotice(t('office.archiveCleanupDone', { count: (result.archived ?? []).length }))
-      window.setTimeout(() => { window.location.reload() }, 900)
+      const archived = result.archived ?? []
+      setArchivedTeamIds(current => [...new Set([...current, ...archived])])
+      if (historyTeamId !== undefined && archived.includes(historyTeamId)) setHistoryTeamId(undefined)
+      setCleanupNotice(t('office.archiveCleanupDone', { count: archived.length }))
     } catch {
       setCleanupNotice(t('office.archiveCleanupFailed'))
     } finally {
@@ -559,8 +562,9 @@ export function SectHallOverlay({
         </button>
       </div>
     )
+    const visibleHistory = history.filter(team => !archivedTeamIds.includes(team.teamId))
     const viewingCurrent = hasTeam && (historyTeamId === undefined || historyTeamId === CURRENT_TEAM_SENTINEL)
-    const selectedHistory = history.find(team => team.teamId === historyTeamId)
+    const selectedHistory = visibleHistory.find(team => team.teamId === historyTeamId)
     const selectedTeamId = viewingCurrent ? hall.teamId : selectedHistory?.teamId
     const selectedState = viewingCurrent ? teamVisualState(hall) : selectedHistory === undefined ? 'waiting' : teamVisualState(selectedHistory)
     const costByTeam = new Map((costReport?.by_team ?? []).map(item => [item.teamId, item.usd]))
@@ -981,7 +985,7 @@ export function SectHallOverlay({
                       {stateDot(teamVisualState(hall))} {hall.name} · {t('office.historyCurrent')} · {done}/{total} · {money(costByTeam.get(hall.teamId) ?? 0)}
                     </option>
                   )}
-                  {history.map(team => {
+                  {visibleHistory.map(team => {
                     const completed = team.tasks.filter(task => task.status === 'completed').length
                     return (
                       <option key={team.teamId} value={team.teamId}>
@@ -1000,10 +1004,10 @@ export function SectHallOverlay({
                 )}
               </div>
               {cleanupNotice !== '' && <p className={css.settingsHint} role="status">{cleanupNotice}</p>}
-              {!hasTeam && history.length === 0 && historyTasks.length === 0 && (
+              {!hasTeam && visibleHistory.length === 0 && historyTasks.length === 0 && (
                 <p className={css.settingsHint}>{t('office.historyEmpty')}</p>
               )}
-              {(hasTeam || history.length > 0) && (
+              {(hasTeam || visibleHistory.length > 0) && (
                 <div className={css.historyBlock}>
                   {selectedHistory !== undefined ? (
                     <div className={css.historyDetail}>

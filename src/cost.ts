@@ -19,6 +19,12 @@ export interface CostConfig {
 export interface TokenPricing {
   inputPer1k?: number
   outputPer1k?: number
+  /** Cache-read tokens usually bill at a discount; defaults to input rate. */
+  cacheReadPer1k?: number
+  /** Cache-write tokens usually bill above input; defaults to input rate. */
+  cacheWritePer1k?: number
+  /** Optional per-model overrides, keyed by the session's model id. */
+  models?: Record<string, Omit<TokenPricing, 'models'>>
 }
 
 export interface CostLogEntry {
@@ -34,6 +40,8 @@ export interface CostLogEntry {
   decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered' | 'usage-actual'
   inputTokens?: number
   outputTokens?: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
 }
 
 const DEFAULT_PER_TASK = 2
@@ -89,18 +97,41 @@ export function todayCostFromEntries(entries: readonly CostLogEntry[], now = Dat
   return Math.round(total * 10000) / 10000
 }
 
+export interface UsageTotals {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+}
+
 /** Compute USD from host-reported token usage and configured rates. */
-export function usageCostUsd(inputTokens: number, outputTokens: number, pricing?: TokenPricing): number {
+export function usageCost(usage: UsageTotals, pricing?: TokenPricing): number {
   const inputPer1k = pricing?.inputPer1k ?? PRICE_INPUT_PER_1K
   const outputPer1k = pricing?.outputPer1k ?? PRICE_OUTPUT_PER_1K
-  const usd = inputTokens / 1000 * inputPer1k + outputTokens / 1000 * outputPer1k
+  const cacheReadPer1k = pricing?.cacheReadPer1k ?? inputPer1k
+  const cacheWritePer1k = pricing?.cacheWritePer1k ?? inputPer1k
+  const cacheRead = Math.max(0, usage.cacheReadTokens)
+  const cacheWrite = Math.max(0, usage.cacheWriteTokens)
+  // Host inputTokens is the prompt total; cache tokens are its priced subsets.
+  const billableInput = Math.max(0, usage.inputTokens - cacheRead - cacheWrite)
+  const usd = billableInput / 1000 * inputPer1k
+    + usage.outputTokens / 1000 * outputPer1k
+    + cacheRead / 1000 * cacheReadPer1k
+    + cacheWrite / 1000 * cacheWritePer1k
   return Math.round(usd * 1000000) / 1000000
 }
 
+/** Compatibility wrapper for callers that only have input/output counts. */
+export function usageCostUsd(inputTokens: number, outputTokens: number, pricing?: TokenPricing): number {
+  return usageCost({ inputTokens, outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 }, pricing)
+}
+
 /** Sum assistant/message usage from one session event slice. */
-export function usageFromEvents(events: readonly { type?: string; data?: unknown }[]): { inputTokens: number; outputTokens: number } {
+export function usageFromEvents(events: readonly { type?: string; data?: unknown }[]): UsageTotals {
   let inputTokens = 0
   let outputTokens = 0
+  let cacheReadTokens = 0
+  let cacheWriteTokens = 0
   for (const event of events) {
     if (event.type !== 'assistant/message') continue
     const data = event.data
@@ -109,10 +140,14 @@ export function usageFromEvents(events: readonly { type?: string; data?: unknown
     if (typeof usage !== 'object' || usage === null) continue
     const input = (usage as { inputTokens?: unknown }).inputTokens
     const output = (usage as { outputTokens?: unknown }).outputTokens
+    const cacheRead = (usage as { cacheReadTokens?: unknown }).cacheReadTokens
+    const cacheWrite = (usage as { cacheWriteTokens?: unknown }).cacheWriteTokens
     if (typeof input === 'number' && Number.isFinite(input) && input >= 0) inputTokens += input
     if (typeof output === 'number' && Number.isFinite(output) && output >= 0) outputTokens += output
+    if (typeof cacheRead === 'number' && Number.isFinite(cacheRead) && cacheRead >= 0) cacheReadTokens += cacheRead
+    if (typeof cacheWrite === 'number' && Number.isFinite(cacheWrite) && cacheWrite >= 0) cacheWriteTokens += cacheWrite
   }
-  return { inputTokens, outputTokens }
+  return { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens }
 }
 
 /** Read every cost-log entry (oldest first); a torn line is skipped. */

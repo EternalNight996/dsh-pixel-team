@@ -141,7 +141,13 @@ export interface Config {
     /** Meter real host usage when available (default actual). */
     usage?: 'actual' | 'estimate'
     /** USD per 1K tokens for actual metering. */
-    pricing?: { inputPer1k?: number; outputPer1k?: number }
+    pricing?: {
+      inputPer1k?: number
+      outputPer1k?: number
+      cacheReadPer1k?: number
+      cacheWritePer1k?: number
+      models?: Record<string, { inputPer1k?: number; outputPer1k?: number; cacheReadPer1k?: number; cacheWritePer1k?: number }>
+    }
   }
   /** Founding project boundary: product directory and extra read-only paths. */
   boundary?: { productsDir?: string; forbidden?: string[] }
@@ -236,7 +242,21 @@ export const Config: z<Config> = z.object({
       perTaskUsd: z.number().default(3),
       perDayUsd: z.number().default(50),
       usage: z.union([z.const('actual'), z.const('estimate')]).default('actual'),
-      pricing: z.union([z.object({ inputPer1k: z.number(), outputPer1k: z.number() }), z.const(undefined)]),
+      pricing: z.union([
+        z.object({
+          inputPer1k: z.union([z.number(), z.const(undefined)]),
+          outputPer1k: z.union([z.number(), z.const(undefined)]),
+          cacheReadPer1k: z.union([z.number(), z.const(undefined)]),
+          cacheWritePer1k: z.union([z.number(), z.const(undefined)]),
+          models: z.dict(z.object({
+            inputPer1k: z.union([z.number(), z.const(undefined)]),
+            outputPer1k: z.union([z.number(), z.const(undefined)]),
+            cacheReadPer1k: z.union([z.number(), z.const(undefined)]),
+            cacheWritePer1k: z.union([z.number(), z.const(undefined)]),
+          })).default({}),
+        }),
+        z.const(undefined),
+      ]),
     }),
     z.const(undefined),
   ]),

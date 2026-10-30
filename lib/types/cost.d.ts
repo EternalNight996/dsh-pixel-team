@@ -8,6 +8,12 @@ export interface CostConfig {
 export interface TokenPricing {
     inputPer1k?: number;
     outputPer1k?: number;
+    /** Cache-read tokens usually bill at a discount; defaults to input rate. */
+    cacheReadPer1k?: number;
+    /** Cache-write tokens usually bill above input; defaults to input rate. */
+    cacheWritePer1k?: number;
+    /** Optional per-model overrides, keyed by the session's model id. */
+    models?: Record<string, Omit<TokenPricing, 'models'>>;
 }
 export interface CostLogEntry {
     ts: number;
@@ -22,6 +28,8 @@ export interface CostLogEntry {
     decision: 'auto-continue' | 'continue' | 'terminate' | 'timeout' | 'captain-unmetered' | 'usage-actual';
     inputTokens?: number;
     outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
 }
 /** The mode's budget, with an optional owner override from the plugin config. */
 export declare function resolveModeBudget(mode: TeamMode | undefined, override?: CostConfig): {
@@ -36,16 +44,21 @@ export declare function costLogPath(workspace: string): string;
 export declare function mergeCostEntries(entries: readonly CostLogEntry[]): CostLogEntry[];
 /** Sum today's entries across a merged log (local calendar day). */
 export declare function todayCostFromEntries(entries: readonly CostLogEntry[], now?: number): number;
+export interface UsageTotals {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+}
 /** Compute USD from host-reported token usage and configured rates. */
+export declare function usageCost(usage: UsageTotals, pricing?: TokenPricing): number;
+/** Compatibility wrapper for callers that only have input/output counts. */
 export declare function usageCostUsd(inputTokens: number, outputTokens: number, pricing?: TokenPricing): number;
 /** Sum assistant/message usage from one session event slice. */
 export declare function usageFromEvents(events: readonly {
     type?: string;
     data?: unknown;
-}[]): {
-    inputTokens: number;
-    outputTokens: number;
-};
+}[]): UsageTotals;
 /** Read every cost-log entry (oldest first); a torn line is skipped. */
 export declare function readCostLogEntries(workspace: string): Promise<CostLogEntry[]>;
 /** Sum today's logged estimates (local calendar day). */

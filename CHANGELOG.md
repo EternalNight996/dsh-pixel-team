@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.64] - 2026-10-30
+
+### Changed
+- Archiving old teams removes them from the roster locally instead of reloading
+  the whole page; the current selection falls back safely.
+- Actual cost pricing supports per-model overrides and cache-read/cache-write
+  rates; the session model selects its rate table, cache tokens are billed
+  separately from uncached input.
+
 ## [0.1.63] - 2026-10-30
 
 ### Changed

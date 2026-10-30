@@ -55,6 +55,14 @@ export interface ToolsConfig {
         pricing?: {
             inputPer1k?: number;
             outputPer1k?: number;
+            cacheReadPer1k?: number;
+            cacheWritePer1k?: number;
+            models?: Record<string, {
+                inputPer1k?: number;
+                outputPer1k?: number;
+                cacheReadPer1k?: number;
+                cacheWritePer1k?: number;
+            }>;
         };
     };
     /** Quality gate policy: host re-verification, auto review, product verify commands. */
