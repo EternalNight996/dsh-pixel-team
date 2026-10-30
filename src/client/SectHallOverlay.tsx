@@ -994,7 +994,7 @@ export function SectHallOverlay({
                   <span aria-hidden>⛩</span>{t('quickstart.entry')}
                 </button>
                 {costSessionId !== undefined && (
-                  <button type="button" className={css.historyStartSmall} onClick={() => { void cleanupTeams() }} disabled={cleanupBusy} title={t('office.archiveCleanupHint')}>
+                  <button type="button" className={`${css.historyStartSmall} ${css.archiveButton}`} data-danger onClick={() => { void cleanupTeams() }} disabled={cleanupBusy} title={t('office.archiveCleanupHint')}>
                     <span aria-hidden>🗄</span>{cleanupBusy ? t('office.archiveBusy') : t('office.archiveCleanup')}
                   </button>
                 )}

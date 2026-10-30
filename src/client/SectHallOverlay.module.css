@@ -1235,3 +1235,4 @@
 .historySelect[data-state='failed'] { border-color: #ff6b6b; }
 .historySelect[data-state='running'] { border-color: #f2c14e; }
 .historySelect[data-state='waiting'] { border-color: #6fb6ff; }
+.archiveButton { border-color: rgba(220, 80, 80, .55) !important; color: #ff8a8a !important; } .archiveButton:hover:not(:disabled) { background: rgba(220, 80, 80, .14) !important; border-color: #e05a5a !important; }

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.63] - 2026-10-30
+
+### Changed
+- Roster archive action simplified to "归档" and restyled in red (danger cue).
+
 ## [0.1.62] - 2026-10-30
 
 ### Added
