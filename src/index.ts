@@ -292,6 +292,8 @@ export function usageSectionText(toolNames: string, profilesText = ''): string {
 11. Before generating a DAG, confirm the blocking clarification with the user (agent_teams_clarify): type, plain-language scale, UI, platforms, hardware candidates, exclusions, and executable acceptance. Pass the confirmed object to agent_teams_create as clarification; a plan without it is incomplete.
 12. Members may call agent_teams_memory_recall with the constitution memory_hints. A failed recall means the vault is unavailable, not that the memory is empty.
 13. Every team has a development mode (draft | precision | legacy | compliance | monetize). It drives the member philosophy, default boundaries, acceptance baseline, verifier strategy and budget; persist it on the clarification and never silently change it after approval.
+14. Work inside the approved contract. When a detail is ambiguous, choose the most conservative reversible option consistent with the goal, inScope, acceptance and verify commands, record the assumption in the task output, and continue. Pause and ask the user only when the next action is irreversible, outside inScope, needs credentials, or would change the approved goal. Batch questions: one blocking question with your recommended default, never a stream of confirmations.
+15. If this session already has an active host Goal, treat it as the outer completion condition: do not create a second goal and do not duplicate the host Goal Round Driver's continuation. When delivery.ok is true and the goal describes this delivery, call update_goal complete; otherwise report and leave the goal alone. Never resume a disarmed goal without an explicit human request.
 Tools: ${toolNames}${profilesText === '' ? '' : `\n\n${profilesText}`}`
 }
 

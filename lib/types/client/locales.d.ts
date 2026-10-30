@@ -200,6 +200,7 @@ export declare const zh: {
     'plan.members.soloEmpty': string;
     'plan.align.title': string;
     'plan.align.goal': string;
+    'plan.align.goalHost': string;
     'plan.align.mode': string;
     'plan.align.platforms': string;
     'plan.align.constraints': string;
@@ -980,6 +981,7 @@ export declare const en: {
     'plan.members.soloEmpty': string;
     'plan.align.title': string;
     'plan.align.goal': string;
+    'plan.align.goalHost': string;
     'plan.align.mode': string;
     'plan.align.platforms': string;
     'plan.align.constraints': string;

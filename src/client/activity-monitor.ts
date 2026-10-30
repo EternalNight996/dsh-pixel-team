@@ -72,6 +72,7 @@ export interface ActivityTeam {
   readonly planProjectRoot?: string
   readonly planSummary?: { mode?: string; scale?: string; platforms?: string[]; constraints?: string[] }
   readonly halted?: boolean
+  readonly goal?: { readonly id: string; readonly objective: string; readonly phase: string; readonly roundsStarted: number; readonly maxGoalRounds: number }
   readonly members: readonly ActivityMember[]
   readonly tasks: readonly ActivityTask[]
   readonly messageCount: number

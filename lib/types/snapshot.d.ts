@@ -102,6 +102,14 @@ export interface TeamActivitySnapshot {
     /** Present when the snapshot could audit the workspace bytes. */
     readonly loopState?: string;
     readonly deliverable?: boolean;
+    /** Host Goal currently active for the captain, when the goal service is mounted. */
+    readonly goal?: {
+        readonly id: string;
+        readonly objective: string;
+        readonly phase: string;
+        readonly roundsStarted: number;
+        readonly maxGoalRounds: number;
+    };
     readonly delivery?: {
         readonly ok: boolean;
         readonly blockers: readonly string[];

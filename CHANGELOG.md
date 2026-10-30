@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.68] - 2026-10-30
+
+### Added
+- Captain autonomy contract: within the approved goal/inScope/acceptance/verify,
+  decide on the conservative reversible option, record the assumption and keep
+  going; ask only for irreversible, out-of-scope, credential, or goal-changing
+  decisions. Members get the same rule in their task assignment.
+- Host Goal visibility: snapshots expose the captain's active goal (objective,
+  phase, rounds), the plan review shows it, and the captain protocol defers
+  continuation to the host Goal Round Driver instead of creating a second goal.
+
 ## [0.1.67] - 2026-10-30
 
 ### Changed

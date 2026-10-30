@@ -114,6 +114,8 @@ export interface TeamActivitySnapshot {
   /** Present when the snapshot could audit the workspace bytes. */
   readonly loopState?: string
   readonly deliverable?: boolean
+  /** Host Goal currently active for the captain, when the goal service is mounted. */
+  readonly goal?: { readonly id: string; readonly objective: string; readonly phase: string; readonly roundsStarted: number; readonly maxGoalRounds: number }
   readonly delivery?: { readonly ok: boolean; readonly blockers: readonly string[]; readonly warnings: readonly string[]; readonly evidence: DeliveryEvidence; readonly report?: string }
 }
 
@@ -241,6 +243,8 @@ export async function assembleTeamSnapshot(
   const audit = options.workspacePath === undefined ? undefined : auditTeamWorkspace(options.workspacePath, state)
   const deliveryCheck = audit === undefined ? canDeclareDelivery(state) : canDeclareDelivery(state, audit)
   const loop = audit === undefined ? describeQualityLoop(state) : describeQualityLoop(state, audit)
+  const goalAgent = options.historic === true ? undefined : ctx.agents.get(state.captainSessionId as never)
+  const goalView = goalAgent === undefined ? undefined : (ctx as unknown as { goals?: { get(agent: unknown): { id: string; objective: string; phase: string; roundsStarted: number; maxGoalRounds: number } | undefined } }).goals?.get(goalAgent)
   const staleById = new Map<string, string[]>()
   if (audit !== undefined) {
     for (const note of verdictAuditNotes(state, audit)) {
@@ -270,6 +274,7 @@ export async function assembleTeamSnapshot(
       },
     },
     ...state.halted === true ? { halted: true } : {},
+    ...goalView === undefined ? {} : { goal: { id: goalView.id, objective: goalView.objective, phase: goalView.phase, roundsStarted: goalView.roundsStarted, maxGoalRounds: goalView.maxGoalRounds } },
     ...audit === undefined ? {} : {
       loopState: loop.state,
       deliverable: loop.deliverable,
