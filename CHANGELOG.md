@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.80] - 2026-10-30
+
+### Changed
+- Swapped the mode row order: "超级快速执行" now sits where "极速草稿" was, and
+  "极速草稿（产量优先）" moved to the end.
+- The memory "goldfish mode" hint is now a bottom-right notification toast
+  instead of an inline banner in the sheet body.
+
 ## [0.1.79] - 2026-10-30
 
 ### Fixed

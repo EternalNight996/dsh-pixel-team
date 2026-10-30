@@ -1,8 +1,8 @@
-.root { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid rgba(242, 193, 78, 0.35); background: rgba(242, 193, 78, 0.08); border-radius: 8px; font-size: 12px; }
+.root { position: fixed; right: 20px; bottom: 20px; z-index: 13000; display: flex; align-items: center; gap: 8px; width: min(380px, calc(100vw - 40px)); box-sizing: border-box; padding: 10px 12px; border: 1px solid rgba(242, 193, 78, 0.45); background: #1d232c; box-shadow: 0 12px 32px rgb(0 0 0 / 45%); border-radius: 10px; font-size: 12px; }
 .text { flex: 1; color: inherit; }
 .action { color: #f2c14e; text-decoration: none; white-space: nowrap; }
 .action:hover { text-decoration: underline; }
 .close { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 14px; line-height: 1; opacity: 0.7; }
-.connected { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid rgba(127,214,168,0.35); background: rgba(127,214,168,0.08); border-radius: 8px; font-size: 12px; }
+.connected { position: fixed; right: 20px; bottom: 20px; z-index: 13000; display: flex; align-items: center; gap: 6px; width: min(320px, calc(100vw - 40px)); box-sizing: border-box; padding: 8px 10px; border: 1px solid rgba(127,214,168,0.35); background: #1d232c; box-shadow: 0 12px 32px rgb(0 0 0 / 45%); border-radius: 10px; font-size: 12px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: #7fd6a8; }
 .connected .text { flex: 1; color: #9fe3bd; }

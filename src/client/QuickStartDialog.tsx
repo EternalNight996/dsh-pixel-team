@@ -515,14 +515,24 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
               </div>
               <div className={css.modeRow}>
                 <span className={css.modeLabel}>{t('mode.select')}</span>
-                {TEAM_MODES.map(item => {
+                <button
+                  type="button"
+                  className={css.modeChip}
+                  data-active={superFast || undefined}
+                  disabled={busy}
+                  title={t('quickstart.superFastHint')}
+                  onClick={() => { setSuperFast((current) => !current); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
+                >
+                  ⚡ {t('quickstart.superFast')}
+                </button>
+                {TEAM_MODES.filter(item => item !== 'draft').map(item => {
                   const spec = getModeSpec(item)
                   return (
                     <button
                       key={item}
                       type="button"
                       className={css.modeChip}
-                      data-active={mode === item || undefined}
+                      data-active={mode === item && !superFast || undefined}
                       disabled={busy}
                       title={t(('mode.desc.' + item) as Parameters<typeof t>[0])}
                       onClick={() => { setMode(item); setSuperFast(false); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
@@ -534,12 +544,12 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                 <button
                   type="button"
                   className={css.modeChip}
-                  data-active={superFast || undefined}
+                  data-active={mode === 'draft' && !superFast || undefined}
                   disabled={busy}
-                  title={t('quickstart.superFastHint')}
-                  onClick={() => { setSuperFast((current) => !current); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
+                  title={t('mode.desc.draft' as Parameters<typeof t>[0])}
+                  onClick={() => { setMode('draft'); setSuperFast(false); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
                 >
-                  ⚡ {t('quickstart.superFast')}
+                  {getModeSpec('draft').emoji} {t(getModeSpec('draft').labelKey as Parameters<typeof t>[0])}
                 </button>
               </div>
             </section>

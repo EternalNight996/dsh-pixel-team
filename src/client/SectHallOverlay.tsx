@@ -686,7 +686,6 @@ export function SectHallOverlay({
           <button type="button" className={css.sheetClose} onClick={finishSheet} aria-label={t('office.closePanel')}>×</button>
         </header>
         <div className={css.sheetBody}>
-          <MemoryModeBanner t={t} />
           {sheet === 'ranks' ? (
             <div className={css.ranks}>
               <p className={css.settingsHint}>{t('office.ascensionIntro')}</p>
@@ -1061,6 +1060,7 @@ export function SectHallOverlay({
               )
           )}
         </div>
+        <MemoryModeBanner t={t} />
         <CostDialog sessionId={sessionId} t={t} />
       </aside>
     ), document.body)
