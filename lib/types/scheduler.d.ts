@@ -12,7 +12,7 @@
  * @module dsh-agent-teams/scheduler
  */
 import type { Context } from '@deepseek-ai/cordis';
-import type { Agent } from '@deepseek-ai/dsh-agent';
+import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent';
 import type { TeamTask } from './types.ts';
 /** Per-dependency output cap in the assignment prompt. */
 export declare const DEPENDENCY_OUTPUT_MAX_CHARS = 2000;
@@ -24,7 +24,13 @@ export interface SchedulerConfig {
     /** Wake the captain for the next ready solo task (zero-member teams). */
     readonly notifyCaptain?: (captain: Agent, teamId: string, text: string) => Promise<boolean>;
     readonly dispatch?: (captain: Agent, teamId: string, memberName: string, text: string, signal: AbortSignal, mode: 'queue' | 'steer', attemptId?: string) => Promise<boolean>;
+    /** Mark an idle/missing owner's open attempt failed after this grace period (0 disables). */
+    readonly watchdogMs?: number;
+    /** How often the watchdog scans one live team. */
+    readonly watchdogIntervalMs?: number;
 }
+/** True when an open attempt's owner is idle/missing past the grace period. */
+export declare function watchdogStalled(task: TeamTask, ownerStatus: AgentStatus | 'missing', now: number, graceMs: number): boolean;
 export interface TeamScheduler {
     /** Try to give every genuinely idle/ready member one unit of ready work. */
     kickTeam(workspace: string, teamId: string, captain?: Agent): Promise<void>;

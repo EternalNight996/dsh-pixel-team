@@ -149,6 +149,8 @@ export interface ToolsConfig {
       models?: Record<string, { inputPer1k?: number; outputPer1k?: number; cacheReadPer1k?: number; cacheWritePer1k?: number }>
     }
   }
+  /** Stalled-member watchdog: mark open attempts failed after an idle/missing owner grace period. */
+  watchdog?: { timeoutMs?: number; intervalMs?: number }
   /** Quality gate policy: host re-verification, auto review, product verify commands. */
   quality?: {
     /** Host re-runs declared verify commands before accepting a completion (default true). */
@@ -776,6 +778,10 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
   const scheduler = installTeamScheduler(ctx, {
     stateDir: config.stateDir,
     executionPrompt: config.executionPrompt,
+    ...config.watchdog === undefined ? {} : {
+      watchdogMs: config.watchdog.timeoutMs ?? 0,
+      watchdogIntervalMs: config.watchdog.intervalMs,
+    },
     notifyCaptain: async (captain, teamId, text) => {
       try {
         captain.steer(createUserMessage({

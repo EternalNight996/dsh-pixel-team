@@ -133,6 +133,8 @@ export interface Config {
   clarify?: { enforce?: boolean }
   /** memory-eternal (or compatible) recall endpoint for agent_teams_memory_recall. */
   memory?: { endpoint?: string }
+  /** Stalled-member watchdog. timeoutMs=0 disables it. */
+  watchdog?: { timeoutMs?: number; intervalMs?: number }
   /** Soft cost gate: prompt thresholds; terminate cancels only the current spawn. */
   cost?: {
     enabled?: boolean
@@ -260,6 +262,10 @@ export const Config: z<Config> = z.object({
     }),
     z.const(undefined),
   ]),
+  watchdog: z.union([z.object({
+    timeoutMs: z.natural().default(0),
+    intervalMs: z.natural().default(60_000),
+  }), z.const(undefined)]),
   boundary: z.union([z.object({ productsDir: z.string(), forbidden: z.array(z.string()) }), z.const(undefined)]),
   quality: z.union([
     z.object({
@@ -333,6 +339,7 @@ export function apply(ctx: Context, config: Config): void {
     clarify: config.clarify,
     memory: config.memory,
     cost: config.cost,
+    watchdog: config.watchdog,
     quality: config.quality,
   }
 

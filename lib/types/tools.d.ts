@@ -65,6 +65,11 @@ export interface ToolsConfig {
             }>;
         };
     };
+    /** Stalled-member watchdog: mark open attempts failed after an idle/missing owner grace period. */
+    watchdog?: {
+        timeoutMs?: number;
+        intervalMs?: number;
+    };
     /** Quality gate policy: host re-verification, auto review, product verify commands. */
     quality?: {
         /** Host re-runs declared verify commands before accepting a completion (default true). */

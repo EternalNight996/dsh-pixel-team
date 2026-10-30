@@ -88,6 +88,11 @@ export interface Config {
     memory?: {
         endpoint?: string;
     };
+    /** Stalled-member watchdog. timeoutMs=0 disables it. */
+    watchdog?: {
+        timeoutMs?: number;
+        intervalMs?: number;
+    };
     /** Soft cost gate: prompt thresholds; terminate cancels only the current spawn. */
     cost?: {
         enabled?: boolean;

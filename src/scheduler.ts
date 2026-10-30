@@ -48,6 +48,19 @@ export interface SchedulerConfig {
   /** Wake the captain for the next ready solo task (zero-member teams). */
   readonly notifyCaptain?: (captain: Agent, teamId: string, text: string) => Promise<boolean>
   readonly dispatch?: (captain: Agent, teamId: string, memberName: string, text: string, signal: AbortSignal, mode: 'queue' | 'steer', attemptId?: string) => Promise<boolean>
+  /** Mark an idle/missing owner's open attempt failed after this grace period (0 disables). */
+  readonly watchdogMs?: number
+  /** How often the watchdog scans one live team. */
+  readonly watchdogIntervalMs?: number
+}
+
+/** True when an open attempt's owner is idle/missing past the grace period. */
+export function watchdogStalled(task: TeamTask, ownerStatus: AgentStatus | 'missing', now: number, graceMs: number): boolean {
+  if (graceMs <= 0) return false
+  if (task.status !== 'claimed' && task.status !== 'in_progress') return false
+  if (task.assignee === undefined || task.assignee === CAPTAIN_KEY) return false
+  if (ownerStatus === 'running') return false
+  return now - task.updatedAt >= graceMs
 }
 
 export interface TeamScheduler {
@@ -288,6 +301,65 @@ export function installTeamScheduler(ctx: Context, config: SchedulerConfig): Tea
   const memberQueueKey = (stateRoot: string, teamId: string, memberName: string): string => (
     `${stateRoot}\u0000${teamId}\u0000${memberName}`
   )
+  const watchdogs = new Map<string, ReturnType<typeof setInterval>>()
+  const watchdogKey = (workspace: string, teamId: string): string => `${workspace}\u0000${teamId}`
+  const clearWatchdog = (key: string): void => {
+    const timer = watchdogs.get(key)
+    if (timer !== undefined) clearInterval(timer)
+    watchdogs.delete(key)
+  }
+  const ensureWatchdog = (workspace: string, teamId: string): void => {
+    const graceMs = config.watchdogMs ?? 0
+    if (graceMs <= 0) return
+    const key = watchdogKey(workspace, teamId)
+    if (watchdogs.has(key)) return
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          const stateRoot = stateRootOf(workspace, config)
+          let team = await readTeam(stateRoot, teamId)
+          if (team === undefined || team.halted === true || team.phase === 'staged') return clearWatchdog(key)
+          const open = team.tasks.filter((task) => task.status === 'claimed' || task.status === 'in_progress')
+          if (open.length === 0) return clearWatchdog(key)
+          const captain = liveCaptain(ctx, team.captainSessionId)
+          if (captain === undefined) return
+          let failed: TeamTask[] = []
+          await withTeamLock(teamLockKey(stateRoot, teamId), async () => {
+            team = await readTeam(stateRoot, teamId)
+            if (team === undefined || team.halted === true || team.phase === 'staged') return
+            const now = Date.now()
+            const stalled: TeamTask[] = []
+            for (const task of team.tasks) {
+              if (task.assignee === undefined || task.assignee === CAPTAIN_KEY) continue
+              const member = team.members.find((candidate) => candidate.name === task.assignee && candidate.status !== 'removed')
+              const agent = member?.id ? ctx.agents.get(member.id as SessionId) : undefined
+              const status = agent?.status ?? 'missing'
+              if (!watchdogStalled(task, status, now, graceMs)) continue
+              task.status = 'failed'
+              task.output = 'watchdog: no progress from ' + task.assignee + ' (' + status + ') for ' + Math.round(graceMs / 60000) + ' minutes'
+              delete task.attemptId
+              task.assignee = undefined
+              task.updatedAt = now
+              stalled.push(task)
+            }
+            if (stalled.length === 0) return
+            await writeTeam(stateRoot, team)
+            failed = stalled
+          })
+          if (failed.length === 0) return
+          const summary = failed.map((task) => task.id + ' ' + task.subject).join('; ')
+          if (config.notifyCaptain !== undefined) {
+            await config.notifyCaptain(captain, teamId, '【watchdog】成员长时间无进展，任务已标记失败：' + summary + '。请检查日志后修复/重新分配，或向用户说明。')
+          }
+          await runtime.kickTeam(workspace, teamId, captain)
+        } catch (error: unknown) {
+          ctx.logger.warn('agent-teams: watchdog scan failed for ' + teamId + ': ' + String(error))
+        }
+      })()
+    }, config.watchdogIntervalMs ?? 60_000)
+    timer.unref?.()
+    watchdogs.set(key, timer)
+  }
 
   const serializeMember = async <T>(key: string, operation: () => Promise<T>): Promise<T> => {
     const previous = memberQueues.get(key) ?? Promise.resolve()
@@ -309,6 +381,7 @@ export function installTeamScheduler(ctx: Context, config: SchedulerConfig): Tea
       const stateRoot = stateRootOf(workspace, config)
       const team = await readTeam(stateRoot, teamId)
       if (team === undefined || team.halted === true || team.phase === 'staged') return
+      ensureWatchdog(workspace, teamId)
       const captain = liveCaptain(ctx, team.captainSessionId, suppliedCaptain)
       if (captain === undefined) return
       for (const member of team.members) {

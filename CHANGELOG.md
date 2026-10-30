@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.70] - 2026-10-30
+
+### Added
+- Stalled-member watchdog (opt-in via `watchdog.timeoutMs`): scans open attempts,
+  and when the owning member is idle/missing past the grace period, marks the
+  task failed with a reason, clears the attempt, wakes the captain and reschedules.
+  `watchdog.intervalMs` controls the scan cadence.
+
 ## [0.1.69] - 2026-10-30
 
 ### Added
