@@ -166,6 +166,8 @@ export declare const zh: {
     'plan.task.assignee': string;
     'plan.task.dependencies': string;
     'plan.task.dependenciesHint': string;
+    'plan.task.skills': string;
+    'plan.task.skillsHint': string;
     'plan.contract.title': string;
     'plan.contract.objective': string;
     'plan.contract.acceptance': string;
@@ -947,6 +949,8 @@ export declare const en: {
     'plan.task.assignee': string;
     'plan.task.dependencies': string;
     'plan.task.dependenciesHint': string;
+    'plan.task.skills': string;
+    'plan.task.skillsHint': string;
     'plan.contract.title': string;
     'plan.contract.objective': string;
     'plan.contract.acceptance': string;

@@ -66,6 +66,7 @@ export interface DispatchTicket {
     readonly outOfScope?: readonly string[];
     readonly acceptance?: readonly string[];
     readonly verify?: readonly string[];
+    readonly skills?: readonly string[];
     readonly reviewedTaskId?: string;
     readonly findingSourceTaskIds?: readonly string[];
 }

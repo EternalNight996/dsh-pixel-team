@@ -1043,6 +1043,7 @@ export function isTeamTask(value: unknown): value is TeamTask {
     && Array.isArray(value['dependencies'])
     && value['dependencies'].every((dependency) => typeof dependency === 'string')
     && isOptionalString(value['output'])
+    && (value['skills'] === undefined || (Array.isArray(value['skills']) && value['skills'].every((skill) => typeof skill === 'string')))
     && (value['attempt'] === undefined
       || (Number.isSafeInteger(value['attempt']) && (value['attempt'] as number) >= 0))
     && isOptionalString(value['attemptId'])

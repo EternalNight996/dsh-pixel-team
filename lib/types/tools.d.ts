@@ -103,12 +103,14 @@ export type StagedPlanMutation = {
     description?: string | null;
     assignee?: string | null;
     dependencies: string[];
+    skills?: string[];
 } | {
     action: 'add_task';
     subject: string;
     description?: string | null;
     assignee?: string | null;
     dependencies: string[];
+    skills?: string[];
 } | {
     action: 'remove_task';
     taskId: string;

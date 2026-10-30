@@ -190,6 +190,7 @@ export type StagedPlanMutation =
       description?: string | null
       assignee?: string | null
       dependencies: string[]
+      skills?: string[]
     }
   | {
       action: 'add_task'
@@ -197,6 +198,7 @@ export type StagedPlanMutation =
       description?: string | null
       assignee?: string | null
       dependencies: string[]
+      skills?: string[]
     }
   | { action: 'remove_task'; taskId: string }
   | { action: 'remove_member'; memberName: string }
@@ -887,6 +889,11 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           task.description = trimmedOptional(mutation.description)
           task.assignee = trimmedOptional(mutation.assignee)
           task.dependencies = [...new Set(mutation.dependencies.map((item) => item.trim()).filter(Boolean))]
+          if (mutation.skills !== undefined) {
+            const skills = [...new Set(mutation.skills.map((item) => item.trim()).filter(Boolean))]
+            if (skills.length === 0) delete task.skills
+            else task.skills = skills
+          }
           task.updatedAt = Date.now()
         } else if (mutation.action === 'add_task') {
           const subject = mutation.subject.trim()
@@ -902,6 +909,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             dependencies: [...new Set(mutation.dependencies.map((item) => item.trim()).filter(Boolean))],
             attempt: 0,
             kind: 'work',
+            ...mutation.skills === undefined || mutation.skills.length === 0 ? {} : { skills: [...new Set(mutation.skills.map((item) => item.trim()).filter(Boolean))] },
             createdAt: now,
             updatedAt: now,
           })
@@ -1370,6 +1378,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             description: { type: 'string', description: 'Optional task description.' },
             assignee: { type: 'string', description: 'Optional task assignee; an empty string moves it to the shared pool.' },
             dependencies: { type: 'array', items: { type: 'string' }, description: 'Complete replacement dependency list for a task.' },
+            skills: { type: 'array', items: { type: 'string' }, description: 'Skill names the task should load before working.' },
             role: { type: 'string', description: 'Optional member role.' },
             provider: { type: 'string', description: 'Optional member provider; defaults to the current staged route.' },
             model: { type: 'string', description: 'Optional member model; defaults to the current staged route.' },
@@ -1435,6 +1444,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             description: operation.description ?? task.description,
             assignee: operation.assignee ?? task.assignee,
             dependencies: operation.dependencies ?? task.dependencies,
+            skills: operation.skills ?? task.skills,
           }
         }
         if (operation.action === 'add_task') {
@@ -1446,6 +1456,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             description: operation.description,
             assignee: operation.assignee,
             dependencies: operation.dependencies ?? [],
+            skills: operation.skills,
           }
         }
         if (operation.action === 'remove_task') {
@@ -1707,6 +1718,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       sourceTaskId: { type: 'string', description: 'Source implementation/artifact. Required for kind=repair.' },
       sourceFindingIds: { type: 'array', items: { type: 'string' }, description: 'Finding ids this repair must close.' },
       coverageOf: { type: 'array', items: { type: 'string' }, description: 'User-constraint / goal items this task covers.' },
+      skills: { type: 'array', items: { type: 'string' }, description: 'Skill names the task should load before working.' },
       resume: { type: 'boolean', description: 'If true, clear halted in the same lock before creating the task.' },
       resumeReason: { type: 'string', description: 'Required non-empty reason when resume=true.' },
     },
@@ -1811,6 +1823,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           ...input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId },
           ...input.sourceFindingIds === undefined ? {} : { sourceFindingIds: input.sourceFindingIds },
           ...input.coverageOf === undefined ? {} : { coverageOf: input.coverageOf },
+          ...input.skills === undefined || input.skills.length === 0 ? {} : { skills: [...new Set(input.skills.map((item) => item.trim()).filter(Boolean))] },
         }
         fresh.taskSeq += 1
         fresh.tasks.push(task)

@@ -62,6 +62,7 @@ export interface TeamActivityTask {
   readonly acceptance?: readonly string[]
   readonly verify?: readonly string[]
   readonly inScope?: readonly string[]
+  readonly skills?: readonly string[]
   /**
    * Set when this task's verdict or auto-generated work order no longer
    * describes the current bytes; the panel must not render a bare pass badge.
@@ -304,6 +305,7 @@ export async function assembleTeamSnapshot(
       ...task.acceptance === undefined || task.acceptance.length === 0 ? {} : { acceptance: task.acceptance },
       ...task.verify === undefined || task.verify.length === 0 ? {} : { verify: task.verify },
       ...task.inScope === undefined || task.inScope.length === 0 ? {} : { inScope: task.inScope },
+      ...task.skills === undefined || task.skills.length === 0 ? {} : { skills: task.skills },
       ...staleById.get(task.id) === undefined ? {} : { verdictStale: (staleById.get(task.id) as string[]).join('; ') },
       updatedAt: task.updatedAt,
     })),

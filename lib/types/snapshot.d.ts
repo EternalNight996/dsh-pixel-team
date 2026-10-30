@@ -48,6 +48,7 @@ export interface TeamActivityTask {
     readonly acceptance?: readonly string[];
     readonly verify?: readonly string[];
     readonly inScope?: readonly string[];
+    readonly skills?: readonly string[];
     /**
      * Set when this task's verdict or auto-generated work order no longer
      * describes the current bytes; the panel must not render a bare pass badge.

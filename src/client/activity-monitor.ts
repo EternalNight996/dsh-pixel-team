@@ -36,6 +36,7 @@ export interface ActivityTask {
   readonly acceptance?: readonly string[]
   readonly verify?: readonly string[]
   readonly inScope?: readonly string[]
+  readonly skills?: readonly string[]
   /**
    * Server-side audit of this task's verdict against the current bytes. Set
    * when the recorded pass (or its generated work order) no longer describes

@@ -93,6 +93,7 @@ export interface DispatchTicket {
   readonly outOfScope?: readonly string[]
   readonly acceptance?: readonly string[]
   readonly verify?: readonly string[]
+  readonly skills?: readonly string[]
   readonly reviewedTaskId?: string
   readonly findingSourceTaskIds?: readonly string[]
 }
@@ -231,6 +232,7 @@ export function assignmentPrompt(
     ticket.outOfScope === undefined || ticket.outOfScope.length === 0 ? '' : `Out of scope: ${ticket.outOfScope.join(', ')}`,
     ticket.acceptance === undefined || ticket.acceptance.length === 0 ? '' : `Acceptance: ${ticket.acceptance.join('; ')}`,
     ticket.verify === undefined || ticket.verify.length === 0 ? '' : `Verify: ${ticket.verify.join('; ')}`,
+    ticket.skills === undefined || ticket.skills.length === 0 ? '' : `Skills: load ${ticket.skills.join(', ')} with the skill tool before working.`,
     ticket.reviewedTaskId === undefined ? '' : `Reviewed task: ${ticket.reviewedTaskId}`,
     ticket.findingSourceTaskIds === undefined || ticket.findingSourceTaskIds.length === 0 ? '' : `Fixes findings of: ${ticket.findingSourceTaskIds.join(', ')}`,
   ].filter((line) => line !== '').join('\n')
@@ -448,6 +450,7 @@ export function installTeamScheduler(ctx: Context, config: SchedulerConfig): Tea
             ...task.outOfScope === undefined ? {} : { outOfScope: task.outOfScope },
             ...task.acceptance === undefined ? {} : { acceptance: task.acceptance },
             ...task.verify === undefined ? {} : { verify: task.verify },
+            ...task.skills === undefined ? {} : { skills: task.skills },
             ...task.reviewedTaskId === undefined ? {} : { reviewedTaskId: task.reviewedTaskId },
             ...task.findingSourceTaskIds === undefined ? {} : { findingSourceTaskIds: task.findingSourceTaskIds },
             dependencyOutputs: collectCompletedDependencyOutputs(

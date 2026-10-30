@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.69] - 2026-10-30
+
+### Added
+- Task-scoped skills: the task editor fetches the host skill catalog and
+  multi-selects skills; the task persists them, the plan review shows them, and
+  the assignment tells the assignee to load them with the host skill tool.
+
 ## [0.1.68] - 2026-10-30
 
 ### Added

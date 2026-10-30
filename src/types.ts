@@ -179,6 +179,8 @@ export interface TeamTask {
   output?: string
   /** Explicit retry count; the mode's retry gate prompts human triage at its threshold. */
   retryCount?: number
+  /** Skill names this task should load before working. */
+  skills?: string[]
   /** Session event seq where the current attempt started (actual token metering). */
   costStartSeq?: number
   /** Agent/session id that owns costStartSeq. */

@@ -490,13 +490,15 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
   const [description, setDescription] = useState(task.description ?? '')
   const [assignee, setAssignee] = useState(task.assignee)
   const [dependencies, setDependencies] = useState(taskDependencies)
-  const remoteSignature = JSON.stringify([task.subject, task.description ?? '', task.assignee, taskDependencies])
+  const [skills, setSkills] = useState<string[]>(() => [...(task.skills ?? [])])
+  const [skillCatalog, setSkillCatalog] = useState<readonly { name: string; description: string }[]>([])
+  const remoteSignature = JSON.stringify([task.subject, task.description ?? '', task.assignee, taskDependencies, task.skills ?? []])
   const [savedSignature, setSavedSignature] = useState(remoteSignature)
   const [busy, setBusy] = useState(false)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const [feedback, setFeedback] = useState<PlanFeedback>()
   useDismissSuccess(feedback, setFeedback)
-  const signature = JSON.stringify([subject, description, assignee, dependencies])
+  const signature = JSON.stringify([subject, description, assignee, dependencies, skills])
   const dirty = signature !== savedSignature
 
   useEffect(() => {
@@ -509,8 +511,18 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
     setDescription(task.description ?? '')
     setAssignee(task.assignee)
     setDependencies(taskDependencies)
+    setSkills([...(task.skills ?? [])])
     setSavedSignature(remoteSignature)
-  }, [task.subject, task.description, task.assignee, taskDependencies, remoteSignature])
+  }, [task.subject, task.description, task.assignee, taskDependencies, remoteSignature, task.skills])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetch('/plugins/dsh-pixel-team/skills?sessionId=' + encodeURIComponent(team.captainSessionId), { cache: 'no-store' })
+      .then(async (response) => response.ok ? await response.json() as { skills?: readonly { name: string; description: string }[] } : { skills: [] })
+      .then((body) => { if (!cancelled) setSkillCatalog(body.skills ?? []) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [team.captainSessionId])
 
   const markEdited = (): void => {
     setFeedback(undefined)
@@ -530,6 +542,7 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
         description,
         assignee,
         dependencies: dependencies.split(',').map((item) => item.trim()).filter(Boolean),
+        skills,
       })
       setSavedSignature(signature)
       setFeedback({ tone: 'success', message: t('plan.saved') })
@@ -591,6 +604,19 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
                 <input name="dependencies" value={dependencies} onChange={(event) => { setDependencies(event.currentTarget.value); markEdited() }} />
                 <small>{t('plan.task.dependenciesHint')}</small>
               </label>
+              <label>
+                {t('plan.task.skills')}
+                <select
+                  name="skills"
+                  multiple
+                  size={Math.min(5, Math.max(2, skillCatalog.length))}
+                  value={skills}
+                  onChange={(event) => { setSkills([...event.currentTarget.selectedOptions].map((option) => option.value)); markEdited() }}
+                >
+                  {skillCatalog.map((skill) => <option key={skill.name} value={skill.name}>{skill.name}</option>)}
+                </select>
+                <small>{t('plan.task.skillsHint')}</small>
+              </label>
             </span>
           </fieldset>
           <div className={css.planContract}>
@@ -606,6 +632,12 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
               <div>
                 <b>{t('plan.contract.verify')}</b>
                 <ul>{task.verify!.map((item, index) => <li key={index}><code>{item}</code></li>)}</ul>
+              </div>
+            )}
+            {(task.skills?.length ?? 0) > 0 && (
+              <div>
+                <b>{t('plan.task.skills')}</b>
+                <ul>{task.skills!.map((item, index) => <li key={index}><code>{item}</code></li>)}</ul>
               </div>
             )}
             {(task.inScope?.length ?? 0) > 0 && (
