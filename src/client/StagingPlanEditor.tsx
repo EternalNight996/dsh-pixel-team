@@ -810,7 +810,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
       const body = await response.json().catch(() => null) as { teamId?: string; error?: string } | null
       if (!response.ok) throw new Error(body?.error ?? 'regeneration failed')
       if (body?.teamId !== undefined) {
-        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId } }))
+        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId: team.captainSessionId } }))
       }
       onDiscarded()
     } catch (error: unknown) {

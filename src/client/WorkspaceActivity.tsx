@@ -153,17 +153,11 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
   // event is the only signal that gets the user to the plan review.
   useEffect(() => {
     const reveal = (event: Event): void => {
-      if (current === undefined) return
-      const teamId = (event as CustomEvent<{ teamId?: string }>).detail?.teamId
-      if (teamId === undefined) return
-      if (!shouldRevealTeam({
-        source: 'created',
-        sessionId: current,
-        onScreenSessionId: sidebar?.mounted.getSnapshot() ?? current,
-        teamId,
-        expanded: sidebar?.isExpanded() ?? false,
-      })) return
-      state.select(current, teamId)
+      const detail = (event as CustomEvent<{ teamId?: string; sessionId?: string }>).detail
+      const teamId = detail?.teamId
+      const session = current ?? detail?.sessionId
+      if (teamId === undefined || session === undefined) return
+      state.select(session, teamId)
       // 新草案：在浮层里直接打开「藏经阁」内容气泡，策划审阅。
       window.dispatchEvent(new CustomEvent(OPEN_HALL_SHEET_EVENT, { detail: { action: 'config' } }))
     }
@@ -383,9 +377,9 @@ export function WorkspaceActivity({ sessionId, useTabInfo, t, state, modelDirect
   const completedCount = selected === undefined ? 0 : selected.tasks.filter(task => task.status === 'completed').length
   useEffect(() => {
     const onCreated = (event: Event): void => {
-      const detail = (event as CustomEvent<{ teamId?: string }>).detail
+      const detail = (event as CustomEvent<{ teamId?: string; sessionId?: string }>).detail
       if (detail?.teamId === undefined) return
-      state.select(sessionId, detail.teamId)
+      state.select(detail.sessionId ?? sessionId, detail.teamId)
       setSheet('config')
     }
     window.addEventListener(TEAM_CREATED_EVENT, onCreated)

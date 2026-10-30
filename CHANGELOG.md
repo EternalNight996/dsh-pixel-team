@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.83] - 2026-10-31
+
+### Changed
+- Doctrine step: removed the long hint paragraph and per-card descriptions;
+  cards keep title + role count, reclaiming vertical space.
+- After oath/staging, the plan review opens even when the current session id is
+  momentarily missing: the creation event carries its own session id.
+- Solo quick-start plans now force every task assignee to the captain after
+  staging, so the generated plan is valid for review.
+
 ## [0.1.82] - 2026-10-31
 
 ### Fixed

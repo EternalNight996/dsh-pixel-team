@@ -1259,6 +1259,10 @@ export function apply(ctx: Context, config: Config): void {
                 fresh.planSource = planSpecs !== undefined ? 'ai' : 'template'
                 fresh.planProjectRoot = projectRoot
                 if (planError !== undefined) fresh.planError = planError
+                // Solo plans have no members; every task must belong to the captain.
+                if (payload.solo === true) {
+                  for (const task of fresh.tasks) task.assignee = 'captain'
+                }
                 await writeTeam(stateRoot, fresh)
                 // Persist the core architecture next to the product so later
                 // sessions/members can recover it instead of losing context.

@@ -393,7 +393,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         team: body.teamName ?? body.teamId ?? '',
         sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
       }))
-      if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId } }))
+      if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId } }))
       clearQuickStartDraft(sessionId)
       setBlocked(false)
       setGoal('')
@@ -463,7 +463,6 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                 </button>
                 <small>{solo ? t('quickstart.soloCleared') : t('quickstart.soloHint')}</small>
               </p>
-              <p className={css.hint}>{t('quickstart.doctrineHint')}</p>
               <div className={css.templates} role="radiogroup" aria-label={t('quickstart.template')}>
                 {TEMPLATES.map(entry => (
                   <button
@@ -477,7 +476,6 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                     onClick={() => { chooseTemplate(entry.id) }}
                   >
                     <span className={css.templateName}>{t(entry.labelKey)}</span>
-                    <span className={css.templateDesc}>{t(entry.descKey as Parameters<typeof t>[0])}</span>
                     <span className={css.templateMeta}>{entry.roles.length} {t('quickstart.roleCount')}</span>
                   </button>
                 ))}
