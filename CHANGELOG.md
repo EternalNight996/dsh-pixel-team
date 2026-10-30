@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.77] - 2026-10-30
+
+### Changed
+- Quick-start simplification: the solo/one-captain choice moved to the first
+  (doctrine) step; solo mode hides sect/role configuration entirely.
+- Added a "超级快速" (super fast) option to the vow step: it skips the AI
+  interview and goes straight to sect/oath.
+- AI polish is hidden in normal use; developers can enable it with
+  `localStorage.setItem('dsh-pixel-team.dev', '1')`.
+- A staged plan created before a session switch/restart is now surfaced in the
+  hall as a fallback so it can reach plan review instead of appearing empty.
+
 ## [0.1.76] - 2026-10-30
 
 ### Added

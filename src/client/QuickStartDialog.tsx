@@ -100,6 +100,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const [rolesOpen, setRolesOpen] = useState(false)
   // Solo run: no members are spawned; the captain executes every task itself.
   const [solo, setSolo] = useState(false)
+  const [superFast, setSuperFast] = useState(false)
+  const [developerMode] = useState<boolean>(() => {
+    try { return window.localStorage.getItem('dsh-pixel-team.dev') === '1' } catch { return false }
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [blocked, setBlocked] = useState(false)
@@ -328,6 +332,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const next = (): void => {
     if (step === STEPS.length - 1) { void submit(false); return }
     if (!canAdvance) return
+    // 超级快速跳过 AI 访谈，直接进入宗门（单掌门/团队）与立誓。
+    if (currentStep === 'vow' && superFast) { goTo(Math.min(STEPS.length - 1, step + 2)); return }
     goTo(step + 1)
   }
   const doctrineName = t(templateOf(template).labelKey)
@@ -360,6 +366,22 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
 
           {currentStep === 'doctrine' && (
             <section className={css.stepPane} data-step="doctrine">
+              <p className={css.soloRow}>
+                <button
+                  type="button"
+                  className={css.soloButton}
+                  data-active={solo || undefined}
+                  disabled={busy}
+                  onClick={() => {
+                    const next = !solo
+                    setSolo(next)
+                    if (next) setRoles([])
+                  }}
+                >
+                  {solo ? t('quickstart.soloActive') : t('quickstart.solo')}
+                </button>
+                <small>{solo ? t('quickstart.soloCleared') : t('quickstart.soloHint')}</small>
+              </p>
               <p className={css.hint}>{t('quickstart.doctrineHint')}</p>
               <div className={css.templates} role="radiogroup" aria-label={t('quickstart.template')}>
                 {TEMPLATES.map(entry => (
@@ -411,14 +433,24 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                       data-active={mode === item || undefined}
                       disabled={busy}
                       title={t(('mode.desc.' + item) as Parameters<typeof t>[0])}
-                      onClick={() => { setMode(item); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
+                      onClick={() => { setMode(item); setSuperFast(false); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
                     >
                       {spec.emoji} {t(spec.labelKey as Parameters<typeof t>[0])}
                     </button>
                   )
                 })}
+                <button
+                  type="button"
+                  className={css.modeChip}
+                  data-active={superFast || undefined}
+                  disabled={busy}
+                  title={t('quickstart.superFastHint')}
+                  onClick={() => { setSuperFast((current) => !current); setInterviewQuestions([]); setInterviewAnswers({}); setInterviewState('loading') }}
+                >
+                  ⚡ {t('quickstart.superFast')}
+                </button>
               </div>
-              <div className={css.polishRow}>
+              {developerMode && <div className={css.polishRow}>
                 <button
                   type="button"
                   className={css.polishButton}
@@ -428,7 +460,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                   {polishBusy ? t('polish.busy') : t('polish.button')}
                 </button>
                 {polishError !== '' && <span className={css.polishError} role="alert">{polishError}</span>}
-              </div>
+              </div>}
             </section>
           )}
 
@@ -451,23 +483,9 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           {currentStep === 'sect' && (
             <section className={css.stepPane} data-step="sect">
               <p className={css.hint}>{t('quickstart.sectHint')}</p>
-              <p className={css.soloRow}>
-                <button
-                  type="button"
-                  className={css.soloButton}
-                  data-active={solo || undefined}
-                  disabled={busy}
-                  onClick={() => {
-                    const next = !solo
-                    setSolo(next)
-                    // Single-click item: entering solo immediately clears the roster.
-                    if (next) { setRoles([]) }
-                  }}
-                >
-                  {solo ? t('quickstart.soloActive') : t('quickstart.solo')}
-                </button>
-                <small>{solo ? t('quickstart.soloCleared') : t('quickstart.soloHint')}</small>
-              </p>
+              {solo ? (
+                <p className={css.hint}>{t('quickstart.soloSectHidden')}</p>
+              ) : (
               <div className={css.field}>
                 <span>{t('quickstart.sect')}</span>
                 <div className={css.sectRow}>
@@ -497,12 +515,13 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                       ? t('quickstart.sectRolled', { sect: activeSect === undefined ? '' : t(activeSect.nameKey) })
                       : activeSect === undefined ? '' : t(activeSect.descKey)}
                 </small>
-                {!solo && sectMode !== 'custom' && (
+                {sectMode !== 'custom' && (
                   <span className={css.sectRoster}>
                     {sectRoles.map(personChip)}
                   </span>
                 )}
               </div>
+              )}
               {!solo && sectMode === 'custom' && (
                 <div className={css.field}>
                   <span>{t('quickstart.roles')}</span>

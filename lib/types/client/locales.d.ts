@@ -570,6 +570,9 @@ export declare const zh: {
     'quickstart.soloActive': string;
     'quickstart.soloCleared': string;
     'quickstart.soloHint': string;
+    'quickstart.superFast': string;
+    'quickstart.superFastHint': string;
+    'quickstart.soloSectHidden': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;
     'quickstart.back': string;
@@ -1358,6 +1361,9 @@ export declare const en: {
     'quickstart.soloActive': string;
     'quickstart.soloCleared': string;
     'quickstart.soloHint': string;
+    'quickstart.superFast': string;
+    'quickstart.superFastHint': string;
+    'quickstart.soloSectHidden': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;
     'quickstart.back': string;
