@@ -1559,17 +1559,48 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
-        if (captain === undefined) {
+        let workspace = captain?.session.header.cwd ?? process.cwd()
+        let stateRoot = join(workspace, resolved.stateDir)
+        let team = captain === undefined
+          ? undefined
+          : await findTeamByCaptain(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
+        if ((team === undefined || team.id !== teamId) && action === 'discard' && captain === undefined) {
+          for (const candidateWorkspace of workspaceRegistry.list()) {
+            const candidateRoot = join(candidateWorkspace.path, resolved.stateDir)
+            const candidate = await readTeam(candidateRoot, teamId)
+            if (candidate?.phase === 'staged') {
+              workspace = candidateWorkspace.path
+              stateRoot = candidateRoot
+              team = candidate
+              break
+            }
+          }
+        }
+        if (captain === undefined && action !== 'discard') {
           res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ error: 'captain session is not attached' }))
           return
         }
-        const workspace = captain.session.header.cwd ?? process.cwd()
-        const stateRoot = join(workspace, resolved.stateDir)
-        const team = await findTeamByCaptain(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
         if (team === undefined || team.id !== teamId) {
           res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ error: 'team not found for this captain' }))
+          return
+        }
+        if (action === 'discard') {
+          if (captain === undefined) {
+            await archiveTeamDir(stateRoot, teamId)
+            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+            res.end(JSON.stringify({ ok: true, phase: 'archived', teamId }))
+            return
+          }
+          const discarded = await agentTeamsRuntime.discardStagedTeam(captain, teamId)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ ok: true, phase: 'archived', ...discarded }))
+          return
+        }
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'captain session is not attached' }))
           return
         }
         try {
@@ -1596,12 +1627,6 @@ export function apply(ctx: Context, config: Config): void {
             const continued = await agentTeamsRuntime.continueStagedPlanning(captain, teamId)
             res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
             res.end(JSON.stringify({ ok: true, phase: 'staged', review: 'awaiting_feedback', ...continued }))
-            return
-          }
-          if (action === 'discard') {
-            const discarded = await agentTeamsRuntime.discardStagedTeam(captain, teamId)
-            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-            res.end(JSON.stringify({ ok: true, phase: 'archived', ...discarded }))
             return
           }
           const dependencies = Array.isArray(payload['dependencies'])

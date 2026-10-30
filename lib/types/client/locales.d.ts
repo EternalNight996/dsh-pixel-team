@@ -523,6 +523,8 @@ export declare const zh: {
     'library.stop': string;
     'library.stopping': string;
     'library.stopConfirm': string;
+    'library.confirm': string;
+    'library.cancel': string;
     'library.details': string;
     'library.deps': string;
     'library.noDeps': string;
@@ -1314,6 +1316,8 @@ export declare const en: {
     'library.stop': string;
     'library.stopping': string;
     'library.stopConfirm': string;
+    'library.confirm': string;
+    'library.cancel': string;
     'library.details': string;
     'library.deps': string;
     'library.noDeps': string;

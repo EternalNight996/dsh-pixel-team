@@ -576,6 +576,7 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
   const [stopError, setStopError] = useState('')
   const [cleanupBusy, setCleanupBusy] = useState(false)
   const [cleanupMessage, setCleanupMessage] = useState('')
+  const [cleanupArmed, setCleanupArmed] = useState<number | undefined>()
   const [acceptedAt, setAcceptedAt] = useState<number | undefined>(team.acceptedAt)
   const [accepting, setAccepting] = useState(false)
   const [acceptError, setAcceptError] = useState('')
@@ -711,14 +712,18 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         return await response.json() as { candidates?: { id: string; name: string; age_days: number }[]; archived?: string[] }
       }
-      const preview = await request(true)
-      const candidates = preview.candidates ?? []
-      if (candidates.length === 0) {
-        setCleanupMessage(t('team.cleanupEmpty'))
+      if (cleanupArmed === undefined) {
+        const preview = await request(true)
+        const candidates = preview.candidates ?? []
+        if (candidates.length === 0) {
+          setCleanupMessage(t('team.cleanupEmpty'))
+          return
+        }
+        setCleanupArmed(candidates.length)
         return
       }
-      if (!window.confirm(t('team.cleanupConfirm', { count: candidates.length }))) return
       const result = await request(false)
+      setCleanupArmed(undefined)
       setCleanupMessage(t('team.cleanupDone', { count: (result.archived ?? []).length }))
     } catch {
       setCleanupMessage(t('team.cleanupFailed'))
@@ -765,6 +770,13 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
           >
             {cleanupBusy ? '…' : t('team.cleanup')}
           </button>
+          {cleanupArmed !== undefined && (
+            <span role="alertdialog" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11, color: '#ffd7a0' }}>
+              <span>{t('team.cleanupConfirm', { count: cleanupArmed })}</span>
+              <button type="button" onClick={() => { void cleanupTeams() }}>{t('team.cleanup')}</button>
+              <button type="button" onClick={() => { setCleanupArmed(undefined) }}>{t('quickstart.cancel')}</button>
+            </span>
+          )}
           {cleanupMessage !== '' && <span className={css.cleanupMessage} role="status">{cleanupMessage}</span>}
           {team.delivery?.ok === true && team.delivery.report !== undefined && (
             <button

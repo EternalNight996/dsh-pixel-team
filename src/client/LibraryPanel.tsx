@@ -20,6 +20,8 @@ export function LibraryPanel({ sessionId, t }: {
 }) {
   const { team, connected } = useLibraryState(sessionId)
   const [stopping, setStopping] = useState<Record<string, boolean>>({})
+  const [stopArmed, setStopArmed] = useState<string | undefined>()
+  const [notice, setNotice] = useState('')
   const [confirming, setConfirming] = useState<Record<string, boolean>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [costByTask, setCostByTask] = useState<Record<string, number>>({})
@@ -50,14 +52,15 @@ export function LibraryPanel({ sessionId, t }: {
       })
       if (!response.ok) {
         const body = await response.json().catch(() => null) as { error?: string } | null
-        window.alert(body?.error ?? t('library.confirmFailed'))
+        setNotice(body?.error ?? t('library.confirmFailed'))
       }
     } finally {
       setConfirming(previous => ({ ...previous, [taskId]: false }))
     }
   }
   const stopTask = async (taskId: string): Promise<void> => {
-    if (!window.confirm(t('library.stopConfirm'))) return
+    if (stopArmed !== taskId) { setStopArmed(taskId); return }
+    setStopArmed(undefined)
     setStopping(previous => ({ ...previous, [taskId]: true }))
     try {
       await fetch('/plugins/dsh-pixel-team/task/stop', {
@@ -77,6 +80,7 @@ export function LibraryPanel({ sessionId, t }: {
         <span className={css.scale}>{team.scale}</span>
         <span className={css.gate}>{t('library.gate', { pass: team.gate.passed, total: team.gate.total })}</span>
         <span className={css.version}>v{PLUGIN_VERSION}</span>
+        {notice !== '' && <span role="alert" style={{ color: '#ffb4a8', fontSize: 11 }}>{notice}</span>}
         <span className={connected ? css.live : css.offline}>{connected ? t('library.connected') : t('library.disconnected')}</span>
       </header>
       {team.requirements.length > 0 && (() => {
@@ -168,6 +172,13 @@ export function LibraryPanel({ sessionId, t }: {
                 >
                   {stopping[task.id] === true ? t('library.stopping') : '■ ' + t('library.stop')}
                 </button>
+              )}
+              {stopArmed === task.id && (
+                <span role="alertdialog" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', marginLeft: 6, fontSize: 11, color: '#ffd7a0' }}>
+                  <span>{t('library.stopConfirm')}</span>
+                  <button type="button" className={css.stop} onClick={() => { void stopTask(task.id) }}>{t('library.confirm')}</button>
+                  <button type="button" className={css.stop} onClick={() => { setStopArmed(undefined) }}>{t('library.cancel')}</button>
+                </span>
               )}
               {open && (
                 <div className={css.rowDetail}>

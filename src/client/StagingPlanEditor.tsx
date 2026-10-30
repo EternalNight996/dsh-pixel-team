@@ -681,6 +681,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
   const [newTask, setNewTask] = useState('')
   const [busy, setBusy] = useState(false)
   const [discardArmed, setDiscardArmed] = useState(false)
+  const [regenerateArmed, setRegenerateArmed] = useState(false)
   const [pendingEditors, setPendingEditors] = useState<ReadonlySet<string>>(new Set())
   const [feedback, setFeedback] = useState<PlanFeedback>()
   useDismissSuccess(feedback, setFeedback)
@@ -763,7 +764,8 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
   }
 
   const regenerate = async (): Promise<void> => {
-    if (!window.confirm(t('plan.regenerateConfirm'))) return
+    if (!regenerateArmed) { setRegenerateArmed(true); setFeedback(undefined); return }
+    setRegenerateArmed(false)
     setBusy(true)
     setFeedback(undefined)
     try {
@@ -975,6 +977,13 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
               <button type="button" data-plan-regenerate disabled={busy} onClick={() => { void regenerate() }}>
                 {t('plan.regenerate')}
               </button>
+              {regenerateArmed && (
+                <span role="alertdialog" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11, color: '#ffd7a0' }}>
+                  <span>{t('plan.regenerateConfirm')}</span>
+                  <button type="button" data-plan-regenerate-confirm onClick={() => { void regenerate() }}>{t('plan.regenerate')}</button>
+                  <button type="button" onClick={() => { setRegenerateArmed(false) }}>{t('quickstart.cancel')}</button>
+                </span>
+              )}
               <button type="button" data-plan-discard data-danger disabled={busy} onClick={() => { setDiscardArmed(true); setFeedback(undefined) }}>{t('plan.discard')}</button>
             </span>
           </span>

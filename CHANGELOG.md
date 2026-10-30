@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.82] - 2026-10-31
+
+### Fixed
+- Discarding a staged plan now works even when its captain session is no longer
+  attached: the team is archived directly by workspace/team id.
+- All destructive confirmations are inline bubbles in the panel (stop task,
+  clean up teams, archive teams, regenerate plan) instead of browser
+  `window.confirm` popups; review errors use an inline notice.
+
 ## [0.1.81] - 2026-10-31
 
 ### Fixed

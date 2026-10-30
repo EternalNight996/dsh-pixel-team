@@ -198,6 +198,7 @@ export function SectHallOverlay({
   const [reviewing, setReviewing] = useState(false)
   const [historyTeamId, setHistoryTeamId] = useState<string | undefined>()
   const [cleanupBusy, setCleanupBusy] = useState(false)
+  const [archiveArmed, setArchiveArmed] = useState<number | undefined>()
   const [cleanupNotice, setCleanupNotice] = useState('')
   const [archivedTeamIds, setArchivedTeamIds] = useState<readonly string[]>([])
   const [characterId, setCharacterId] = useState<string | undefined>()
@@ -525,14 +526,18 @@ export function SectHallOverlay({
         if (!response.ok) throw new Error('HTTP ' + response.status)
         return await response.json() as { candidates?: { id: string; name: string }[]; archived?: string[] }
       }
-      const preview = await request(true)
-      const candidates = preview.candidates ?? []
-      if (candidates.length === 0) {
-        setCleanupNotice(t('office.archiveCleanupEmpty'))
+      if (archiveArmed === undefined) {
+        const preview = await request(true)
+        const candidates = preview.candidates ?? []
+        if (candidates.length === 0) {
+          setCleanupNotice(t('office.archiveCleanupEmpty'))
+          return
+        }
+        setArchiveArmed(candidates.length)
         return
       }
-      if (!window.confirm(t('office.archiveCleanupConfirm', { count: candidates.length }))) return
       const result = await request(false)
+      setArchiveArmed(undefined)
       const archived = result.archived ?? []
       setArchivedTeamIds(current => [...new Set([...current, ...archived])])
       // 归档后清空下拉选择，避免继续停留在已归档宗门上。
@@ -1004,6 +1009,13 @@ export function SectHallOverlay({
                   <button type="button" className={`${css.historyStartSmall} ${css.archiveButton}`} data-danger onClick={() => { void cleanupTeams() }} disabled={cleanupBusy} title={t('office.archiveCleanupHint')}>
                     <span aria-hidden>🗄</span>{cleanupBusy ? t('office.archiveBusy') : t('office.archiveCleanup')}
                   </button>
+                )}
+                {archiveArmed !== undefined && (
+                  <span role="alertdialog" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11, color: '#ffd7a0' }}>
+                    <span>{t('office.archiveCleanupConfirm', { count: archiveArmed })}</span>
+                    <button type="button" onClick={() => { void cleanupTeams() }}>{t('office.archiveCleanup')}</button>
+                    <button type="button" onClick={() => { setArchiveArmed(undefined) }}>{t('quickstart.cancel')}</button>
+                  </span>
                 )}
               </div>
               {cleanupNotice !== '' && <p className={css.settingsHint} role="status">{cleanupNotice}</p>}
