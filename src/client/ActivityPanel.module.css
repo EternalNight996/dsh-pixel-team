@@ -2897,3 +2897,4 @@
   background: var(--dsw-alias-state-warn-primary);
   color: var(--dsw-alias-label-primary-inverted);
 }
+.planContract { display: grid; gap: 6px; margin: 8px 0; padding: 8px 10px; border: 1px solid rgba(242,193,78,.25); border-radius: 6px; background: rgba(20,16,12,.35); font-size: 12px; } .planContract p { margin: 0; } .planContract ul { margin: 2px 0 0; padding-left: 18px; } .planContract code { white-space: pre-wrap; word-break: break-all; } .planContractTitle { color: #f2c14e; font-weight: 700; }

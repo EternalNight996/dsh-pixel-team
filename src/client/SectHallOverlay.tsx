@@ -197,6 +197,8 @@ export function SectHallOverlay({
   const [pendingReview, setPendingReview] = useState(false)
   const [reviewing, setReviewing] = useState(false)
   const [historyTeamId, setHistoryTeamId] = useState<string | undefined>()
+  const [cleanupBusy, setCleanupBusy] = useState(false)
+  const [cleanupNotice, setCleanupNotice] = useState('')
   const [characterId, setCharacterId] = useState<string | undefined>()
   const previousSessionRef = useRef(sessionId)
   // 法器 / 坐骑 / 技能各选各的，互不覆盖；按角色分开记，来回切换不会丢装备。
@@ -504,6 +506,39 @@ export function SectHallOverlay({
   // 开宗：和功德碑/进度一样在面板左侧的内容气泡里展示，不弹独立窗口。
   const startSect = (): void => {
     setSheet(current => current === 'start' ? undefined : 'start')
+  }
+
+  // 名册清理：归档所有已终止的旧宗门（当前掌门的团队由宿主排除）。
+  const cleanupTeams = async (): Promise<void> => {
+    if (cleanupBusy || costSessionId === undefined) return
+    setCleanupBusy(true)
+    setCleanupNotice('')
+    try {
+      const request = async (dryRun: boolean): Promise<{ candidates?: { id: string; name: string }[]; archived?: string[] }> => {
+        const response = await fetch('/plugins/dsh-pixel-team/cleanup', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionId: costSessionId, dry_run: dryRun, older_than_days: 0 }),
+        })
+        if (!response.ok) throw new Error('HTTP ' + response.status)
+        return await response.json() as { candidates?: { id: string; name: string }[]; archived?: string[] }
+      }
+      const preview = await request(true)
+      const candidates = preview.candidates ?? []
+      if (candidates.length === 0) {
+        setCleanupNotice(t('office.archiveCleanupEmpty'))
+        return
+      }
+      if (!window.confirm(t('office.archiveCleanupConfirm', { count: candidates.length }))) return
+      const result = await request(false)
+      setCleanupNotice(t('office.archiveCleanupDone', { count: (result.archived ?? []).length }))
+      window.setTimeout(() => { window.location.reload() }, 900)
+    } catch {
+      setCleanupNotice(t('office.archiveCleanupFailed'))
+    } finally {
+      setCleanupBusy(false)
+    }
   }
 
   // 宗门志里的复制结果：2.4 秒后自动消失。
@@ -958,7 +993,13 @@ export function SectHallOverlay({
                 <button type="button" className={css.historyStartSmall} onClick={startSect} title={t('quickstart.entryTitle')}>
                   <span aria-hidden>⛩</span>{t('quickstart.entry')}
                 </button>
+                {costSessionId !== undefined && (
+                  <button type="button" className={css.historyStartSmall} onClick={() => { void cleanupTeams() }} disabled={cleanupBusy} title={t('office.archiveCleanupHint')}>
+                    <span aria-hidden>🗄</span>{cleanupBusy ? t('office.archiveBusy') : t('office.archiveCleanup')}
+                  </button>
+                )}
               </div>
+              {cleanupNotice !== '' && <p className={css.settingsHint} role="status">{cleanupNotice}</p>}
               {!hasTeam && history.length === 0 && historyTasks.length === 0 && (
                 <p className={css.settingsHint}>{t('office.historyEmpty')}</p>
               )}

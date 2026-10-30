@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.62] - 2026-10-30
+
+### Added
+- Staged-plan review cards expose the frozen quality contract: objective,
+  acceptance criteria, verify commands and in-scope paths.
+- Roster history has an "archive old teams" action; it previews terminal teams,
+  archives them through the host cleanup route and reloads the panel.
+
 ## [0.1.61] - 2026-10-30
 
 ### Changed

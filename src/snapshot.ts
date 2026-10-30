@@ -57,6 +57,11 @@ export interface TeamActivityTask {
   readonly kind?: string
   readonly round?: number
   readonly verdict?: string
+  /** Frozen quality contract, shown on the staged-plan review page. */
+  readonly objective?: string
+  readonly acceptance?: readonly string[]
+  readonly verify?: readonly string[]
+  readonly inScope?: readonly string[]
   /**
    * Set when this task's verdict or auto-generated work order no longer
    * describes the current bytes; the panel must not render a bare pass badge.
@@ -290,6 +295,10 @@ export async function assembleTeamSnapshot(
       ...task.kind === undefined ? {} : { kind: task.kind },
       ...task.round === undefined ? {} : { round: task.round },
       ...task.verdict === undefined ? {} : { verdict: task.verdict },
+      ...task.objective === undefined ? {} : { objective: task.objective },
+      ...task.acceptance === undefined || task.acceptance.length === 0 ? {} : { acceptance: task.acceptance },
+      ...task.verify === undefined || task.verify.length === 0 ? {} : { verify: task.verify },
+      ...task.inScope === undefined || task.inScope.length === 0 ? {} : { inScope: task.inScope },
       ...staleById.get(task.id) === undefined ? {} : { verdictStale: (staleById.get(task.id) as string[]).join('; ') },
       updatedAt: task.updatedAt,
     })),

@@ -593,6 +593,28 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
               </label>
             </span>
           </fieldset>
+          <div className={css.planContract}>
+            <span className={css.planContractTitle}>{t('plan.contract.title')}</span>
+            {task.objective !== undefined && <p><b>{t('plan.contract.objective')}</b>{task.objective}</p>}
+            {(task.acceptance?.length ?? 0) > 0 && (
+              <div>
+                <b>{t('plan.contract.acceptance')}</b>
+                <ul>{task.acceptance!.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              </div>
+            )}
+            {(task.verify?.length ?? 0) > 0 && (
+              <div>
+                <b>{t('plan.contract.verify')}</b>
+                <ul>{task.verify!.map((item, index) => <li key={index}><code>{item}</code></li>)}</ul>
+              </div>
+            )}
+            {(task.inScope?.length ?? 0) > 0 && (
+              <div>
+                <b>{t('plan.contract.inScope')}</b>
+                <ul>{task.inScope!.map((item, index) => <li key={index}><code>{item}</code></li>)}</ul>
+              </div>
+            )}
+          </div>
           {confirmingRemove && (
             <span className={css.planConfirm} role="alert">
               <span>{t('plan.removeWarning', { task: task.id })}</span>

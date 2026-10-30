@@ -30,6 +30,10 @@ export interface ActivityTask {
     readonly kind?: string;
     readonly round?: number;
     readonly verdict?: string;
+    readonly objective?: string;
+    readonly acceptance?: readonly string[];
+    readonly verify?: readonly string[];
+    readonly inScope?: readonly string[];
     /**
      * Server-side audit of this task's verdict against the current bytes. Set
      * when the recorded pass (or its generated work order) no longer describes
