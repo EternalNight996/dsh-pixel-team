@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.79] - 2026-10-30
+
+### Fixed
+- Quick-start footer no longer overlays the doctrine cards. The form is the
+  scroll container; the cancel/back/next bar is a normal flex child pinned to the
+  bottom edge with no negative margins.
+
 ## [0.1.78] - 2026-10-30
 
 ### Fixed
