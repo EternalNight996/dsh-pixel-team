@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.74] - 2026-10-30
+
+### Changed
+- Stalled-member watchdog is enabled by default (15-minute grace, 60s scan).
+  Running owners are never timed out; set `watchdog.timeoutMs: 0` to disable.
+
 ## [0.1.73] - 2026-10-30
 
 ### Added

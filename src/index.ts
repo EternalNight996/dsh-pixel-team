@@ -268,7 +268,7 @@ export const Config: z<Config> = z.object({
     z.const(undefined),
   ]),
   watchdog: z.union([z.object({
-    timeoutMs: z.natural().default(0),
+    timeoutMs: z.natural().default(900_000),
     intervalMs: z.natural().default(60_000),
   }), z.const(undefined)]),
   boundary: z.union([z.object({ productsDir: z.string(), forbidden: z.array(z.string()) }), z.const(undefined)]),
