@@ -207,31 +207,43 @@ export async function generatePlanSpecs(
   signal?: AbortSignal,
 ): Promise<PlanGenerationResult> {
   const prompts = buildPlanPrompt(input)
-  try {
-    const selection = await resolveMemberLlmSelection(ctx, captain, {}, signal)
-    const stream = ctx.llm.stream({
-      provider: selection.provider,
-      model: selection.model,
-      system: prompts.system,
-      messages: [createUserMessage({
-        content: [{ type: 'text', text: prompts.user }],
-        source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
-      })],
-      maxTokens: 4500,
-      temperature: 0.3,
-      ...signal === undefined ? {} : { signal },
-    })
-    let text = ''
-    for await (const chunk of stream) if (chunk.type === 'text-delta') text += chunk.text
-    const specs = parsePlanSpecs(text, input.roles.map(item => item.role), input.projectRoot, input.forbiddenPaths)
-    if (specs === undefined) return { error: '模型返回的计划未通过校验（缺 review/依赖环/契约不全/越界）' }
-    if (!planLooksRelevant(specs, input.goal, input.clarification.constraints)) {
-      return { error: '模型生成的计划与目标/访谈缺乏关联' }
+  let lastError = 'plan generation did not run'
+  // One retry only when the first attempt is unusable; a timeout/abort is final.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const user = attempt === 0
+      ? prompts.user
+      : prompts.user + '\n\n上一次输出未通过宿主校验（' + lastError + '）。请严格输出 JSON，确保 implementation 带 inScope/verify、review 带 reviewedTaskId、依赖无环，并让任务标题/描述出现目标中的具体对象。'
+    try {
+      const selection = await resolveMemberLlmSelection(ctx, captain, {}, signal)
+      const stream = ctx.llm.stream({
+        provider: selection.provider,
+        model: selection.model,
+        system: prompts.system,
+        messages: [createUserMessage({
+          content: [{ type: 'text', text: user }],
+          source: agentTeamsSource({ kind: 'agent-teams' }, observedSessionFormatVersion(captain)),
+        })],
+        maxTokens: 4500,
+        temperature: attempt === 0 ? 0.3 : 0.2,
+        ...signal === undefined ? {} : { signal },
+      })
+      let text = ''
+      for await (const chunk of stream) if (chunk.type === 'text-delta') text += chunk.text
+      const specs = parsePlanSpecs(text, input.roles.map(item => item.role), input.projectRoot, input.forbiddenPaths)
+      if (specs === undefined) {
+        lastError = '模型返回的计划未通过校验（缺 review/依赖环/契约不全/越界）'
+        continue
+      }
+      if (!planLooksRelevant(specs, input.goal, input.clarification.constraints)) {
+        lastError = '模型生成的计划与目标/访谈缺乏关联'
+        continue
+      }
+      return { specs }
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error.message : String(error)
+      ctx.logger.warn('agent-teams: plan generation attempt ' + (attempt + 1) + ' failed: ' + lastError)
+      if (signal?.aborted === true) break
     }
-    return { specs }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error)
-    ctx.logger.warn('agent-teams: plan generation degraded: ' + message)
-    return { error: message }
   }
+  return { error: lastError }
 }

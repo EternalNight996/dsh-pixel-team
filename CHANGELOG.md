@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.61] - 2026-10-30
+
+### Changed
+- AI plan generation retries once when the first response fails validation or
+  looks unrelated, with a stricter reminder and lower temperature. Aborts and
+  timeouts are final; no extra call after them.
+
 ## [0.1.60] - 2026-10-29
 
 ### Changed
