@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.76] - 2026-10-30
+
+### Added
+- Headless/24h deployment kit: a healthcheck that reports active/open/stale
+  attempts (exit 1 on stale), a Windows supervisor task installer, and deployment
+  documentation for Windows and systemd.
+
 ## [0.1.75] - 2026-10-30
 
 ### Added
