@@ -4,6 +4,8 @@
  * @module dsh-agent-teams/quality-gates
  */
 import { type AcceptanceResult, type ArtifactDigest, type ArtifactScopeGap, type ArtifactSnapshot, type CommandResult, type FindingSeverity, type ReviewFinding, type ReviewPolicy, type ReviewVerdict, type TaskKind, type TaskEvidence, type TaskRevision, type TaskStatus, type TeamState, type TeamTask } from './types.ts';
+/** Review tasks whose reviewer uses the same provider/model as the implementation. */
+export declare function crossModelReviewConflicts(team: TeamState): string[];
 declare const QUALITY_KINDS: readonly TaskKind[];
 declare const WRITE_KINDS: readonly TaskKind[];
 declare const DEFAULT_REVIEW_POLICY: Required<Pick<ReviewPolicy, 'requirementsMinRounds' | 'requirementsMaxRounds' | 'codeMaxRounds' | 'maxRepairAttempts'>>;

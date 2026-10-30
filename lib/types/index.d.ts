@@ -133,6 +133,8 @@ export interface Config {
         verifyTimeoutMs?: number;
         /** Auto review requires every acceptance item to pass (default true). */
         requireAcceptance?: boolean;
+        /** Require the review member's model to differ from the implementation owner. */
+        crossModelReview?: boolean;
         /** Add the generated project's own package.json test/typecheck command (default true). */
         autoDetect?: boolean;
         /** Who closes an auto-audited review: host directly or a human confirmation. */

@@ -26,6 +26,25 @@ import {
   type TeamTask,
 } from './types.ts'
 
+/** Review tasks whose reviewer uses the same provider/model as the implementation. */
+export function crossModelReviewConflicts(team: TeamState): string[] {
+  const byName = new Map(team.members.map((member) => [member.name, member]))
+  const byId = new Map(team.tasks.map((task) => [task.id, task]))
+  const conflicts: string[] = []
+  for (const task of team.tasks) {
+    if (taskKindOf(task) !== 'review' || task.reviewedTaskId === undefined) continue
+    if (task.assignee === undefined) continue
+    const reviewer = byName.get(task.assignee)
+    const implementation = byId.get(task.reviewedTaskId)
+    const implementer = implementation?.assignee === undefined ? undefined : byName.get(implementation.assignee)
+    if (reviewer === undefined || implementer === undefined) continue
+    if ((reviewer.provider ?? '') === (implementer.provider ?? '') && (reviewer.model ?? '') === (implementer.model ?? '')) {
+      conflicts.push(task.id + ' reviewer uses ' + (reviewer.provider ?? '?') + '/' + (reviewer.model ?? '?') + ' like ' + (implementation?.id ?? 'implementation'))
+    }
+  }
+  return conflicts
+}
+
 const QUALITY_KINDS: readonly TaskKind[] = [
   'requirements',
   'implementation',

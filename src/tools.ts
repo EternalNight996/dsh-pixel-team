@@ -75,6 +75,7 @@ import { selectCleanupCandidates } from './cleanup.ts'
 import {
   artifactDrift,
   bindReviewToRevision,
+  crossModelReviewConflicts,
   deliveryArtifactPaths,
   deliveryScopePatterns,
   isQualityKind,
@@ -165,6 +166,8 @@ export interface ToolsConfig {
     verifyTimeoutMs?: number
     /** Auto review requires every acceptance item to pass (default true). */
     requireAcceptance?: boolean
+    /** Require the review member's model to differ from the implementation owner. */
+    crossModelReview?: boolean
     /** Add the generated project's own package.json test/typecheck command (default true). */
     autoDetect?: boolean
     /** Who closes an auto-audited review: host directly or a human confirmation. */
@@ -983,6 +986,10 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
         member.reasoningEffort = selection.reasoningEffort
       }
       await validateMemberLlmSelections(ctx, selections, runSignal)
+      if (config.quality?.crossModelReview === true) {
+        const conflicts = crossModelReviewConflicts(fresh)
+        if (conflicts.length > 0) throw new Error('cross-model review required: ' + conflicts.join('; '))
+      }
       fresh.phase = 'running'
       delete fresh.planReviewState
       fresh.approvedAt = Date.now()

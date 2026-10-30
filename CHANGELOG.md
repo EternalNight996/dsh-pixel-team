@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.73] - 2026-10-30
+
+### Added
+- `quality.crossModelReview` (default false): approval rejects a review whose
+  reviewer uses the same provider/model as the implementation owner, so the
+  review cannot share the implementer's blind spot.
+
 ## [0.1.72] - 2026-10-30
 
 ### Added
