@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.67] - 2026-10-30
+
+### Changed
+- Support DSH 0.2.1-rc.5: development dependencies/overrides, peer ranges and
+  compatibility.json now include rc.5 (rc.3 remains supported).
+- Compatibility policy test follows the new recommended host.
+
 ## [0.1.66] - 2026-10-30
 
 ### Fixed
