@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.81] - 2026-10-31
+
+### Fixed
+- A staged plan created in a different/earlier session is visible again via a
+  workspace fallback, with the plan editor using that plan's captain session.
+- The whole hall is wrapped in an error boundary: a bad plan/renderer error shows
+  a retry toast instead of crashing DSH.
+
 ## [0.1.80] - 2026-10-30
 
 ### Changed

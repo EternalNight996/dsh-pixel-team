@@ -8,6 +8,7 @@ import { StagingPlanEditor } from './StagingPlanEditor.tsx'
 import { TeamConfigPanel } from './TeamConfigPanel.tsx'
 import type { SceneAction } from './pixel-office/PixelOffice.tsx'
 import { SectHallOverlay } from './SectHallOverlay.tsx'
+import { TeamUiBoundary } from './TeamUiBoundary.tsx'
 import { OPEN_HALL_SHEET_EVENT } from './hall-events.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { OPEN_PANEL_EVENT } from './AgentTeamsCard.tsx'
@@ -97,7 +98,8 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
     : [...snapshots.teams, ...snapshots.archivedTeams].find(team => team.members.some(member => member.id === current))
   // 洞府常驻：只要会话里还有队伍，浮层就保持存在——即使队伍 0 任务、
   // 或任务全部已弃（已停止），也不自动收起（用户明确要求）。
-  const hallTeam = sessionTeams.find(team => team.teamId === wanted) ?? sessionTeams[0] ?? linkedTeam
+  const stagedFallback = sessionTeams.length === 0 ? snapshots.teams.find(team => team.phase === 'staged') : undefined
+  const hallTeam = sessionTeams.find(team => team.teamId === wanted) ?? sessionTeams[0] ?? linkedTeam ?? stagedFallback
   // 名册页看历史：同一掌门会话下已经归档的宗门。
   const ownerCaptain = hallTeam?.captainSessionId ?? current
   const historyTeams = ownerCaptain === undefined
@@ -171,6 +173,7 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
   // 洞府作为窗口级浮层常驻：切到对话/别的页面也在，即使会话里还没有队伍、
   // 甚至宿主暂时没有 current 会话，也保留一座空洞府（只有掌门）。
   return (
+    <TeamUiBoundary>
     <SectHallOverlay
       team={hallTeam}
       history={historyTeams}
@@ -180,6 +183,7 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
       openMember={openMember}
       openCaptain={openCaptain}
     />
+    </TeamUiBoundary>
   )
 }
 
