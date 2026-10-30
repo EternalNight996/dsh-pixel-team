@@ -49,6 +49,9 @@ export declare const zh: {
     'team.cleanupFailed': string;
     'team.report': string;
     'team.reportHint': string;
+    'team.accept': string;
+    'team.acceptHint': string;
+    'team.accepted': string;
     'team.stop': string;
     'team.stopped': string;
     'team.stopTitle': string;
@@ -832,6 +835,9 @@ export declare const en: {
     'team.cleanupFailed': string;
     'team.report': string;
     'team.reportHint': string;
+    'team.accept': string;
+    'team.acceptHint': string;
+    'team.accepted': string;
     'team.stop': string;
     'team.stopped': string;
     'team.stopTitle': string;

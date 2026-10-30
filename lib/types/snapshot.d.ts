@@ -111,6 +111,8 @@ export interface TeamActivitySnapshot {
         readonly roundsStarted: number;
         readonly maxGoalRounds: number;
     };
+    readonly acceptedAt?: number;
+    readonly acceptedBy?: string;
     readonly delivery?: {
         readonly ok: boolean;
         readonly blockers: readonly string[];

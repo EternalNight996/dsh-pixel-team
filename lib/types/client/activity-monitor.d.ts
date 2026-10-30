@@ -81,6 +81,8 @@ export interface ActivityTeam {
         readonly roundsStarted: number;
         readonly maxGoalRounds: number;
     };
+    readonly acceptedAt?: number;
+    readonly acceptedBy?: string;
     readonly members: readonly ActivityMember[];
     readonly tasks: readonly ActivityTask[];
     readonly messageCount: number;

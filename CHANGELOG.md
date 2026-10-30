@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.71] - 2026-10-30
+
+### Added
+- Human delivery acceptance: a passing delivery can be signed off from the team
+  panel; the state records acceptedAt/acceptedBy separately from technical
+  delivery.ok, and the snapshot/UI show "已验收".
+
 ## [0.1.70] - 2026-10-30
 
 ### Added

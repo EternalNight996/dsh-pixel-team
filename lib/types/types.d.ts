@@ -373,6 +373,10 @@ export interface TeamState {
     clarification?: TeamClarification;
     /** Requirement text the user confirmed (original + optional AI polish). */
     requirement?: TeamRequirement;
+    /** Human acceptance of a passing delivery (separate from technical delivery.ok). */
+    acceptedAt?: number;
+    /** Captain session that confirmed the acceptance. */
+    acceptedBy?: string;
     /** Read-only constitution generated from the clarification. */
     constitution?: {
         path: string;

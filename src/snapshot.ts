@@ -117,6 +117,8 @@ export interface TeamActivitySnapshot {
   readonly deliverable?: boolean
   /** Host Goal currently active for the captain, when the goal service is mounted. */
   readonly goal?: { readonly id: string; readonly objective: string; readonly phase: string; readonly roundsStarted: number; readonly maxGoalRounds: number }
+  readonly acceptedAt?: number
+  readonly acceptedBy?: string
   readonly delivery?: { readonly ok: boolean; readonly blockers: readonly string[]; readonly warnings: readonly string[]; readonly evidence: DeliveryEvidence; readonly report?: string }
 }
 
@@ -276,6 +278,8 @@ export async function assembleTeamSnapshot(
     },
     ...state.halted === true ? { halted: true } : {},
     ...goalView === undefined ? {} : { goal: { id: goalView.id, objective: goalView.objective, phase: goalView.phase, roundsStarted: goalView.roundsStarted, maxGoalRounds: goalView.maxGoalRounds } },
+    ...state.acceptedAt === undefined ? {} : { acceptedAt: state.acceptedAt },
+    ...state.acceptedBy === undefined ? {} : { acceptedBy: state.acceptedBy },
     ...audit === undefined ? {} : {
       loopState: loop.state,
       deliverable: loop.deliverable,

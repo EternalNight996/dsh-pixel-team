@@ -576,6 +576,9 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
   const [stopError, setStopError] = useState('')
   const [cleanupBusy, setCleanupBusy] = useState(false)
   const [cleanupMessage, setCleanupMessage] = useState('')
+  const [acceptedAt, setAcceptedAt] = useState<number | undefined>(team.acceptedAt)
+  const [accepting, setAccepting] = useState(false)
+  const [acceptError, setAcceptError] = useState('')
   const stopAnchorRef = useRef<HTMLDivElement>(null)
   const stopCancelRef = useRef<HTMLButtonElement>(null)
   // 浮标式确认：点外部或按 Esc 关闭；打开时把焦点放到「取消」，避免误触停止。
@@ -673,6 +676,26 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
       setStopping(false)
     }
   }
+  const acceptDelivery = async (): Promise<void> => {
+    if (accepting || acceptedAt !== undefined) return
+    setAccepting(true)
+    setAcceptError('')
+    try {
+      const response = await fetch('/plugins/dsh-pixel-team/delivery/accept', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId: team.captainSessionId, teamId: team.teamId }),
+      })
+      const body = await response.json() as { acceptedAt?: number; error?: string }
+      if (!response.ok) throw new Error(body.error ?? 'HTTP ' + response.status)
+      setAcceptedAt(body.acceptedAt ?? Date.now())
+    } catch (error: unknown) {
+      setAcceptError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setAccepting(false)
+    }
+  }
   const cleanupTeams = async (): Promise<void> => {
     if (cleanupBusy) return
     setCleanupBusy(true)
@@ -755,6 +778,19 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
               {t('team.report')}
             </button>
           )}
+          {team.delivery?.ok === true && (
+            <button
+              type="button"
+              className={css.reportButton}
+              disabled={accepting || acceptedAt !== undefined}
+              title={acceptedAt === undefined ? t('team.acceptHint') : t('team.accepted')}
+              onClick={() => { void acceptDelivery() }}
+            >
+              <span aria-hidden>{acceptedAt === undefined ? '✓' : '✔'}</span>
+              {acceptedAt === undefined ? (accepting ? '…' : t('team.accept')) : t('team.accepted')}
+            </button>
+          )}
+          {acceptError !== '' && <span className={css.cleanupMessage} role="alert">{acceptError}</span>}
           {canStop && (
             <div className={css.stopAnchor} ref={stopAnchorRef}>
               <button

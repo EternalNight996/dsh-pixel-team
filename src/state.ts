@@ -1081,6 +1081,8 @@ function isTeamState(value: unknown, expectedId: string): value is TeamState {
     && (value['haltedAt'] === undefined || isFiniteNumber(value['haltedAt']))
     && (value['reviewPolicy'] === undefined || isReviewPolicy(value['reviewPolicy']))
     && (value['escalated'] === undefined || typeof value['escalated'] === 'boolean')
+    && (value['acceptedAt'] === undefined || isFiniteNumber(value['acceptedAt']))
+    && isOptionalString(value['acceptedBy'])
   if (!validShape) return false
 
   const members = value['members'] as TeamMember[]

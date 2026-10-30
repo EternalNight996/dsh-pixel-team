@@ -40,7 +40,8 @@ import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
-import { archiveTeamDir, findTeamByCaptain, invalidateTaskAttempt, readTeam, withTeamLock, writeTeam } from './state.ts'
+import { archiveTeamDir, canDeclareDelivery, findTeamByCaptain, invalidateTaskAttempt, readTeam, withTeamLock, writeTeam } from './state.ts'
+import { auditTeamWorkspace } from './workspace-audit.ts'
 import { selectCleanupCandidates } from './cleanup.ts'
 import { leadIdentityOfAsync } from './lineage.ts'
 import { formatProfilesForPrompt, type TeamProfileConfig } from './profiles.ts'
@@ -824,6 +825,62 @@ export function apply(ctx: Context, config: Config): void {
         }
       },
     }), 'agent-teams: halt route')
+
+    // Human delivery acceptance. Technical delivery.ok stays a gate; acceptance
+    // is the separate "the user signed off" fact the panel shows.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/delivery/accept',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const teamId = typeof payload.teamId === 'string' ? payload.teamId.trim() : ''
+        if (sessionId === '' || teamId === '') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'sessionId and teamId are required' }))
+          return
+        }
+        const captain = ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'captain session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const stateRoot = join(workspace, resolved.stateDir)
+        try {
+          const acceptedAt = await withTeamLock(teamLockKey(stateRoot, teamId), async () => {
+            const team = await readTeam(stateRoot, teamId)
+            if (team === undefined || team.captainSessionId !== captain.id) throw new Error('team not found for this captain')
+            const check = canDeclareDelivery(team, auditTeamWorkspace(workspace, team))
+            if (!check.ok) throw new Error('delivery is not ready: ' + check.blockers.join('; '))
+            if (team.acceptedAt !== undefined) return team.acceptedAt
+            const now = Date.now()
+            team.acceptedAt = now
+            team.acceptedBy = captain.id
+            await writeTeam(stateRoot, team)
+            return now
+          })
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ acceptedAt }))
+        } catch (error: unknown) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'acceptance rejected' }))
+        }
+      },
+    }), 'agent-teams: delivery accept route')
 
     // Panel cleanup: archive terminal teams older than the cutoff. The current
     // captain's team is never a candidate; dry_run defaults to true.
