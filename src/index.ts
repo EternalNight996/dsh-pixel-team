@@ -36,7 +36,7 @@ import {
   type ToolsConfig,
 } from './tools.ts'
 import { installAgentTeamsGestureBoundary, registerAgentTeamsCommand } from './command.ts'
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
@@ -807,6 +807,7 @@ export function apply(ctx: Context, config: Config): void {
         const rawDays = payload.older_than_days
         const days = typeof rawDays === 'number' && Number.isFinite(rawDays) ? Math.min(3650, Math.max(0, Math.floor(rawDays))) : 7
         const dryRun = payload.dry_run !== false
+        const includeArchived = payload.include_archived === true
         const teams = []
         try {
           for (const entry of await readdir(stateRoot, { withFileTypes: true })) {
@@ -822,6 +823,29 @@ export function apply(ctx: Context, config: Config): void {
           olderThanDays: days,
           excludeCaptainSessionId: captain.id,
         })
+        // The roster history is already-archived teams. "Archive" there means:
+        // move those archived dirs to archive/.retired so they leave the roster.
+        const archivedTeams = []
+        const archiveRoot = join(stateRoot, 'archive')
+        if (includeArchived) {
+          try {
+            for (const entry of await readdir(archiveRoot, { withFileTypes: true })) {
+              if (!entry.isDirectory() || entry.name === '.retired') continue
+              try {
+                const team = await readTeam(archiveRoot, entry.name)
+                if (team !== undefined && team.captainSessionId === captain.id) archivedTeams.push({ dir: entry.name, team })
+              } catch { /* skip unreadable/foreign dirs */ }
+            }
+          } catch { /* no archive: nothing to retire */ }
+        }
+        const now = Date.now()
+        const archivedCandidates = archivedTeams.map(({ dir, team }) => ({
+          id: team.id,
+          name: team.name,
+          age_days: Math.max(0, Math.floor((now - (team.createdAt ?? now)) / 86_400_000)),
+          tasks: team.tasks.length,
+          dir,
+        }))
         const archived: string[] = []
         const errors: string[] = []
         if (!dryRun) {
@@ -833,11 +857,30 @@ export function apply(ctx: Context, config: Config): void {
               errors.push(`${candidate.id}: ${error instanceof Error ? error.message : String(error)}`)
             }
           }
+          if (includeArchived && archivedCandidates.length > 0) {
+            const retiredRoot = join(archiveRoot, '.retired')
+            try {
+              await mkdir(retiredRoot, { recursive: true })
+              for (const [index, candidate] of archivedCandidates.entries()) {
+                try {
+                  await rename(join(archiveRoot, candidate.dir), join(retiredRoot, `${candidate.dir}-${now}-${index}`))
+                  archived.push(candidate.id)
+                } catch (error) {
+                  errors.push(`${candidate.id}: ${error instanceof Error ? error.message : String(error)}`)
+                }
+              }
+            } catch (error) {
+              errors.push(`retired: ${error instanceof Error ? error.message : String(error)}`)
+            }
+          }
         }
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
         res.end(JSON.stringify({
           dry_run: dryRun,
-          candidates: candidates.map((candidate) => ({ id: candidate.id, name: candidate.name, age_days: candidate.ageDays, tasks: candidate.tasks })),
+          candidates: [
+            ...candidates.map((candidate) => ({ id: candidate.id, name: candidate.name, age_days: candidate.ageDays, tasks: candidate.tasks })),
+            ...archivedCandidates.map((candidate) => ({ id: candidate.id, name: candidate.name, age_days: candidate.age_days, tasks: candidate.tasks })),
+          ],
           archived,
           ...errors.length === 0 ? {} : { errors },
         }))

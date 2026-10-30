@@ -520,7 +520,7 @@ export function SectHallOverlay({
           method: 'POST',
           cache: 'no-store',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sessionId: costSessionId, dry_run: dryRun, older_than_days: 0 }),
+          body: JSON.stringify({ sessionId: costSessionId, dry_run: dryRun, older_than_days: 0, include_archived: true }),
         })
         if (!response.ok) throw new Error('HTTP ' + response.status)
         return await response.json() as { candidates?: { id: string; name: string }[]; archived?: string[] }

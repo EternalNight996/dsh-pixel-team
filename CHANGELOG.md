@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.66] - 2026-10-30
+
+### Fixed
+- Roster archive now also retires already-archived teams for the current captain
+  (moves them under archive/.retired), so they actually leave the history
+  dropdown. Previously the cleanup route only scanned active team dirs and
+  archived nothing.
+
 ## [0.1.65] - 2026-10-30
 
 ### Fixed
