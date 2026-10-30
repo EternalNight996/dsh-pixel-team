@@ -12,6 +12,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { memberActivity } from './members.ts'
+import { nativeTeamSummary } from './native-team.ts'
 import { canDeclareDelivery, deliveryArtifactPaths, describeQualityLoop, verdictAuditNotes } from './quality-gates.ts'
 import { digestWorkspacePaths } from './artifacts.ts'
 import type { DeliveryEvidence } from './quality-gates.ts'
@@ -120,6 +121,8 @@ export interface TeamActivitySnapshot {
   readonly goal?: { readonly id: string; readonly objective: string; readonly phase: string; readonly roundsStarted: number; readonly maxGoalRounds: number }
   readonly acceptedAt?: number
   readonly acceptedBy?: string
+  /** Host-native Agent Team projection for the same captain, when mounted. */
+  readonly nativeTeam?: { readonly id: string; readonly members: number; readonly tasks: number; readonly completed: number }
   /** True when the accepted artifact bytes changed after sign-off. */
   readonly acceptanceStale?: boolean
   readonly delivery?: { readonly ok: boolean; readonly blockers: readonly string[]; readonly warnings: readonly string[]; readonly evidence: DeliveryEvidence; readonly report?: string }
@@ -259,6 +262,7 @@ export async function assembleTeamSnapshot(
       })()
   const goalAgent = options.historic === true ? undefined : ctx.agents.get(state.captainSessionId as never)
   const goalView = goalAgent === undefined ? undefined : (ctx as unknown as { goals?: { get(agent: unknown): { id: string; objective: string; phase: string; roundsStarted: number; maxGoalRounds: number } | undefined } }).goals?.get(goalAgent)
+  const nativeTeam = goalAgent === undefined ? undefined : nativeTeamSummary(ctx, goalAgent)
   const staleById = new Map<string, string[]>()
   if (audit !== undefined) {
     for (const note of verdictAuditNotes(state, audit)) {
@@ -289,6 +293,7 @@ export async function assembleTeamSnapshot(
     },
     ...state.halted === true ? { halted: true } : {},
     ...goalView === undefined ? {} : { goal: { id: goalView.id, objective: goalView.objective, phase: goalView.phase, roundsStarted: goalView.roundsStarted, maxGoalRounds: goalView.maxGoalRounds } },
+    ...nativeTeam === undefined ? {} : { nativeTeam },
     ...state.acceptedAt === undefined ? {} : { acceptedAt: state.acceptedAt },
     ...state.acceptedBy === undefined ? {} : { acceptedBy: state.acceptedBy },
     ...acceptanceStale === undefined ? {} : { acceptanceStale },

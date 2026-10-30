@@ -207,6 +207,7 @@ export declare const zh: {
     'plan.align.title': string;
     'plan.align.goal': string;
     'plan.align.goalHost': string;
+    'plan.align.nativeTeam': string;
     'plan.align.mode': string;
     'plan.align.platforms': string;
     'plan.align.constraints': string;
@@ -994,6 +995,7 @@ export declare const en: {
     'plan.align.title': string;
     'plan.align.goal': string;
     'plan.align.goalHost': string;
+    'plan.align.nativeTeam': string;
     'plan.align.mode': string;
     'plan.align.platforms': string;
     'plan.align.constraints': string;

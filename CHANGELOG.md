@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.75] - 2026-10-30
+
+### Added
+- Read-only native Agent Team bridge: when DSH mounts the experimental
+  `agentTeam` projection for the same captain, the plan review shows its
+  member/task counts and completion; the plugin never mutates native state.
+
 ## [0.1.74] - 2026-10-30
 
 ### Changed

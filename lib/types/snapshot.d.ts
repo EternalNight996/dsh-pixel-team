@@ -113,6 +113,13 @@ export interface TeamActivitySnapshot {
     };
     readonly acceptedAt?: number;
     readonly acceptedBy?: string;
+    /** Host-native Agent Team projection for the same captain, when mounted. */
+    readonly nativeTeam?: {
+        readonly id: string;
+        readonly members: number;
+        readonly tasks: number;
+        readonly completed: number;
+    };
     /** True when the accepted artifact bytes changed after sign-off. */
     readonly acceptanceStale?: boolean;
     readonly delivery?: {

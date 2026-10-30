@@ -81,6 +81,12 @@ export interface ActivityTeam {
         readonly roundsStarted: number;
         readonly maxGoalRounds: number;
     };
+    readonly nativeTeam?: {
+        readonly id: string;
+        readonly members: number;
+        readonly tasks: number;
+        readonly completed: number;
+    };
     readonly acceptedAt?: number;
     readonly acceptedBy?: string;
     readonly acceptanceStale?: boolean;

@@ -852,6 +852,9 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
       <section className={css.planAlign} data-plan-align>
         <strong>{t('plan.align.title')}</strong>
         <p><span>{t('plan.align.goal')}</span>{team.description ?? '—'}</p>
+        {team.nativeTeam !== undefined && (
+          <p><span>{t('plan.align.nativeTeam')}</span>{team.nativeTeam.members} 成员 · {team.nativeTeam.completed}/{team.nativeTeam.tasks} 任务（宿主原生 Team，只读）</p>
+        )}
         {team.goal !== undefined && (
           <p><span>{t('plan.align.goalHost')}</span>{team.goal.objective}（{team.goal.phase} · {team.goal.roundsStarted}/{team.goal.maxGoalRounds}）</p>
         )}
