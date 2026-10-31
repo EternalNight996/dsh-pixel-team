@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.92] - 2026-10-31
+
+### Fixed
+- Opening the hall after founding now refreshes the team snapshot before showing
+  the plan sheet, instead of opening an empty "no sect" hall. An empty snapshot
+  also triggers a direct workspace refresh.
+
 ## [0.1.91] - 2026-10-31
 
 ### Changed
