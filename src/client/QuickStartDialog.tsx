@@ -737,8 +737,6 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
 
           {currentStep === 'oath' && (
             <section className={css.stepPane} data-step="oath">
-              <p className={css.hint}>{t('quickstart.oathHint')}</p>
-              {existingTeam === true && <p className={css.hint}>{t('quickstart.teamExists')}</p>}
               {submitting && <p className={css.busyNote} role="status">{t('quickstart.generating')}</p>}
               <dl className={css.summary}>
                 <div className={css.summaryRow}><dt>{t('mode.select')}</dt><dd>{getModeSpec(mode).emoji} {t(getModeSpec(mode).labelKey as Parameters<typeof t>[0])}</dd></div>
@@ -747,24 +745,23 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryRoster')}</dt><dd><span className={css.chips}>{roster.map(personChip)}</span></dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryVow')}</dt><dd>{goalTrimmed}</dd></div>
               </dl>
-              <p className={css.oath}>{t('quickstart.oathNotice')}</p>
             </section>
           )}
 
-          {blocked && (
-            <div className={css.confirmInline} role="alertdialog" aria-label={t('quickstart.replaceConfirm')}>
-              <p className={css.confirmFloatText}>{t('quickstart.replaceConfirm')}</p>
-              <div className={css.confirmFloatActions}>
-                <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
-                <button type="button" data-primary data-danger disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
-              </div>
-            </div>
-          )}
           {error !== '' && <p className={css.error} role="alert">{error}</p>}
           {busy && <p className={css.busyNote} role="status">{t('quickstart.generating')}</p>}
           {created !== undefined && <p className={css.success} role="status">{created}</p>}
       </div>
       <div className={css.wizardActions}>
+        {blocked && (
+          <div className={css.confirmPop} role="alertdialog" aria-label={t('quickstart.replacePrompt')}>
+            <p>{t('quickstart.replacePrompt')}</p>
+            <div>
+              <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
+              <button type="button" data-primary data-danger disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replaceShort')}</button>
+            </div>
+          </div>
+        )}
         <button type="button" disabled={busy} onClick={close}>{t('quickstart.cancel')}</button>
         {step > 0 && (
           <button type="button" data-control="quickstart-back" disabled={busy} onClick={() => { goTo(step - 1) }}>{t('quickstart.back')}</button>
@@ -774,8 +771,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
             {t('quickstart.next')}
           </button>
         ) : (
-          <button type="button" data-primary data-control="quickstart-submit" disabled={busy || !canAdvance} onClick={() => { void submit(false) }}>
-            {busy ? t('quickstart.busy') : t('quickstart.found')}
+          <button type="button" data-primary data-control="quickstart-submit" disabled={busy || !canAdvance} onClick={() => { if (!blocked && existingTeam === true) { setBlocked(true); return } void submit(false) }}>
+            {busy ? t('quickstart.busy') : (existingTeam === true || blocked) ? t('quickstart.replaceShort') : t('quickstart.found')}
           </button>
         )}
       </div>

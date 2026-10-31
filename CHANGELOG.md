@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.86] - 2026-10-31
+
+### Changed
+- Simplified the oath page: removed the long hint, duplicate existing-team
+  notice, and long oath note; it now shows only the five-line summary.
+- Replaced the oversized inline replace card with a compact anchored popconfirm:
+  "已有宗门，替换并开宗？" with cancel/replace actions. The primary button is
+  labeled "替换并开宗" when a team already exists.
+
 ## [0.1.85] - 2026-10-31
 
 ### Fixed
