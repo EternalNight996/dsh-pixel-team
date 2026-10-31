@@ -463,7 +463,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           clarification,
         }),
       })
-      const body = await response.json().catch(() => null) as { ok?: boolean; existing?: boolean; teamId?: string; teamName?: string; error?: string } | null
+      const body = await response.json().catch(() => null) as { ok?: boolean; existing?: boolean; teamId?: string; teamName?: string; team?: import('./activity-monitor.ts').ActivityTeam; error?: string } | null
       if (body?.existing === true && body.teamId !== undefined) {
         setSubmitting(false)
         setSubmittedAt(0)
@@ -472,7 +472,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           team: body.teamName ?? body.teamId,
           sect: solo ? t('quickstart.soloSectName') : (activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey)),
         }))
-        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId } }))
+        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId, team: body.team } }))
         setGoal('')
         foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 300)
         return
@@ -485,7 +485,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         team: body.teamName ?? body.teamId ?? '',
         sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
       }))
-      if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId } }))
+      if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId, team: body.team } }))
       setSubmitting(false)
       setSubmittedAt(0)
       clearQuickStartDraft(sessionId)

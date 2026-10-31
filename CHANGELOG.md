@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.97] - 2026-10-31
+
+### Fixed
+- Quick-start returns the full staged-team snapshot. The client now injects that
+  snapshot directly into the hall when the team-created event fires, so review
+  opens even if `/state` or the activity poll is unavailable.
+
 ## [0.1.96] - 2026-10-31
 
 ### Fixed

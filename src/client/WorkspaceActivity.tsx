@@ -155,10 +155,11 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
   // event is the only signal that gets the user to the plan review.
   useEffect(() => {
     const reveal = (event: Event): void => {
-      const detail = (event as CustomEvent<{ teamId?: string; sessionId?: string }>).detail
+      const detail = (event as CustomEvent<{ teamId?: string; sessionId?: string; team?: ActivityTeam }>).detail
       const teamId = detail?.teamId
       const session = current ?? detail?.sessionId
       if (teamId === undefined || session === undefined) return
+      if (detail?.team !== undefined) setDirectTeam(detail.team)
       state.select(session, teamId)
       // Refresh before opening: the activity poll may not have seen the new team
       // yet, which used to open an empty "no sect" hall.

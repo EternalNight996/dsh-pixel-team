@@ -39,7 +39,7 @@ import { installAgentTeamsGestureBoundary, registerAgentTeamsCommand } from './c
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
+import { assembleTeamSnapshot, collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
 import { archiveTeamDir, canDeclareDelivery, findTeamByCaptain, invalidateTaskAttempt, readTeam, withTeamLock, writeTeam } from './state.ts'
 import { auditTeamWorkspace } from './workspace-audit.ts'
 import { digestWorkspacePaths } from './artifacts.ts'
@@ -1142,8 +1142,9 @@ export function apply(ctx: Context, config: Config): void {
         const existingRoot = join(workspace, config.stateDir ?? '.agent-teams')
         const existingTeam = await findTeamByCaptain(existingRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
         if (existingTeam !== undefined) {
+          const teamSnapshot = await assembleTeamSnapshot(ctx, existingRoot, workspace, existingTeam, {})
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-          res.end(JSON.stringify({ ok: true, existing: true, teamId: existingTeam.id, teamName: existingTeam.name, phase: existingTeam.phase }))
+          res.end(JSON.stringify({ ok: true, existing: true, teamId: existingTeam.id, teamName: existingTeam.name, phase: existingTeam.phase, team: teamSnapshot }))
           return
         }
         // Every founding project lives under projects/<slug>/; platform files are
@@ -1286,8 +1287,14 @@ export function apply(ctx: Context, config: Config): void {
               ctx.logger.warn('agent-teams: plan metadata write failed: ' + String(error))
             }
           }
+          let teamSnapshot: unknown
+          if (value.teamId !== undefined && value.teamId !== '') {
+            const responseRoot = join(workspace, config.stateDir ?? '.agent-teams')
+            const fresh = await readTeam(responseRoot, value.teamId)
+            if (fresh !== undefined) teamSnapshot = await assembleTeamSnapshot(ctx, responseRoot, workspace, fresh, {})
+          }
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-          res.end(JSON.stringify({ ok: true, teamId: value.teamId, teamName: value.teamName, phase: value.phase, template: plan.template, tasks: plan.tasks.length }))
+          res.end(JSON.stringify({ ok: true, teamId: value.teamId, teamName: value.teamName, phase: value.phase, template: plan.template, tasks: plan.tasks.length, ...teamSnapshot === undefined ? {} : { team: teamSnapshot } }))
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error)
           // Never auto-delete an existing team here: the client asks the user to
