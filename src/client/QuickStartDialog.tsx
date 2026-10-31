@@ -49,6 +49,8 @@ type QuickStartDraft = {
   superFast: boolean
   questions: InterviewQuestionView[]
   answers: Record<string, string[]>
+  submitting: boolean
+  submittedAt: number
 }
 
 const QUICK_START_DRAFT_PREFIX = 'dsh-pixel-team.quickstart.'
@@ -71,6 +73,8 @@ function readQuickStartDraft(sessionId: string): QuickStartDraft | undefined {
       superFast: value.superFast === true,
       questions: Array.isArray(value.questions) ? value.questions as InterviewQuestionView[] : [],
       answers: typeof value.answers === 'object' && value.answers !== null ? value.answers as Record<string, string[]> : {},
+      submitting: value.submitting === true,
+      submittedAt: typeof value.submittedAt === 'number' ? value.submittedAt : 0,
     }
   } catch {
     return undefined
@@ -150,6 +154,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   // Solo run: no members are spawned; the captain executes every task itself.
   const [solo, setSolo] = useState(() => draft?.solo ?? false)
   const [superFast, setSuperFast] = useState(() => draft?.superFast ?? false)
+  const [submitting, setSubmitting] = useState(() => draft?.submitting ?? false)
+  const [submittedAt, setSubmittedAt] = useState(() => draft?.submittedAt ?? 0)
   const [developerMode] = useState<boolean>(() => {
     try { return window.localStorage.getItem('dsh-pixel-team.dev') === '1' } catch { return false }
   })
@@ -190,6 +196,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     setRolledSect(next?.rolledSect ?? randomSect().id)
     setSolo(next?.solo ?? false)
     setSuperFast(next?.superFast ?? false)
+    setSubmitting(next?.submitting ?? false)
+    setSubmittedAt(next?.submittedAt ?? 0)
     setInterviewQuestions(next?.questions ?? [])
     setInterviewAnswers(next?.answers ?? {})
     setInterviewState(next?.questions?.length ? 'ready' : 'loading')
@@ -201,9 +209,57 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     if (hydratingDraft.current) { hydratingDraft.current = false; return }
     saveQuickStartDraft(sessionId, {
       step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast,
-      questions: interviewQuestions, answers: interviewAnswers,
+      questions: interviewQuestions, answers: interviewAnswers, submitting, submittedAt,
     })
-  }, [sessionId, step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast, interviewQuestions, interviewAnswers])
+  }, [sessionId, step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast, interviewQuestions, interviewAnswers, submitting, submittedAt])
+
+  // If the wizard unmounts while 立誓 is in flight (window/session switch), the
+  // request may finish without its React callback. Recover the new staged team
+  // from the host snapshot instead of leaving the oath screen stuck.
+  useEffect(() => {
+    if (!submitting || submittedAt === 0) return
+    let alive = true
+    let timer: number | undefined
+    const started = Date.now()
+    setBusy(true)
+    const poll = async (): Promise<void> => {
+      if (!alive) return
+      try {
+        const response = await fetch('/plugins/dsh-pixel-team/state', { cache: 'no-store' })
+        const body = await response.json() as { teams?: Array<{ teamId?: string; teamName?: string; name?: string; captainSessionId?: string; phase?: string; createdAt?: number }> }
+        const found = (body.teams ?? []).find(team => team.captainSessionId === sessionId
+          && team.phase === 'staged'
+          && (team.createdAt ?? 0) >= submittedAt - 5_000)
+        if (found?.teamId !== undefined) {
+          alive = false
+          if (timer !== undefined) window.clearInterval(timer)
+          setSubmitting(false)
+          setSubmittedAt(0)
+          clearQuickStartDraft(sessionId)
+          setBusy(false)
+          setCreated(t('quickstart.created', {
+            team: found.teamName ?? found.name ?? found.teamId,
+            sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
+          }))
+          window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: found.teamId, sessionId } }))
+          onFounded?.()
+          return
+        }
+      } catch { /* keep polling */ }
+      if (Date.now() - started > 90_000) {
+        alive = false
+        if (timer !== undefined) window.clearInterval(timer)
+        setSubmitting(false)
+        setSubmittedAt(0)
+        setBusy(false)
+        setError(t('quickstart.generationLost'))
+      }
+    }
+    void poll()
+    timer = window.setInterval(() => { void poll() }, 1_500)
+    return () => { alive = false; if (timer !== undefined) window.clearInterval(timer) }
+  }, [submitting, submittedAt, sessionId])
+
 
   useEffect(() => {
     if (!rolesOpen) return
@@ -349,6 +405,14 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     if (!replace && existingTeam === true) { setBlocked(true); return }
     setBusy(true)
     setError('')
+    const startedAt = Date.now()
+    setSubmitting(true)
+    setSubmittedAt(startedAt)
+    saveQuickStartDraft(sessionId, {
+      step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast,
+      questions: interviewQuestions, answers: interviewAnswers,
+      submitting: true, submittedAt: startedAt,
+    })
     try {
       // Build the clarification deterministically from the mode baseline + the
       // interview answers, so founding needs only ONE model round (plan
@@ -394,11 +458,15 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
       }))
       if (body.teamId !== undefined) window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId } }))
+      setSubmitting(false)
+      setSubmittedAt(0)
       clearQuickStartDraft(sessionId)
       setBlocked(false)
       setGoal('')
       foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 300)
     } catch (cause) {
+      setSubmitting(false)
+      setSubmittedAt(0)
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setBusy(false)
@@ -667,6 +735,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           {currentStep === 'oath' && (
             <section className={css.stepPane} data-step="oath">
               <p className={css.hint}>{t('quickstart.oathHint')}</p>
+              {existingTeam === true && <p className={css.hint}>{t('quickstart.teamExists')}</p>}
+              {submitting && <p className={css.busyNote} role="status">{t('quickstart.generating')}</p>}
               <dl className={css.summary}>
                 <div className={css.summaryRow}><dt>{t('mode.select')}</dt><dd>{getModeSpec(mode).emoji} {t(getModeSpec(mode).labelKey as Parameters<typeof t>[0])}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryDoctrine')}</dt><dd>{doctrineName}</dd></div>

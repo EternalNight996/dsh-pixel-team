@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.84] - 2026-10-31
+
+### Fixed
+- Oath submission is durable: while the quick-start request is in flight the
+  wizard persists `submitting/submittedAt`; after a window/session switch it
+  recovers the new staged team from the host snapshot and opens review instead of
+  staying stuck on the oath screen.
+- The oath screen shows the existing-team notice before the replace action.
+
 ## [0.1.83] - 2026-10-31
 
 ### Changed
