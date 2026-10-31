@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.109] - 2026-10-31
+
+### Added
+- R3 first slice: completed-task fold state is persisted per team in localStorage;
+  failure/active task cards stay expanded, completed results stay collapsed by
+  default.
+
 ## [0.1.108] - 2026-10-31
 
 ### Fixed

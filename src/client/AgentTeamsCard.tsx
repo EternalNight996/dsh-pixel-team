@@ -10,7 +10,7 @@
  * @module dsh-agent-teams/client/card
  */
 
-import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
@@ -50,6 +50,16 @@ export function openActivityPanel(data: AgentTeamsCardData): void {
       members: data.members,
     },
   }))
+}
+
+const FOLD_STORAGE_KEY = 'dsh-pixel-team:card-folds:v1'
+
+function readFolds(): Record<string, boolean> {
+  try { return JSON.parse(window.localStorage.getItem(FOLD_STORAGE_KEY) ?? '{}') as Record<string, boolean> } catch { return {} }
+}
+
+function writeFolds(value: Record<string, boolean>): void {
+  try { window.localStorage.setItem(FOLD_STORAGE_KEY, JSON.stringify(value)) } catch { /* private mode */ }
 }
 
 /** Render one durable team as a compact conversation card. */
@@ -96,6 +106,9 @@ export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeams
     members: snapshot?.members.map((member) => ({ id: member.id, name: member.name, role: member.role })) ?? data.members,
   }), [data, owner, snapshot])
   const messages = (snapshot?.messages ?? []).slice(-8)
+  const [folds, setFolds] = useState<Record<string, boolean>>(() => readFolds())
+  useEffect(() => { writeFolds(folds) }, [folds])
+  const doneFoldKey = `${data.teamId}:done`
   return (
     <section className={css.root} data-agent-teams-card data-team-id={resolved.teamId}>
       <header className={css.head}>
@@ -134,7 +147,14 @@ export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeams
             const done = (snapshot?.tasks ?? []).filter(task => task.status === 'completed')
             if (done.length === 0) return null
             return (
-              <details className={css.doneFold}>
+              <details
+                className={css.doneFold}
+                open={folds[doneFoldKey] === true}
+                onToggle={(event) => {
+                  const open = event.currentTarget.open
+                  setFolds(current => current[doneFoldKey] === open ? current : { ...current, [doneFoldKey]: open })
+                }}
+              >
                 <summary>✓ {t('card.doneFold', { count: done.length })}</summary>
                 <ul className={css.doneList}>
                   {done.map(task => (
