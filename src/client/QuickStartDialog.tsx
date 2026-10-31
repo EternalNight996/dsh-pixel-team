@@ -207,6 +207,14 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     if (sessionRef.current === sessionId) return
     sessionRef.current = sessionId
     hydratingDraft.current = true
+    // A request belongs to the session that started it; switching conversations
+    // must not carry its spinner/error into the new one.
+    setBusy(false)
+    setError('')
+    setCreated(undefined)
+    setPolishBusy(false)
+    setPolishError('')
+    submitActive.current = false
     const next = readQuickStartDraft(sessionId)
     setStep(next?.step ?? 0)
     setMode(next?.mode ?? DEFAULT_MODE)
@@ -429,6 +437,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     setError('')
     submitActive.current = true
     const startedAt = Date.now()
+    const requestSession = sessionId
     setSubmitting(true)
     setSubmittedAt(startedAt)
     saveQuickStartDraft(sessionId, {
@@ -469,6 +478,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
       let text = await response.text()
       let body: QuickStartResponse | null = null
       try { body = text === '' ? null : JSON.parse(text) as QuickStartResponse } catch { body = null }
+      if (sessionRef.current !== requestSession) return
       // Some hosts reject the full clarification body with an empty 400. Retry
       // with a minimal founding request that the server fills with defaults.
       if (response.status === 400) {
@@ -508,6 +518,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
       setGoal('')
       foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 300)
     } catch (cause) {
+      if (sessionRef.current !== requestSession) return
       // The server can create the staged team and still lose/abort the response.
       // Recover it by creation time before reporting a failure.
       const found = await findRecentStagedTeam(sessionId, startedAt)
@@ -528,8 +539,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
       setSubmittedAt(0)
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
-      submitActive.current = false
-      setBusy(false)
+      if (sessionRef.current === requestSession) {
+        submitActive.current = false
+        setBusy(false)
+      }
     }
   }
 

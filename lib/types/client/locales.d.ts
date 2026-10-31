@@ -32,6 +32,7 @@ export declare const zh: {
     'card.task.start': string;
     'card.task.completed': string;
     'card.task.failed': string;
+    'card.doneFold': string;
     'action.openActivityPanel': string;
     'activity.panelButton': string;
     'activity.badgeAria': string;
@@ -832,6 +833,7 @@ export declare const en: {
     'card.task.start': string;
     'card.task.completed': string;
     'card.task.failed': string;
+    'card.doneFold': string;
     'action.openActivityPanel': string;
     'activity.panelButton': string;
     'activity.badgeAria': string;

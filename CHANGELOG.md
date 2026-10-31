@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.103] - 2026-10-31
+
+### Fixed
+- Founding requests are isolated by conversation: switching sessions resets the
+  spinner/error, and late responses from the old session cannot update the new
+  one.
+- The conversation team card shows the goal, the active/pending task with the
+  executing member's art, role, and error text; completed task results are folded
+  under a collapsible "已完成" section.
+- Task output is included in activity snapshots for the folded results.
+
 ## [0.1.102] - 2026-10-31
 
 ### Fixed

@@ -19,6 +19,7 @@ import {
   subscribeActivitySnapshots,
 } from './activity-monitor.ts'
 import type { AgentTeamsCardData } from './agent-teams-card-definition.ts'
+import type { AgentTeamsTranslate } from './locales.ts'
 import { LEAD_ART, memberArtUrl } from './artwork.ts'
 import css from './AgentTeamsCard.module.css'
 
@@ -63,6 +64,16 @@ export function AgentTeamsCard({ node, openMember, sessionId, t, workspaceBridge
   return <AgentTeamsSummary data={node.data} openMember={openMember} sessionId={sessionId} t={t} />
 }
 
+function taskStatusLabel(status: string, t: AgentTeamsTranslate): string {
+  const key = status === 'claimed' ? 'task.status.claimed'
+    : status === 'in_progress' ? 'task.status.inProgress'
+      : status === 'completed' ? 'task.status.completed'
+        : status === 'failed' ? 'task.status.failed'
+          : status === 'cancelled' ? 'task.status.cancelled'
+            : 'task.status.pending'
+  return t(key as Parameters<typeof t>[0])
+}
+
 export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeamsCardInjected & PropsLocale<'agentTeams'> & {
   data: AgentTeamsCardData; sessionId: string
 }) {
@@ -85,11 +96,6 @@ export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeams
     members: snapshot?.members.map((member) => ({ id: member.id, name: member.name, role: member.role })) ?? data.members,
   }), [data, owner, snapshot])
   const messages = (snapshot?.messages ?? []).slice(-8)
-  // 任务开始/完成也同步进主对话卡片，而不只是修士之间的消息。
-  const taskEvents = [...(snapshot?.tasks ?? [])]
-    .filter(task => task.updatedAt !== undefined)
-    .sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0))
-    .slice(0, 3)
   return (
     <section className={css.root} data-agent-teams-card data-team-id={resolved.teamId}>
       <header className={css.head}>
@@ -98,28 +104,49 @@ export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeams
         <span className={css.memberCount}>{t('card.memberCount', { count: resolved.members.length })}</span>
 
       </header>
-      {(messages.length > 0 || taskEvents.length > 0) && (
+      {((snapshot?.description ?? '') !== '' || messages.length > 0 || (snapshot?.tasks.length ?? 0) > 0) && (
         <div className={css.comms} data-team-comms>
           <span className={css.commsTitle}>{t('card.comms')}</span>
-          {taskEvents.length > 0 && (
-            <div className={css.commsTasks} data-team-comms-tasks>
-              {taskEvents.map((task) => {
-                const state = task.status === 'completed'
-                  ? 'completed'
-                  : task.status === 'failed' || task.status === 'cancelled' ? 'failed' : 'start'
-                const key = state === 'completed'
-                  ? 'card.task.completed'
-                  : state === 'failed' ? 'card.task.failed' : 'card.task.start'
-                const glyph = state === 'completed' ? '✓' : state === 'failed' ? '✕' : '▶'
-                return (
-                  <span key={task.id} className={css.commsTask} data-state={state}>
-                    <span aria-hidden>{glyph}</span>
-                    {t(key, { taskId: task.id, assignee: task.assignee || t('task.assignee.unclaimed') })}
-                  </span>
-                )
-              })}
-            </div>
+          {(snapshot?.description ?? '') !== '' && (
+            <p className={css.commsGoal} title={snapshot?.description}>🎯 {snapshot?.description}</p>
           )}
+          {[...(snapshot?.tasks ?? [])].filter(task => task.status === 'failed' || task.status === 'cancelled' || task.status === 'pending' || task.status === 'claimed' || task.status === 'in_progress').slice(0, 4).map((task) => {
+            const member = snapshot?.members.find(row => row.name === task.assignee)
+            const art = task.assignee === '' ? LEAD_ART : memberArtUrl(task.assignee, member?.role ?? '')
+            const failed = task.status === 'failed' || task.status === 'cancelled'
+            return (
+              <div key={task.id} className={css.taskRow} data-state={failed ? 'failed' : 'active'}>
+                <img className={css.taskArt} src={art ?? LEAD_ART} alt="" aria-hidden />
+                <span className={css.taskMain}>
+                  <span className={css.taskMeta}>
+                    <strong>{task.assignee || t('task.assignee.unclaimed')}</strong>
+                    {' · '}{taskStatusLabel(task.status, t)}
+                  </span>
+                  <span className={css.taskSubject}>{task.id} · {task.subject}</span>
+                  {failed && (task.output ?? '') !== '' && (
+                    <span className={css.taskError} title={task.output}>{task.output}</span>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+          {(() => {
+            const done = (snapshot?.tasks ?? []).filter(task => task.status === 'completed')
+            if (done.length === 0) return null
+            return (
+              <details className={css.doneFold}>
+                <summary>✓ {t('card.doneFold', { count: done.length })}</summary>
+                <ul className={css.doneList}>
+                  {done.map(task => (
+                    <li key={task.id} className={css.doneItem}>
+                      <span className={css.doneSubject}>{task.id} · {task.assignee || t('task.assignee.unclaimed')} · {task.subject}</span>
+                      {(task.output ?? '') !== '' && <span className={css.doneResult}>{task.output}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )
+          })()}
           <ul className={css.commsList}>
             {messages.map((message) => {
               const fromCaptain = message.from === 'captain' || message.from === ''
