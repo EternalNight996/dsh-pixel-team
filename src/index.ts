@@ -1599,6 +1599,16 @@ export function apply(ctx: Context, config: Config): void {
           res.end(JSON.stringify({ error: 'captain session is not attached' }))
           return
         }
+        // A staged plan can outlive its original captain session. Adopt it into
+        // the live session in the same workspace so approval/editing works.
+        if (captain !== undefined && (team === undefined || team.id !== teamId)) {
+          const candidate = await readTeam(stateRoot, teamId)
+          if (candidate?.phase === 'staged') {
+            candidate.captainSessionId = captain.id
+            await writeTeam(stateRoot, candidate)
+            team = candidate
+          }
+        }
         if (team === undefined || team.id !== teamId) {
           res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ error: 'team not found for this captain' }))

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useId, useState, useSyncExternalStore, type FormEvent } from 'react'
 import type { ModelDirectory } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import { Menu, type MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ActivityMember, ActivityTask, ActivityTeam } from './activity-monitor.ts'
 import type { AgentTeamsTranslate } from './locales.ts'
 import { roleLabel } from './role-labels.ts'
@@ -665,13 +666,15 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
   )
 }
 
-export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, onDiscarded, t }: {
+export function StagingPlanEditor({ team, sessionId, modelDirectory, onContinuePlanning, onDiscarded, t }: {
   readonly team: ActivityTeam
+  readonly sessionId?: SessionId
   readonly modelDirectory: ModelDirectory
   readonly onContinuePlanning: () => void
   readonly onDiscarded: () => void
   readonly t: AgentTeamsTranslate
 }) {
+  const editorSessionId = sessionId ?? team.captainSessionId
   const membersId = useId()
   const tasksId = useId()
   // Keep the review page compact: the summary line above already carries the
@@ -712,7 +715,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
     setFeedback(undefined)
     try {
       await mutatePlan({
-        sessionId: team.captainSessionId,
+        sessionId: editorSessionId,
         teamId: team.teamId,
         action: 'add_task',
         subject: newTask,
@@ -733,7 +736,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
     setFeedback(undefined)
     try {
       await mutatePlan({
-        sessionId: team.captainSessionId,
+        sessionId: editorSessionId,
         teamId: team.teamId,
         action: 'approve',
       })
@@ -752,7 +755,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
     setFeedback(undefined)
     try {
       await mutatePlan({
-        sessionId: team.captainSessionId,
+        sessionId: editorSessionId,
         teamId: team.teamId,
         action: 'continue',
       })
@@ -769,7 +772,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
     setBusy(true)
     setFeedback(undefined)
     try {
-      const sourceResponse = await fetch('/plugins/dsh-pixel-team/plan/source?sessionId=' + encodeURIComponent(team.captainSessionId))
+      const sourceResponse = await fetch('/plugins/dsh-pixel-team/plan/source?sessionId=' + encodeURIComponent(editorSessionId))
       const source = await sourceResponse.json().catch(() => null) as {
         goal?: string
         clarification?: Record<string, unknown> | null
@@ -785,7 +788,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
       const discardResponse = await fetch('/plugins/dsh-pixel-team/plan', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sessionId: team.captainSessionId, teamId: team.teamId, action: 'discard' }),
+        body: JSON.stringify({ sessionId: editorSessionId, teamId: team.teamId, action: 'discard' }),
       })
       if (!discardResponse.ok) {
         const body = await discardResponse.json().catch(() => null) as { error?: string } | null
@@ -796,7 +799,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          sessionId: team.captainSessionId,
+          sessionId: editorSessionId,
           mode,
           goal: source.goal ?? '',
           template: 'feat',
@@ -810,7 +813,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
       const body = await response.json().catch(() => null) as { teamId?: string; error?: string } | null
       if (!response.ok) throw new Error(body?.error ?? 'regeneration failed')
       if (body?.teamId !== undefined) {
-        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId: team.captainSessionId } }))
+        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: body.teamId, sessionId: editorSessionId } }))
       }
       onDiscarded()
     } catch (error: unknown) {
@@ -824,7 +827,7 @@ export function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, on
     setFeedback(undefined)
     try {
       await mutatePlan({
-        sessionId: team.captainSessionId,
+        sessionId: editorSessionId,
         teamId: team.teamId,
         action: 'discard',
       })

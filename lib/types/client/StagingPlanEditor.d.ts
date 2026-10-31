@@ -6,10 +6,12 @@
  * @module dsh-agent-teams/client/staging-plan
  */
 import type { ModelDirectory } from '@deepseek-ai/dsh-client-ui-model-selection/client';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
 import type { ActivityTeam } from './activity-monitor.ts';
 import type { AgentTeamsTranslate } from './locales.ts';
-export declare function StagingPlanEditor({ team, modelDirectory, onContinuePlanning, onDiscarded, t }: {
+export declare function StagingPlanEditor({ team, sessionId, modelDirectory, onContinuePlanning, onDiscarded, t }: {
     readonly team: ActivityTeam;
+    readonly sessionId?: SessionId;
     readonly modelDirectory: ModelDirectory;
     readonly onContinuePlanning: () => void;
     readonly onDiscarded: () => void;

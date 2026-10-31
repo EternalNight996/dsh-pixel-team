@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.94] - 2026-10-31
+
+### Fixed
+- A staged plan whose captain session is detached is adopted into the live
+  session on the first plan mutation/approval in the same workspace. The plan
+  editor now sends the current session id instead of the stale captain id.
+
 ## [0.1.93] - 2026-10-31
 
 ### Fixed
