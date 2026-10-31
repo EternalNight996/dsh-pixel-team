@@ -974,6 +974,10 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
       // A staged removal has no child session to retain in history. Drop those
       // placeholders before transitioning to the stricter running shape.
       fresh.members = fresh.members.filter((member) => member.status !== 'removed')
+      // Solo plans have no members; every task belongs to the captain.
+      if (fresh.members.length === 0) {
+        for (const task of fresh.tasks) task.assignee = CAPTAIN_KEY
+      }
       validateStagedGraph(fresh, true)
       const selections = []
       for (const member of fresh.members) {

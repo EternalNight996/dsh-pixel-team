@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.93] - 2026-10-31
+
+### Fixed
+- Solo plans whose task assignees were persisted without an owner are normalized
+  to the captain at approval, and the activity snapshot displays them as captain
+  so the plan is runnable.
+
 ## [0.1.92] - 2026-10-31
 
 ### Fixed
