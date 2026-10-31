@@ -41,6 +41,8 @@ export interface ActivityTask {
      * the workspace, so the panel cannot render a bare green verdict.
      */
     readonly verdictStale?: string;
+    /** Execution generation; the fold key includes it. */
+    readonly attempt?: number;
     /** Durable auto-resume count for an interrupted task. */
     readonly retryCount?: number;
     /** Latest task result/error summary; shown collapsed in the conversation card. */

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.110] - 2026-10-31
+
+### Changed
+- R3: completed results fold per task+attempt instead of one team-level fold;
+  the open state is keyed by teamId:taskId:attempt.
+
 ## [0.1.109] - 2026-10-31
 
 ### Added

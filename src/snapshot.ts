@@ -331,6 +331,7 @@ export async function assembleTeamSnapshot(
       ...task.round === undefined ? {} : { round: task.round },
       ...task.verdict === undefined ? {} : { verdict: task.verdict },
       ...task.output === undefined ? {} : { output: task.output },
+      ...task.attempt === undefined ? {} : { attempt: task.attempt },
       ...task.retryCount === undefined ? {} : { retryCount: task.retryCount },
       ...task.objective === undefined ? {} : { objective: task.objective },
       ...task.acceptance === undefined || task.acceptance.length === 0 ? {} : { acceptance: task.acceptance },

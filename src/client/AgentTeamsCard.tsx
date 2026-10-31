@@ -143,30 +143,23 @@ export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeams
               </div>
             )
           })}
-          {(() => {
-            const done = (snapshot?.tasks ?? []).filter(task => task.status === 'completed')
-            if (done.length === 0) return null
+          {(snapshot?.tasks ?? []).filter(task => task.status === 'completed').map((task) => {
+            const key = `${data.teamId}:${task.id}:${task.attempt ?? 0}`
             return (
               <details
+                key={key}
                 className={css.doneFold}
-                open={folds[doneFoldKey] === true}
+                open={folds[key] === true}
                 onToggle={(event) => {
                   const open = event.currentTarget.open
-                  setFolds(current => current[doneFoldKey] === open ? current : { ...current, [doneFoldKey]: open })
+                  setFolds(current => current[key] === open ? current : { ...current, [key]: open })
                 }}
               >
-                <summary>✓ {t('card.doneFold', { count: done.length })}</summary>
-                <ul className={css.doneList}>
-                  {done.map(task => (
-                    <li key={task.id} className={css.doneItem}>
-                      <span className={css.doneSubject}>{task.id} · {task.assignee || t('task.assignee.unclaimed')} · {task.subject}</span>
-                      {(task.output ?? '') !== '' && <span className={css.doneResult}>{task.output}</span>}
-                    </li>
-                  ))}
-                </ul>
+                <summary>✓ {task.id} · {task.assignee || t('task.assignee.unclaimed')} · {task.subject}</summary>
+                {(task.output ?? '') !== '' && <span className={css.doneResult}>{task.output}</span>}
               </details>
             )
-          })()}
+          })}
           <ul className={css.commsList}>
             {messages.map((message) => {
               const fromCaptain = message.from === 'captain' || message.from === ''
