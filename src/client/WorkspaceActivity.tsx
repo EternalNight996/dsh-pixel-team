@@ -15,7 +15,7 @@ import { OPEN_PANEL_EVENT } from './AgentTeamsCard.tsx'
 import type { AgentTeamsCardData } from './agent-teams-card-definition.ts'
 import { currentSessionId } from './session-navigation.ts'
 import { TEAM_CREATED_EVENT, shouldRevealTeam } from './team-reveal.ts'
-import { getActivityMonitorTargetsSnapshot, getActivitySnapshotsSnapshot, startActivityPolling, subscribeActivityMonitorTargets, subscribeActivitySnapshots, updateActivitySnapshots } from './activity-monitor.ts'
+import { getActivityMonitorTargetsSnapshot, getActivitySnapshotsSnapshot, startActivityPolling, subscribeActivityMonitorTargets, subscribeActivitySnapshots, updateActivitySnapshots, type ActivityTeam } from './activity-monitor.ts'
 import { createTeamDiscovery, type WorkspaceActivityState } from './workspace-state.ts'
 import { ingestCultivation } from './cultivation-store.ts'
 import { LEAD_ART } from './artwork.ts'
@@ -84,6 +84,7 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
 }) {
   const current = currentSessionId(useSyncExternalStore(sessionsList.subscribe, sessionsList.getSnapshot))
   const snapshots = useSyncExternalStore(subscribeActivitySnapshots, getActivitySnapshotsSnapshot)
+  const [directTeam, setDirectTeam] = useState<ActivityTeam | undefined>()
   const local = useSyncExternalStore(state.subscribe, state.getSnapshot)
   const sessionTeams = current === undefined ? [] : snapshots.teams.filter(team => team.captainSessionId === current)
   const wanted = current === undefined ? undefined : local.selected.get(current)
@@ -100,6 +101,7 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
   // 或任务全部已弃（已停止），也不自动收起（用户明确要求）。
   const stagedFallback = sessionTeams.length === 0 ? snapshots.teams.find(team => team.phase === 'staged') : undefined
   const hallTeam = sessionTeams.find(team => team.teamId === wanted) ?? sessionTeams[0] ?? linkedTeam ?? stagedFallback
+  const visibleTeam = hallTeam ?? directTeam
   // 名册页看历史：同一掌门会话下已经归档的宗门。
   const ownerCaptain = hallTeam?.captainSessionId ?? current
   const historyTeams = ownerCaptain === undefined
@@ -164,7 +166,11 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
         try {
           const response = await fetch('/plugins/dsh-pixel-team/state', { cache: 'no-store' })
           const body = await response.json() as { teams?: unknown }
-          if (Array.isArray(body.teams)) updateActivitySnapshots({ teams: body.teams as Parameters<typeof updateActivitySnapshots>[0]['teams'] })
+          if (Array.isArray(body.teams)) {
+            const teams = body.teams as ActivityTeam[]
+            updateActivitySnapshots({ teams })
+            setDirectTeam(teams.find(team => team.teamId === teamId))
+          }
         } catch { /* opening the hall still has the scheduled poll */ }
         window.setTimeout(() => {
           window.dispatchEvent(new CustomEvent(OPEN_HALL_SHEET_EVENT, { detail: { action: 'config' } }))
@@ -177,26 +183,33 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
   // Direct workspace refresh if the shared activity poll has not produced any
   // teams yet; without this a new/staged team can look like an empty hall.
   useEffect(() => {
-    if (sessionTeams.length > 0) return
+    if (hallTeam !== undefined) return
     let alive = true
     const refresh = async (): Promise<void> => {
       try {
         const response = await fetch('/plugins/dsh-pixel-team/state', { cache: 'no-store' })
         const body = await response.json() as { teams?: unknown }
-        if (alive && Array.isArray(body.teams)) updateActivitySnapshots({ teams: body.teams as Parameters<typeof updateActivitySnapshots>[0]['teams'] })
+        if (!Array.isArray(body.teams)) return
+        const teams = body.teams as ActivityTeam[]
+        if (alive) {
+          updateActivitySnapshots({ teams })
+          const pick = (current === undefined ? undefined : teams.find(team => team.captainSessionId === current))
+            ?? teams.find(team => team.phase === 'staged')
+          setDirectTeam(pick)
+        }
       } catch { /* keep the regular poll */ }
     }
     void refresh()
     const timer = window.setInterval(() => { void refresh() }, 5_000)
     return () => { alive = false; window.clearInterval(timer) }
-  }, [sessionTeams.length])
+  }, [hallTeam, current])
 
   // 洞府作为窗口级浮层常驻：切到对话/别的页面也在，即使会话里还没有队伍、
   // 甚至宿主暂时没有 current 会话，也保留一座空洞府（只有掌门）。
   return (
     <TeamUiBoundary>
     <SectHallOverlay
-      team={hallTeam}
+      team={visibleTeam}
       history={historyTeams}
       t={t}
       sessionId={current}

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.96] - 2026-10-31
+
+### Fixed
+- The hall now keeps a directly fetched team fallback, independent of the shared
+  activity snapshot. If the snapshot store does not expose the staged team, the
+  hall still renders it and opens its plan review.
+
 ## [0.1.95] - 2026-10-31
 
 ### Fixed
