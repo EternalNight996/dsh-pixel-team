@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.102] - 2026-10-31
+
+### Fixed
+- Snapshot assembly wraps optional goal/native-team projections in try/catch;
+  plugin routes without the goal service injection no longer return
+  "cannot get property goals without inject" (HTTP 422/400).
+- Founding refuses to send a request with no session id and shows a clear
+  message instead.
+
 ## [0.1.101] - 2026-10-31
 
 ### Fixed

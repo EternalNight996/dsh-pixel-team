@@ -261,8 +261,16 @@ export async function assembleTeamSnapshot(
         return Object.entries(expected).some(([path, digest]) => current[path] !== digest)
       })()
   const goalAgent = options.historic === true ? undefined : ctx.agents.get(state.captainSessionId as never)
-  const goalView = goalAgent === undefined ? undefined : (ctx as unknown as { goals?: { get(agent: unknown): { id: string; objective: string; phase: string; roundsStarted: number; maxGoalRounds: number } | undefined } }).goals?.get(goalAgent)
-  const nativeTeam = goalAgent === undefined ? undefined : nativeTeamSummary(ctx, goalAgent)
+  // Some plugin routes run without the goal service injection; never let an
+  // optional projection turn a snapshot into a 422.
+  let goalView: { id: string; objective: string; phase: string; roundsStarted: number; maxGoalRounds: number } | undefined
+  try {
+    goalView = goalAgent === undefined ? undefined : (ctx as unknown as { goals?: { get(agent: unknown): typeof goalView } }).goals?.get(goalAgent)
+  } catch { goalView = undefined }
+  let nativeTeam: ReturnType<typeof nativeTeamSummary>
+  try {
+    nativeTeam = goalAgent === undefined ? undefined : nativeTeamSummary(ctx, goalAgent)
+  } catch { nativeTeam = undefined }
   const staleById = new Map<string, string[]>()
   if (audit !== undefined) {
     for (const note of verdictAuditNotes(state, audit)) {

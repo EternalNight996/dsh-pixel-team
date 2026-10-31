@@ -424,6 +424,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
 
   const submit = async (replace: boolean): Promise<void> => {
     if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(0); return }
+    if (sessionId === undefined) { setError(t('quickstart.sessionMissing')); return }
     setBusy(true)
     setError('')
     submitActive.current = true
