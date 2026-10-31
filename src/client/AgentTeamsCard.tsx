@@ -117,6 +117,24 @@ export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeams
         <span className={css.memberCount}>{t('card.memberCount', { count: resolved.members.length })}</span>
 
       </header>
+      {(snapshot?.tasks.length ?? 0) > 0 && (
+        <details className={css.taskFold}>
+          <summary>📋 任务明细 · {snapshot?.tasks.length} 项</summary>
+          <table className={css.taskTable}>
+            <thead><tr><th>任务</th><th>内容</th><th>执行人</th><th>状态</th></tr></thead>
+            <tbody>
+              {(snapshot?.tasks ?? []).map(task => (
+                <tr key={task.id}>
+                  <td>{task.id}</td>
+                  <td title={task.subject}>{task.subject}</td>
+                  <td>{task.assignee || t('task.assignee.unclaimed')}</td>
+                  <td data-state={task.status}>{taskStatusLabel(task.status, t)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
       {((snapshot?.description ?? '') !== '' || messages.length > 0 || (snapshot?.tasks.length ?? 0) > 0) && (
         <div className={css.comms} data-team-comms>
           <span className={css.commsTitle}>{t('card.comms')}</span>
