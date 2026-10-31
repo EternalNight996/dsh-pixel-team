@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.95] - 2026-10-31
+
+### Fixed
+- If the current session has no team, the hall now refreshes the workspace state
+  even when other teams exist elsewhere. Previously the refresh only ran when
+  the global snapshot was completely empty, so a team from a detached session
+  could stay invisible.
+
 ## [0.1.94] - 2026-10-31
 
 ### Fixed
