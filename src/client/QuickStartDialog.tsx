@@ -13,7 +13,7 @@ import { InterviewSheet, type InterviewQuestionView } from './InterviewSheet.tsx
 import { DEFAULT_MODE, TEAM_MODES, getModeSpec, type TeamMode } from '../modes.ts'
 
 
-type TplKey = 'quickstart.tplFix' | 'quickstart.tplFeat' | 'quickstart.tplResearch' | 'quickstart.tplAudit' | 'quickstart.tplFullstack'
+type TplKey = 'quickstart.tplFix' | 'quickstart.tplFeat' | 'quickstart.tplResearch' | 'quickstart.tplAudit' | 'quickstart.tplFullstack' | 'quickstart.tplDrama'
   | 'quickstart.tplHardening' | 'quickstart.tplBuild' | 'quickstart.tplArray' | 'quickstart.tplDocs' | 'quickstart.tplDebate'
 
 interface QuickTemplate {
@@ -26,6 +26,7 @@ interface QuickTemplate {
 const TEMPLATES: readonly QuickTemplate[] = [
   // 开山立业 is the default founding intent: it leads the doctrine list.
   { id: 'feat', labelKey: 'quickstart.tplFeat', descKey: 'quickstart.desc.feat', roles: ['planner', 'implementer', 'verifier', 'reviewer'] },
+  { id: 'drama', labelKey: 'quickstart.tplDrama', descKey: 'quickstart.desc.drama', roles: ['planner', 'writer', 'implementer', 'reviewer'] },
   { id: 'fix', labelKey: 'quickstart.tplFix', descKey: 'quickstart.desc.fix', roles: ['implementer', 'verifier', 'reviewer'] },
   { id: 'research', labelKey: 'quickstart.tplResearch', descKey: 'quickstart.desc.research', roles: ['researcher', 'analyst', 'writer', 'reviewer'] },
   { id: 'fullstack', labelKey: 'quickstart.tplFullstack', descKey: 'quickstart.desc.fullstack', roles: ['integrator', 'frontend', 'backend', 'verifier', 'reviewer'] },
@@ -45,6 +46,7 @@ type QuickStartDraft = {
   roles: string[]
   sectMode: string
   rolledSect: string
+  projectKind: 'engineering' | 'drama'
   solo: boolean
   superFast: boolean
   questions: InterviewQuestionView[]
@@ -69,6 +71,7 @@ function readQuickStartDraft(sessionId: string): QuickStartDraft | undefined {
       roles: Array.isArray(value.roles) ? value.roles.filter((role): role is string => typeof role === 'string') : [...(TEMPLATES[0]?.roles ?? [])],
       sectMode: typeof value.sectMode === 'string' ? value.sectMode : 'random',
       rolledSect: typeof value.rolledSect === 'string' ? value.rolledSect : randomSect().id,
+      projectKind: value.projectKind === 'drama' ? 'drama' : 'engineering',
       solo: value.solo === true,
       superFast: value.superFast === true,
       questions: Array.isArray(value.questions) ? value.questions as InterviewQuestionView[] : [],
@@ -157,6 +160,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const [step, setStep] = useState(() => draft?.step ?? 0)
   // Development mode drives polish, options, constitution and the member persona.
   const [mode, setMode] = useState<TeamMode>(() => draft?.mode ?? DEFAULT_MODE)
+  const [projectKind, setProjectKind] = useState<'engineering' | 'drama'>(() => draft?.projectKind ?? 'engineering')
   const [goal, setGoal] = useState(() => draft?.goal ?? '')
   const [template, setTemplate] = useState<string>(() => draft?.template ?? TEMPLATES[0]?.id ?? 'fix')
   const [roles, setRoles] = useState<string[]>(() => draft?.roles ?? [...(TEMPLATES[0]?.roles ?? [])])
@@ -223,6 +227,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     setRoles(next?.roles ?? [...(TEMPLATES[0]?.roles ?? [])])
     setSectMode(next?.sectMode ?? 'random')
     setRolledSect(next?.rolledSect ?? randomSect().id)
+    setProjectKind(next?.projectKind ?? 'engineering')
     setSolo(next?.solo ?? false)
     setSuperFast(next?.superFast ?? false)
     setSubmitting(next?.submitting ?? false)
@@ -237,10 +242,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     if (sessionRef.current !== sessionId) return
     if (hydratingDraft.current) { hydratingDraft.current = false; return }
     saveQuickStartDraft(sessionId, {
-      step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast,
+      step, mode, goal, template, roles, sectMode, rolledSect, projectKind, solo, superFast,
       questions: interviewQuestions, answers: interviewAnswers, submitting, submittedAt,
     })
-  }, [sessionId, step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast, interviewQuestions, interviewAnswers, submitting, submittedAt])
+  }, [sessionId, step, mode, goal, template, roles, sectMode, rolledSect, projectKind, solo, superFast, interviewQuestions, interviewAnswers, submitting, submittedAt])
 
   // If the wizard unmounts while 立誓 is in flight (window/session switch), the
   // request may finish without its React callback. Recover the new staged team
@@ -314,6 +319,18 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     // 门派已经配好道途时，换模板不再覆盖这套道途（自定义模式才跟随模板）。
     if (sectMode === 'custom') setRoles([...templateOf(id).roles])
   }
+  const chooseProjectKind = (kind: 'engineering' | 'drama'): void => {
+    setProjectKind(kind)
+    const next = kind === 'drama' ? 'drama' : 'feat'
+    setTemplate(next)
+    setRoles([...templateOf(next).roles])
+    setInterviewQuestions([])
+    setInterviewAnswers({})
+    setInterviewState('loading')
+  }
+  const visibleTemplates = projectKind === 'drama'
+    ? TEMPLATES.filter(entry => entry.id === 'drama')
+    : TEMPLATES.filter(entry => entry.id !== 'drama')
   const chooseSect = (id: string): void => {
     setSectMode(id)
     const preset = sectPreset(id)
@@ -441,7 +458,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     setSubmitting(true)
     setSubmittedAt(startedAt)
     saveQuickStartDraft(sessionId, {
-      step, mode, goal, template, roles, sectMode, rolledSect, solo, superFast,
+      step, mode, goal, template, roles, sectMode, rolledSect, projectKind, solo, superFast,
       questions: interviewQuestions, answers: interviewAnswers,
       submitting: true, submittedAt: startedAt,
     })
@@ -454,9 +471,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         .filter(item => item.answer.length > 0)
         .map(item => item.question + '：' + item.answer.join(' / '))
       const base = fallbackClarification(mode)
+      const projectKindNote = projectKind === 'drama' ? '项目类型：短剧任务（剧本/分镜/视觉资产/视频镜头，可通过 TapNow 生成）' : '项目类型：工程任务'
       const clarification: Record<string, unknown> = {
         ...base,
-        constraints: [...(base.constraints as string[]), ...interviewNotes].slice(0, 20),
+        constraints: [...(base.constraints as string[]), projectKindNote, ...interviewNotes].slice(0, 20),
       }
       type QuickStartResponse = { ok?: boolean; existing?: boolean; teamId?: string; teamName?: string; team?: import('./activity-monitor.ts').ActivityTeam; error?: string }
       const fullBody = {
@@ -466,6 +484,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         template,
         roles: solo ? [] : sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
         solo,
+        projectKind,
         replace: replace || existingTeam === true,
         fast: superFast,
         clarification,
@@ -485,7 +504,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         response = await fetch('/plugins/dsh-pixel-team/quick-start', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sessionId, mode, goal: goalTrimmed, template: 'fix', solo, replace: true, fast: true, minimal: true }),
+          body: JSON.stringify({ sessionId, mode, goal: goalTrimmed, template: projectKind === 'drama' ? 'drama' : 'fix', solo, replace: true, fast: true, minimal: true }),
         })
         text = await response.text()
         try { body = text === '' ? null : JSON.parse(text) as QuickStartResponse } catch { body = null }
@@ -589,7 +608,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           {currentStep === 'doctrine' && (
             <section className={css.stepPane} data-step="doctrine">
               <div className={css.templates} role="radiogroup" aria-label={t('quickstart.template')}>
-                {TEMPLATES.map(entry => (
+                {visibleTemplates.map(entry => (
                   <button
                     key={entry.id}
                     type="button"
@@ -610,6 +629,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
 
           {currentStep === 'vow' && (
             <section className={css.stepPane} data-step="vow">
+              <div className={css.projectKindRow} role="radiogroup" aria-label={t('quickstart.projectKind')}>
+                <button type="button" role="radio" aria-checked={projectKind === 'engineering'} data-active={projectKind === 'engineering' || undefined} onClick={() => { chooseProjectKind('engineering') }}>{t('quickstart.kindEngineering')}</button>
+                <button type="button" role="radio" aria-checked={projectKind === 'drama'} data-active={projectKind === 'drama' || undefined} onClick={() => { chooseProjectKind('drama') }}>{t('quickstart.kindDrama')}</button>
+              </div>
               <p className={css.soloRow}>
                 <button
                   type="button"
@@ -809,6 +832,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
             <section className={css.stepPane} data-step="oath">
               {submitting && <p className={css.busyNote} role="status">{t('quickstart.generating')}</p>}
               <dl className={css.summary}>
+                <div className={css.summaryRow}><dt>{t('quickstart.projectKind')}</dt><dd>{projectKind === 'drama' ? t('quickstart.kindDrama') : t('quickstart.kindEngineering')}</dd></div>
                 <div className={css.summaryRow}><dt>{t('mode.select')}</dt><dd>{getModeSpec(mode).emoji} {t(getModeSpec(mode).labelKey as Parameters<typeof t>[0])}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summaryDoctrine')}</dt><dd>{doctrineName}</dd></div>
                 <div className={css.summaryRow}><dt>{t('quickstart.summarySect')}</dt><dd>{sectName}</dd></div>

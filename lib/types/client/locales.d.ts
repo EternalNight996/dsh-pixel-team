@@ -595,6 +595,11 @@ export declare const zh: {
     'quickstart.summaryRoster': string;
     'quickstart.summaryVow': string;
     'quickstart.oathNotice': string;
+    'quickstart.tplDrama': string;
+    'quickstart.desc.drama': string;
+    'quickstart.projectKind': string;
+    'quickstart.kindEngineering': string;
+    'quickstart.kindDrama': string;
     'quickstart.tplFix': string;
     'quickstart.tplFeat': string;
     'quickstart.tplResearch': string;
@@ -1400,6 +1405,11 @@ export declare const en: {
     'quickstart.summaryRoster': string;
     'quickstart.summaryVow': string;
     'quickstart.oathNotice': string;
+    'quickstart.tplDrama': string;
+    'quickstart.desc.drama': string;
+    'quickstart.projectKind': string;
+    'quickstart.kindEngineering': string;
+    'quickstart.kindDrama': string;
     'quickstart.tplFix': string;
     'quickstart.tplFeat': string;
     'quickstart.tplResearch': string;

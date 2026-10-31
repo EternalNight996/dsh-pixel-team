@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.107] - 2026-10-31
+
+### Added
+- Founding wizard task-type switch: 工程任务 / 短剧任务.
+- 短剧任务 uses the drama template (script → assets → shots → review), injects a
+  short-drama context constraint, and can hand visual generation to TapNow.
+
 ## [0.1.106] - 2026-10-31
 
 ### Added

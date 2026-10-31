@@ -16,7 +16,7 @@ import type { PlanTaskSpec } from './plan-generator.ts'
 export const SECT_NAMES: Record<string, string> = {
   fix: '斗法宗', feat: '开山宗', research: '寻仙宗', audit: '巡查宗',
   build: '炼器宗', array: '布阵宗', docs: '传道宗', debate: '论道宗',
-  fullstack: '合道宗', hardening: '镇魔宗',
+  fullstack: '合道宗', hardening: '镇魔宗', drama: '梨园宗',
 }
 
 export const ROLE_NAMES: Record<string, string> = {
@@ -53,6 +53,17 @@ export interface QuickStartTemplate {
 }
 
 export const QUICK_START_TEMPLATES: readonly QuickStartTemplate[] = [
+  {
+    id: 'drama',
+    label: '短剧制作',
+    roles: ['planner', 'writer', 'implementer', 'reviewer'],
+    tasks: [
+      { id: 'script', subject: '剧本与分镜', role: 'writer', description: '把用户目标拆成场次、镜头、台词/旁白与时长；输出可直接执行的分镜表。若已接入 TapNow，可用 tapnow 技能查询画布；未接入则只输出分镜与提示词。', expected: '分镜表：镜号、景别、画面描述、时长、参考图需求。' },
+      { id: 'assets', subject: '角色与场景资产', role: 'implementer', description: '为主角、配角、主场景建立一致性设定；需要出图时通过 TapNow 生成并引用同一角色参考图，避免跨镜换脸。', expected: '角色/场景资产清单与参考图链接（或待生成提示词）。', dependencies: ['script'] },
+      { id: 'shots', subject: '镜头生成与串联', role: 'implementer', description: '按分镜逐镜生成图片/视频；TapNow 任务返回 node_ids 后轮询 get_production_result 到 done，再记录画布链接；控制总时长与成本。', expected: '每镜状态、媒体链接、总时长与 Tapies 估算。', dependencies: ['assets'] },
+      { id: 'review', subject: '短剧审查', role: 'reviewer', kind: 'review', reviewedTaskId: 'shots', description: '检查角色一致性、镜头连贯性、时长、成本与失败镜头；明确列出重做项。', acceptance: ['分镜与成片镜头一致', '失败/重做项已列明', '成本与时长已汇总'], dependencies: ['shots'] },
+    ],
+  },
   {
     id: 'fix',
     label: '修 Bug',
