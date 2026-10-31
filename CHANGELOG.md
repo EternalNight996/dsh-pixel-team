@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.105] - 2026-10-31
+
+### Added
+- Resume-last records per-task resume attempts and stops at 3 with
+  `needs human triage`; a failed dispatch rolls the counter back rather than
+  burning an attempt. Halting still uses the separate explicit resume path.
+
 ## [0.1.104] - 2026-10-31
 
 ### Added

@@ -1052,6 +1052,11 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const assignee = interrupted.assignee === undefined || interrupted.assignee === '' ? 'captain' : interrupted.assignee
+        if ((interrupted.retryCount ?? 0) >= 3) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'auto resume limit reached; needs human triage', taskId: interrupted.id, retries: interrupted.retryCount ?? 0 }))
+          return
+        }
         const definition = (ctx.get('tools') as { get?: (name: string) => { execute?: (args: unknown, exec: unknown) => Promise<unknown> } | undefined } | undefined)?.get?.('agent_teams_reassign_task')
         if (definition?.execute === undefined) {
           res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
@@ -1059,13 +1064,39 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const run = { agent: captain, signal: new AbortController().signal, deferContext() {}, concludeTurn() {} }
+        let reserved = false
         try {
+          await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+            const fresh = await readTeam(stateRoot, team.id)
+            const task = fresh?.tasks.find(candidate => candidate.id === interrupted.id)
+            if (fresh === undefined || task === undefined) throw new Error('task no longer exists')
+            const used = task.retryCount ?? 0
+            if (used >= 3) throw Object.assign(new Error('auto resume limit reached; needs human triage'), { code: 'NEEDS_HUMAN' })
+            task.retryCount = used + 1
+            task.updatedAt = Date.now()
+            await writeTeam(stateRoot, fresh)
+            reserved = true
+          })
           const value = await definition.execute({ task_id: interrupted.id, assignee, reason: '恢复上次中断任务' }, run)
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-          res.end(JSON.stringify({ ok: true, taskId: interrupted.id, assignee, value }))
+          res.end(JSON.stringify({ ok: true, taskId: interrupted.id, assignee, retries: (interrupted.retryCount ?? 0) + 1, value }))
         } catch (error: unknown) {
-          res.writeHead(422, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-          res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
+          if (reserved) {
+            try {
+              await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+                const fresh = await readTeam(stateRoot, team.id)
+                const task = fresh?.tasks.find(candidate => candidate.id === interrupted.id)
+                if (fresh === undefined || task === undefined) return
+                task.retryCount = Math.max(0, (task.retryCount ?? 1) - 1)
+                task.updatedAt = Date.now()
+                await writeTeam(stateRoot, fresh)
+              })
+            } catch { /* best effort rollback */ }
+          }
+          const message = error instanceof Error ? error.message : String(error)
+          const status = (error as { code?: string }).code === 'NEEDS_HUMAN' ? 409 : 422
+          res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: message }))
         }
       },
     }), 'agent-teams: resume last route')
