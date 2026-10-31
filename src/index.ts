@@ -1104,19 +1104,37 @@ export function apply(ctx: Context, config: Config): void {
         }
         // Blocking clarification root: no DAG is generated before the user
         // confirms this form. The wizard's mode wins over a missing mode field.
+        const minimal = payload.minimal === true
         let clarification
-        try {
-          const rawClarification = typeof payload.clarification === 'object' && payload.clarification !== null
-            ? payload.clarification as Record<string, unknown>
-            : {}
-          const requestedMode = isTeamMode(payload.mode) ? payload.mode : undefined
-          const rawMode = rawClarification['mode']
-          const effectiveMode = requestedMode ?? (isTeamMode(rawMode) ? rawMode : DEFAULT_MODE)
-          clarification = normalizeClarification({ ...rawClarification, mode: effectiveMode })
-        } catch (error: unknown) {
-          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-          res.end(JSON.stringify({ error: 'clarification is required before founding a team: ' + (error instanceof Error ? error.message : String(error)) }))
-          return
+        if (minimal) {
+          const effectiveMode = isTeamMode(payload.mode) ? payload.mode : DEFAULT_MODE
+          const spec = getModeSpec(effectiveMode)
+          clarification = normalizeClarification({
+            type: 'software',
+            scale: 'small',
+            mode: effectiveMode,
+            ui: { styles: [] },
+            platforms: ['Windows'],
+            hardwareList: [],
+            constraints: [],
+            excluded: [...spec.defaultExcluded],
+            acceptance: [...spec.acceptanceDefaults],
+            memoryHints: [],
+          })
+        } else {
+          try {
+            const rawClarification = typeof payload.clarification === 'object' && payload.clarification !== null
+              ? payload.clarification as Record<string, unknown>
+              : {}
+            const requestedMode = isTeamMode(payload.mode) ? payload.mode : undefined
+            const rawMode = rawClarification['mode']
+            const effectiveMode = requestedMode ?? (isTeamMode(rawMode) ? rawMode : DEFAULT_MODE)
+            clarification = normalizeClarification({ ...rawClarification, mode: effectiveMode })
+          } catch (error: unknown) {
+            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+            res.end(JSON.stringify({ error: 'clarification is required before founding a team: ' + (error instanceof Error ? error.message : String(error)) }))
+            return
+          }
         }
         const requirementRaw = payload.requirement
         const requirement = (() => {
@@ -1205,7 +1223,7 @@ export function apply(ctx: Context, config: Config): void {
         const planAbort = new AbortController()
         const planTimeout = setTimeout(() => { planAbort.abort() }, 60_000)
         let planResult: { specs?: import('./plan-generator.ts').PlanTaskSpec[]; error?: string } = { error: 'plan generation did not run' }
-        if (payload.fast !== true) {
+        if (payload.fast !== true && !minimal) {
           try {
             planResult = await generatePlanSpecs(ctx, captain, {
               goal,

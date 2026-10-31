@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.100] - 2026-10-31
+
+### Fixed
+- If the full founding request returns an empty 400, the client retries with a
+  minimal payload; the server fills mode defaults and skips AI planning. This
+  bypasses oversized/invalid clarification bodies.
+
 ## [0.1.99] - 2026-10-31
 
 ### Fixed

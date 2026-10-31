@@ -448,25 +448,37 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         ...base,
         constraints: [...(base.constraints as string[]), ...interviewNotes].slice(0, 20),
       }
-      const response = await fetch('/plugins/dsh-pixel-team/quick-start', {
+      type QuickStartResponse = { ok?: boolean; existing?: boolean; teamId?: string; teamName?: string; team?: import('./activity-monitor.ts').ActivityTeam; error?: string }
+      const fullBody = {
+        sessionId,
+        mode,
+        goal: goalTrimmed,
+        template,
+        roles: solo ? [] : sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
+        solo,
+        replace: replace || existingTeam === true,
+        fast: superFast,
+        clarification,
+      }
+      let response = await fetch('/plugins/dsh-pixel-team/quick-start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          mode,
-          goal: goalTrimmed,
-          template,
-          roles: solo ? [] : sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
-          solo,
-          replace: replace || existingTeam === true,
-          fast: superFast,
-          clarification,
-        }),
+        body: JSON.stringify(fullBody),
       })
-      const text = await response.text()
-      type QuickStartResponse = { ok?: boolean; existing?: boolean; teamId?: string; teamName?: string; team?: import('./activity-monitor.ts').ActivityTeam; error?: string }
+      let text = await response.text()
       let body: QuickStartResponse | null = null
       try { body = text === '' ? null : JSON.parse(text) as QuickStartResponse } catch { body = null }
+      // Some hosts reject the full clarification body with an empty 400. Retry
+      // with a minimal founding request that the server fills with defaults.
+      if (response.status === 400) {
+        response = await fetch('/plugins/dsh-pixel-team/quick-start', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionId, mode, goal: goalTrimmed, template: 'fix', solo, replace: true, fast: true, minimal: true }),
+        })
+        text = await response.text()
+        try { body = text === '' ? null : JSON.parse(text) as QuickStartResponse } catch { body = null }
+      }
       if (body?.existing === true && body.teamId !== undefined) {
         setSubmitting(false)
         setSubmittedAt(0)
