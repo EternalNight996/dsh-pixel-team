@@ -66,6 +66,9 @@ export declare const zh: {
     'team.state.running': string;
     'team.state.completed': string;
     'team.resume': string;
+    'team.resumeLast': string;
+    'team.resumeLastHint': string;
+    'team.resumeLastFailed': string;
     'team.resuming': string;
     'team.resumeReason': string;
     'team.resumeFailed': string;
@@ -867,6 +870,9 @@ export declare const en: {
     'team.state.running': string;
     'team.state.completed': string;
     'team.resume': string;
+    'team.resumeLast': string;
+    'team.resumeLastHint': string;
+    'team.resumeLastFailed': string;
     'team.resuming': string;
     'team.resumeReason': string;
     'team.resumeFailed': string;

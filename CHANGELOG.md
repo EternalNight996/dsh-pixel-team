@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.104] - 2026-10-31
+
+### Added
+- First live integration slice from the approved reference plan: a "恢复上次"
+  control re-dispatches the most recent failed/cancelled task through
+  `agent_teams_reassign_task` (no second resume protocol, idempotent when no
+  interrupted task remains).
+
 ## [0.1.103] - 2026-10-31
 
 ### Fixed

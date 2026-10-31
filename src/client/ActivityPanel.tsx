@@ -604,6 +604,8 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
   }, [stopOpen, stopping])
   const [resuming, setResuming] = useState(false)
   const [resumeError, setResumeError] = useState('')
+  const [resumingLast, setResumingLast] = useState(false)
+  const [resumeLastError, setResumeLastError] = useState('')
   const discarded = historic && team.phase === 'staged'
   const stopped = !historic && team.halted === true
   const busyCount = team.members.filter((member) => member.activity === 'working').length
@@ -649,6 +651,28 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
       setResumeError(t('team.resumeFailed', { message: error instanceof Error ? error.message : String(error) }))
     } finally {
       setResuming(false)
+    }
+  }
+  const interruptedTask = team.tasks.find(task => task.status === 'failed' || task.status === 'cancelled')
+  const resumeLast = async (): Promise<void> => {
+    if (resumingLast || interruptedTask === undefined) return
+    setResumingLast(true)
+    setResumeLastError('')
+    try {
+      const response = await fetch('/plugins/dsh-pixel-team/resume-last', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId: team.captainSessionId }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { error?: string } | null
+        throw new Error(body?.error ?? `HTTP ${response.status}`)
+      }
+    } catch (error: unknown) {
+      setResumeLastError(t('team.resumeLastFailed', { message: error instanceof Error ? error.message : String(error) }))
+    } finally {
+      setResumingLast(false)
     }
   }
   const stopTeam = async (): Promise<void> => {
@@ -743,6 +767,19 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
           )}
           {historic && <span className={css.historicPill}>{t(discarded ? 'team.discarded' : 'team.ended')}</span>}
           {stopped && <span className={css.historicPill}>{t('team.stopped')}</span>}
+          {!historic && interruptedTask !== undefined && (
+            <button
+              type="button"
+              className={css.teamResumeButton}
+              data-control="team-resume-last"
+              disabled={resumingLast}
+              onClick={() => { void resumeLast() }}
+              title={t('team.resumeLastHint')}
+            >
+              <span aria-hidden>↺</span>
+              {resumingLast ? t('team.resuming') : t('team.resumeLast')}
+            </button>
+          )}
           {stopped && (
             <button
               type="button"
@@ -854,6 +891,7 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
         </header>
 
         {resumeError !== '' && <p className={css.teamResumeError} role="alert">{resumeError}</p>}
+      {resumeLastError !== '' && <p className={css.teamResumeError} role="alert">{resumeLastError}</p>}
 
         {team.phase === 'staged' && !historic && modelDirectory !== undefined && onContinuePlanning !== undefined && onDiscarded !== undefined && (
           <StagingPlanEditor

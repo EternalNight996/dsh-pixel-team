@@ -1008,6 +1008,68 @@ export function apply(ctx: Context, config: Config): void {
     // Panel "重新开始": resume a halted team through the same tool the captain
     // would call, so the durable state, the session event and the scheduler kick
     // stay identical to agent_teams_resume.
+    // Resume the most recent interrupted/failed task without touching the rest
+    // of the plan. Reuses agent_teams_reassign_task so attempts and scheduling
+    // stay on the single host path.
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-pixel-team/resume-last',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
+          res.end()
+          return
+        }
+        let payload: Record<string, unknown>
+        try {
+          payload = await readJsonRequest(req)
+        } catch (error: unknown) {
+          res.writeHead(error instanceof RequestBodyError ? error.status : 400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
+          return
+        }
+        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        const captain = sessionId === '' ? undefined : ctx.agents.get(sessionId as import('@deepseek-ai/dsh-session').SessionId)
+        if (captain === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'session is not attached' }))
+          return
+        }
+        const workspace = captain.session.header.cwd ?? process.cwd()
+        const stateRoot = join(workspace, resolved.stateDir)
+        const team = await findTeamByCaptain(stateRoot, captain.id, await leadIdentityOfAsync(ctx, captain.session))
+        if (team === undefined) {
+          res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'no active team for this session' }))
+          return
+        }
+        const interrupted = [...team.tasks]
+          .filter(task => task.status === 'failed' || task.status === 'cancelled')
+          .sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0))[0]
+        if (interrupted === undefined) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'no interrupted task to resume' }))
+          return
+        }
+        const assignee = interrupted.assignee === undefined || interrupted.assignee === '' ? 'captain' : interrupted.assignee
+        const definition = (ctx.get('tools') as { get?: (name: string) => { execute?: (args: unknown, exec: unknown) => Promise<unknown> } | undefined } | undefined)?.get?.('agent_teams_reassign_task')
+        if (definition?.execute === undefined) {
+          res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'reassign tool is unavailable' }))
+          return
+        }
+        const run = { agent: captain, signal: new AbortController().signal, deferContext() {}, concludeTurn() {} }
+        try {
+          const value = await definition.execute({ task_id: interrupted.id, assignee, reason: '恢复上次中断任务' }, run)
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ ok: true, taskId: interrupted.id, assignee, value }))
+        } catch (error: unknown) {
+          res.writeHead(422, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
+        }
+      },
+    }), 'agent-teams: resume last route')
+
     ctx.effect(() => webServer.register({
       kind: 'exact',
       path: '/plugins/dsh-pixel-team/resume',
