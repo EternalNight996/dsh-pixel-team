@@ -156,6 +156,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const [superFast, setSuperFast] = useState(() => draft?.superFast ?? false)
   const [submitting, setSubmitting] = useState(() => draft?.submitting ?? false)
   const [submittedAt, setSubmittedAt] = useState(() => draft?.submittedAt ?? 0)
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false)
   const [developerMode] = useState<boolean>(() => {
     try { return window.localStorage.getItem('dsh-pixel-team.dev') === '1' } catch { return false }
   })
@@ -393,10 +394,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     switch (currentStep) {
       case 'vow': return goalTrimmed.length >= 2
       case 'interview': return interviewState !== 'loading' && interviewQuestions.length > 0
-      case 'sect': return solo || sectMode !== 'custom' || sectRoles.length > 0
+      case 'sect': return (solo || sectMode !== 'custom' || sectRoles.length > 0) && (existingTeam !== true || replaceConfirmed)
       default: return true
     }
-  }, [busy, polishBusy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length, solo])
+  }, [busy, polishBusy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length, solo, existingTeam, replaceConfirmed])
 
   const submit = async (replace: boolean): Promise<void> => {
     if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(1); return }
@@ -643,6 +644,14 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           {currentStep === 'sect' && (
             <section className={css.stepPane} data-step="sect">
               <p className={css.hint}>{t('quickstart.sectHint')}</p>
+              {existingTeam === true && (
+                <div className={css.replaceNotice} role="alertdialog">
+                  <span>{t('quickstart.replaceAtSect')}</span>
+                  <button type="button" data-active={replaceConfirmed || undefined} onClick={() => { setReplaceConfirmed(current => !current) }}>
+                    {replaceConfirmed ? t('quickstart.replaceArmed') : t('quickstart.replaceShort')}
+                  </button>
+                </div>
+              )}
               {solo ? (
                 <p className={css.hint}>{t('quickstart.soloSectHidden')}</p>
               ) : (
@@ -770,8 +779,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
             {t('quickstart.next')}
           </button>
         ) : (
-          <button type="button" data-primary data-control="quickstart-submit" disabled={busy || !canAdvance} onClick={() => { if (!blocked && existingTeam === true) { setBlocked(true); return } void submit(false) }}>
-            {busy ? t('quickstart.busy') : (existingTeam === true || blocked) ? t('quickstart.replaceShort') : t('quickstart.found')}
+          <button type="button" data-primary data-control="quickstart-submit" disabled={busy || !canAdvance} onClick={() => { void submit(existingTeam === true && replaceConfirmed) }}>
+            {busy ? t('quickstart.busy') : (existingTeam === true && replaceConfirmed) ? t('quickstart.replaceShort') : t('quickstart.found')}
           </button>
         )}
       </div>

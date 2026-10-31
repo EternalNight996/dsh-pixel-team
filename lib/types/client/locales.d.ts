@@ -681,6 +681,8 @@ export declare const zh: {
     'quickstart.replaceHint': string;
     'quickstart.replaceConfirm': string;
     'quickstart.replacePrompt': string;
+    'quickstart.replaceAtSect': string;
+    'quickstart.replaceArmed': string;
     'quickstart.replaceShort': string;
     'quickstart.replace': string;
     'quickstart.rolesEmpty': string;
@@ -1477,6 +1479,8 @@ export declare const en: {
     'quickstart.replaceHint': string;
     'quickstart.replaceConfirm': string;
     'quickstart.replacePrompt': string;
+    'quickstart.replaceAtSect': string;
+    'quickstart.replaceArmed': string;
     'quickstart.replaceShort': string;
     'quickstart.replace': string;
     'quickstart.rolesEmpty': string;

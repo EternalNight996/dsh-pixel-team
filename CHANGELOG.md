@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.88] - 2026-10-31
+
+### Changed
+- Existing-sect replacement is chosen on the sect step, not at oath. The sect
+  step shows a compact notice and "替换旧宗门" toggle; the oath button then uses
+  that decision without another confirmation.
+
 ## [0.1.87] - 2026-10-31
 
 ### Fixed
