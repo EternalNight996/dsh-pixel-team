@@ -576,6 +576,7 @@ export declare const zh: {
     'quickstart.superFastHint': string;
     'quickstart.generationLost': string;
     'quickstart.soloSectHidden': string;
+    'quickstart.soloSectName': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;
     'quickstart.back': string;
@@ -1374,6 +1375,7 @@ export declare const en: {
     'quickstart.superFastHint': string;
     'quickstart.generationLost': string;
     'quickstart.soloSectHidden': string;
+    'quickstart.soloSectName': string;
     'quickstart.oathHint': string;
     'quickstart.next': string;
     'quickstart.back': string;

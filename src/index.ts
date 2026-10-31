@@ -1187,18 +1187,23 @@ export function apply(ctx: Context, config: Config): void {
         const planAbort = new AbortController()
         const planTimeout = setTimeout(() => { planAbort.abort() }, 60_000)
         let planResult: { specs?: import('./plan-generator.ts').PlanTaskSpec[]; error?: string } = { error: 'plan generation did not run' }
-        try {
-          planResult = await generatePlanSpecs(ctx, captain, {
-            goal,
-            mode: clarification.mode,
-            clarification,
-            roles: planRoles.map(role => ({ role, name: ROLE_NAMES[role] ?? role })),
-            workspaceFacts: planFacts,
-            projectRoot,
-            forbiddenPaths,
-          }, planAbort.signal)
-        } finally {
+        if (payload.fast !== true) {
+          try {
+            planResult = await generatePlanSpecs(ctx, captain, {
+              goal,
+              mode: clarification.mode,
+              clarification,
+              roles: planRoles.map(role => ({ role, name: ROLE_NAMES[role] ?? role })),
+              workspaceFacts: planFacts,
+              projectRoot,
+              forbiddenPaths,
+            }, planAbort.signal)
+          } finally {
+            clearTimeout(planTimeout)
+          }
+        } else {
           clearTimeout(planTimeout)
+          planResult = { error: 'fast mode: template plan' }
         }
         const planSpecs = planResult.specs
         const planError = planResult.error

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.90] - 2026-10-31
+
+### Changed
+- Founding now asks 志向 first, then 道统. Super-fast jumps from 志向 straight to
+  oath and uses the template plan (no AI plan generation), compressing time.
+- Oath no longer asks to replace an existing sect; it replaces directly.
+- Solo mode labels its sect as 散修.
+- If the server created the team but the response was lost, the client recovers
+  it by creation time before showing an error.
+
 ## [0.1.89] - 2026-10-31
 
 ### Fixed

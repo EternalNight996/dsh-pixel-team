@@ -89,9 +89,22 @@ function clearQuickStartDraft(sessionId: string): void {
   try { window.localStorage.removeItem(QUICK_START_DRAFT_PREFIX + sessionId) } catch { /* private mode */ }
 }
 
-/** 开宗五步：道统 → 立派之志 → AI 访谈 → 宗门 → 立誓。 */
-const STEPS = ['doctrine', 'vow', 'interview', 'sect', 'oath'] as const
-const SOLO_STEPS = ['doctrine', 'vow', 'interview', 'oath'] as const
+async function findRecentStagedTeam(sessionId: string, since: number): Promise<{ teamId: string; name: string } | undefined> {
+  try {
+    const response = await fetch('/plugins/dsh-pixel-team/state', { cache: 'no-store' })
+    const body = await response.json() as { teams?: Array<{ teamId?: string; name?: string; teamName?: string; captainSessionId?: string; phase?: string; createdAt?: number }> }
+    const found = (body.teams ?? []).find(team => team.captainSessionId === sessionId
+      && team.phase === 'staged'
+      && (team.createdAt ?? 0) >= since - 5_000)
+    if (found?.teamId === undefined) return undefined
+    return { teamId: found.teamId, name: found.teamName ?? found.name ?? found.teamId }
+  } catch {
+    return undefined
+  }
+}
+/** 开宗步骤：立派之志 → 道统 → AI 访谈 → 宗门 → 立誓。 */
+const STEPS = ['vow', 'doctrine', 'interview', 'sect', 'oath'] as const
+const SOLO_STEPS = ['vow', 'doctrine', 'interview', 'oath'] as const
 type Step = typeof STEPS[number]
 const STEP_LABEL: Record<Step, 'quickstart.stepDoctrine' | 'quickstart.stepVow' | 'quickstart.stepInterview' | 'quickstart.stepSect' | 'quickstart.stepOath'> = {
   doctrine: 'quickstart.stepDoctrine',
@@ -157,7 +170,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const [superFast, setSuperFast] = useState(() => draft?.superFast ?? false)
   const [submitting, setSubmitting] = useState(() => draft?.submitting ?? false)
   const [submittedAt, setSubmittedAt] = useState(() => draft?.submittedAt ?? 0)
-  const [replaceConfirmed, setReplaceConfirmed] = useState(false)
+
   const steps: readonly Step[] = solo ? SOLO_STEPS : STEPS
   const submitActive = useRef(false)
 
@@ -169,7 +182,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [blocked, setBlocked] = useState(false)
+
   const [created, setCreated] = useState<string | undefined>()
   // Module 0: AI polish writes straight back into the goal textarea.
   const [polishBusy, setPolishBusy] = useState(false)
@@ -404,16 +417,13 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     switch (currentStep) {
       case 'vow': return goalTrimmed.length >= 2
       case 'interview': return interviewState !== 'loading' && interviewQuestions.length > 0
-      case 'sect': return (solo || sectMode !== 'custom' || sectRoles.length > 0) && (existingTeam !== true || replaceConfirmed)
+      case 'sect': return solo || sectMode !== 'custom' || sectRoles.length > 0
       default: return true
     }
-  }, [busy, polishBusy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length, solo, existingTeam, replaceConfirmed])
+  }, [busy, polishBusy, currentStep, goalTrimmed, interviewState, interviewQuestions.length, sectMode, sectRoles.length, solo])
 
   const submit = async (replace: boolean): Promise<void> => {
-    if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(1); return }
-    // An unfinished sect is confirmed in place, above the submit button, before
-    // any request is sent or any old team is touched.
-    if (!replace && existingTeam === true) { setBlocked(true); return }
+    if (goalTrimmed === '') { setError(t('quickstart.goalRequired')); setStep(0); return }
     setBusy(true)
     setError('')
     submitActive.current = true
@@ -448,24 +458,14 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           template,
           roles: solo ? [] : sectMode === 'custom' ? roles : [...(activeSect?.roles ?? roles)],
           solo,
-          replace,
+          replace: replace || existingTeam === true,
+          fast: superFast,
           clarification,
         }),
       })
       const body = await response.json().catch(() => null) as { ok?: boolean; teamId?: string; teamName?: string; error?: string } | null
       if (!response.ok || body?.ok !== true) {
         const raw = body?.error ?? ('HTTP ' + response.status)
-        const existing = /already lead team/i.test(raw)
-        if (existing) {
-          // The server confirms the same condition: show the confirm bubble and
-          // do not report it as a red error. Clear the in-flight marker here so
-          // recovery does not later replace this prompt with a timeout error.
-          setSubmitting(false)
-          setSubmittedAt(0)
-          setBlocked(true)
-          setError('')
-          return
-        }
         throw new Error(raw)
       }
       setCreated(t('quickstart.created', {
@@ -476,10 +476,25 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
       setSubmitting(false)
       setSubmittedAt(0)
       clearQuickStartDraft(sessionId)
-      setBlocked(false)
       setGoal('')
       foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 300)
     } catch (cause) {
+      // The server can create the staged team and still lose/abort the response.
+      // Recover it by creation time before reporting a failure.
+      const found = await findRecentStagedTeam(sessionId, startedAt)
+      if (found !== undefined) {
+        setSubmitting(false)
+        setSubmittedAt(0)
+        clearQuickStartDraft(sessionId)
+        setCreated(t('quickstart.created', {
+          team: found.name,
+          sect: activeSect === undefined ? t('quickstart.sectCustomPicked') : t(activeSect.nameKey),
+        }))
+        window.dispatchEvent(new CustomEvent(TEAM_CREATED_EVENT, { detail: { teamId: found.teamId, sessionId } }))
+        setGoal('')
+        foundedTimer.current = window.setTimeout(() => { onFounded?.() }, 300)
+        return
+      }
       setSubmitting(false)
       setSubmittedAt(0)
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -498,11 +513,11 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     if (step === steps.length - 1) { void submit(false); return }
     if (!canAdvance) return
     // 超级快速跳过 AI 访谈；单掌门模式由 active steps 直接跳到立誓。
-    if (currentStep === 'vow' && superFast) { goTo(Math.min(steps.length - 1, step + 2)); return }
+    if (currentStep === 'vow' && superFast) { goTo(steps.indexOf('oath')); return }
     goTo(step + 1)
   }
   const doctrineName = t(templateOf(template).labelKey)
-  const sectName = activeSect === undefined ? t('quickstart.sectCustom') : t(activeSect.nameKey)
+  const sectName = solo ? t('quickstart.soloSectName') : (activeSect === undefined ? t('quickstart.sectCustom') : t(activeSect.nameKey))
   const roster = sectMode === 'custom' ? roles : [...sectRoles]
 
   return (
@@ -656,14 +671,6 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           {currentStep === 'sect' && (
             <section className={css.stepPane} data-step="sect">
               <p className={css.hint}>{t('quickstart.sectHint')}</p>
-              {existingTeam === true && (
-                <div className={css.replaceNotice} role="alertdialog">
-                  <span>{t('quickstart.replaceAtSect')}</span>
-                  <button type="button" data-active={replaceConfirmed || undefined} onClick={() => { setReplaceConfirmed(current => !current) }}>
-                    {replaceConfirmed ? t('quickstart.replaceArmed') : t('quickstart.replaceShort')}
-                  </button>
-                </div>
-              )}
               {solo ? (
                 <p className={css.hint}>{t('quickstart.soloSectHidden')}</p>
               ) : (
@@ -773,15 +780,6 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           {created !== undefined && <p className={css.success} role="status">{created}</p>}
       </div>
       <div className={css.wizardActions}>
-        {blocked && (
-          <div className={css.confirmPop} role="alertdialog" aria-label={t('quickstart.replacePrompt')}>
-            <p>{t('quickstart.replacePrompt')}</p>
-            <div>
-              <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
-              <button type="button" data-primary data-danger disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replaceShort')}</button>
-            </div>
-          </div>
-        )}
         <button type="button" disabled={busy} onClick={close}>{t('quickstart.cancel')}</button>
         {step > 0 && (
           <button type="button" data-control="quickstart-back" disabled={busy} onClick={() => { goTo(step - 1) }}>{t('quickstart.back')}</button>
@@ -791,8 +789,8 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
             {t('quickstart.next')}
           </button>
         ) : (
-          <button type="button" data-primary data-control="quickstart-submit" disabled={busy || !canAdvance} onClick={() => { void submit(existingTeam === true && replaceConfirmed) }}>
-            {busy ? t('quickstart.busy') : (existingTeam === true && replaceConfirmed) ? t('quickstart.replaceShort') : t('quickstart.found')}
+          <button type="button" data-primary data-control="quickstart-submit" disabled={busy || !canAdvance} onClick={() => { void submit(existingTeam === true) }}>
+            {busy ? t('quickstart.busy') : t('quickstart.found')}
           </button>
         )}
       </div>
