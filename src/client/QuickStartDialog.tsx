@@ -91,6 +91,7 @@ function clearQuickStartDraft(sessionId: string): void {
 
 /** 开宗五步：道统 → 立派之志 → AI 访谈 → 宗门 → 立誓。 */
 const STEPS = ['doctrine', 'vow', 'interview', 'sect', 'oath'] as const
+const SOLO_STEPS = ['doctrine', 'vow', 'interview', 'oath'] as const
 type Step = typeof STEPS[number]
 const STEP_LABEL: Record<Step, 'quickstart.stepDoctrine' | 'quickstart.stepVow' | 'quickstart.stepInterview' | 'quickstart.stepSect' | 'quickstart.stepOath'> = {
   doctrine: 'quickstart.stepDoctrine',
@@ -157,6 +158,12 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const [submitting, setSubmitting] = useState(() => draft?.submitting ?? false)
   const [submittedAt, setSubmittedAt] = useState(() => draft?.submittedAt ?? 0)
   const [replaceConfirmed, setReplaceConfirmed] = useState(false)
+  const steps: readonly Step[] = solo ? SOLO_STEPS : STEPS
+  const submitActive = useRef(false)
+
+  useEffect(() => {
+    if (step > steps.length - 1) setStep(steps.length - 1)
+  }, [step, steps.length])
   const [developerMode] = useState<boolean>(() => {
     try { return window.localStorage.getItem('dsh-pixel-team.dev') === '1' } catch { return false }
   })
@@ -219,6 +226,9 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   // from the host snapshot instead of leaving the oath screen stuck.
   useEffect(() => {
     if (!submitting || submittedAt === 0) return
+    // The owning request is still running in this component; its catch/finally
+    // will report the real result. Only an orphaned submit (remount) recovers.
+    if (submitActive.current) return
     let alive = true
     let timer: number | undefined
     const started = Date.now()
@@ -247,7 +257,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           return
         }
       } catch { /* keep polling */ }
-      if (Date.now() - started > 90_000) {
+      if (Date.now() - started > 180_000) {
         alive = false
         if (timer !== undefined) window.clearInterval(timer)
         setSubmitting(false)
@@ -357,7 +367,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
 
   // Ask the model for template-like questions when the interview step opens.
   useEffect(() => {
-    if (STEPS[step] !== 'interview' || goalTrimmed === '' || interviewQuestions.length > 0) return
+    if (steps[step] !== 'interview' || goalTrimmed === '' || interviewQuestions.length > 0) return
     const controller = new AbortController()
     setInterviewState('loading')
     setInterviewError('')
@@ -386,7 +396,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     })()
     return () => { controller.abort() }
   }, [step, goalTrimmed, sessionId, mode, interviewNonce])
-  const currentStep: Step = STEPS[step] ?? STEPS[0] as Step
+  const currentStep: Step = steps[step] ?? steps[0] as Step
   const canAdvance = useMemo(() => {
     // Never advance while polish is still running: the result is about to land
     // in the goal textarea.
@@ -406,6 +416,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     if (!replace && existingTeam === true) { setBlocked(true); return }
     setBusy(true)
     setError('')
+    submitActive.current = true
     const startedAt = Date.now()
     setSubmitting(true)
     setSubmittedAt(startedAt)
@@ -473,6 +484,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
       setSubmittedAt(0)
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
+      submitActive.current = false
       setBusy(false)
     }
   }
@@ -480,13 +492,13 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
   const goTo = (next: number): void => {
     if (busy) return
     setError('')
-    setStep(Math.max(0, Math.min(STEPS.length - 1, next)))
+    setStep(Math.max(0, Math.min(steps.length - 1, next)))
   }
   const next = (): void => {
-    if (step === STEPS.length - 1) { void submit(false); return }
+    if (step === steps.length - 1) { void submit(false); return }
     if (!canAdvance) return
-    // 超级快速跳过 AI 访谈，直接进入宗门（单掌门/团队）与立誓。
-    if (currentStep === 'vow' && superFast) { goTo(Math.min(STEPS.length - 1, step + 2)); return }
+    // 超级快速跳过 AI 访谈；单掌门模式由 active steps 直接跳到立誓。
+    if (currentStep === 'vow' && superFast) { goTo(Math.min(steps.length - 1, step + 2)); return }
     goTo(step + 1)
   }
   const doctrineName = t(templateOf(template).labelKey)
@@ -497,7 +509,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
     <div className={css.wizard}>
       <div className={css.form}>
           <ol className={css.steps} aria-label={t('quickstart.title')}>
-            {STEPS.map((entry, index) => {
+            {steps.map((entry, index) => {
               const state = index === step ? 'current' : index < step ? 'done' : 'todo'
               return (
                 <li key={entry} className={css.stepItem} data-state={state}>
@@ -774,7 +786,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         {step > 0 && (
           <button type="button" data-control="quickstart-back" disabled={busy} onClick={() => { goTo(step - 1) }}>{t('quickstart.back')}</button>
         )}
-        {step < STEPS.length - 1 ? (
+        {step < steps.length - 1 ? (
           <button type="button" data-primary data-control="quickstart-next" disabled={!canAdvance} onClick={next}>
             {t('quickstart.next')}
           </button>

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.89] - 2026-10-31
+
+### Fixed
+- Solo mode skips the sect step entirely: the wizard has four steps
+  (doctrine → vow → interview → oath) and generates a captain-only plan.
+- The generation-lost recovery no longer runs while the owning request is still
+  active; it only recovers orphaned submissions after a remount, with a 180s
+  window. This removes the false "connection lost" error during slow planning.
+
 ## [0.1.88] - 2026-10-31
 
 ### Changed
