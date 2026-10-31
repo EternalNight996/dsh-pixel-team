@@ -463,7 +463,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           clarification,
         }),
       })
-      const body = await response.json().catch(() => null) as { ok?: boolean; existing?: boolean; teamId?: string; teamName?: string; team?: import('./activity-monitor.ts').ActivityTeam; error?: string } | null
+      const text = await response.text()
+      type QuickStartResponse = { ok?: boolean; existing?: boolean; teamId?: string; teamName?: string; team?: import('./activity-monitor.ts').ActivityTeam; error?: string }
+      let body: QuickStartResponse | null = null
+      try { body = text === '' ? null : JSON.parse(text) as QuickStartResponse } catch { body = null }
       if (body?.existing === true && body.teamId !== undefined) {
         setSubmitting(false)
         setSubmittedAt(0)
@@ -478,7 +481,7 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         return
       }
       if (!response.ok || body?.ok !== true) {
-        const raw = body?.error ?? ('HTTP ' + response.status)
+        const raw = body?.error ?? ('HTTP ' + response.status + (text.trim() === '' ? '' : ': ' + text.trim().slice(0, 200)))
         throw new Error(raw)
       }
       setCreated(t('quickstart.created', {

@@ -1085,7 +1085,15 @@ export function apply(ctx: Context, config: Config): void {
           res.end(JSON.stringify({ error: error instanceof Error ? error.message : 'invalid request body' }))
           return
         }
-        const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        let sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+        // Older/newer hosts can omit the visible session id. Reuse a live agent
+        // instead of failing the founding request with HTTP 400.
+        if (sessionId === '') {
+          try {
+            const live = ctx.agents.list()
+            sessionId = live.length === 1 ? live[0]?.id ?? '' : live[0]?.id ?? ''
+          } catch { /* leave empty for the validation error */ }
+        }
         const goal = typeof payload.goal === 'string' ? payload.goal.trim() : ''
         const template = typeof payload.template === 'string' ? payload.template : 'fix'
         const roles = Array.isArray(payload.roles) ? payload.roles.filter((role): role is string => typeof role === 'string') : undefined

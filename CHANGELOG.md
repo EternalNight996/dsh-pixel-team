@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.99] - 2026-10-31
+
+### Fixed
+- Quick-start falls back to a live agent when the request carries no session id.
+- The client now includes the HTTP response body in errors, instead of only
+  "HTTP 400", so validation failures are readable.
+
 ## [0.1.98] - 2026-10-31
 
 ### Fixed
