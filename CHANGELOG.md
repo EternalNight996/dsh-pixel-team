@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.111] - 2026-10-31
+
+### Fixed
+- Founding a new team while an old team is running now replaces it; only staged
+  teams are reused. This restores the new-plan review flow.
+
 ## [0.1.110] - 2026-10-31
 
 ### Changed

@@ -143,7 +143,7 @@ export function AgentTeamsSummary({ data, openMember, sessionId, t }: AgentTeams
               </div>
             )
           })}
-          {(snapshot?.tasks ?? []).filter(task => task.status === 'completed').map((task) => {
+          {[...new Map((snapshot?.tasks ?? []).filter(task => task.status === 'completed').map(task => [`${task.id}:${task.attempt ?? 0}`, task])).values()].map((task) => {
             const key = `${data.teamId}:${task.id}:${task.attempt ?? 0}`
             return (
               <details
