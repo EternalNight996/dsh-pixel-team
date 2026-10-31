@@ -43,6 +43,8 @@ export interface ActivityTask {
    * the workspace, so the panel cannot render a bare green verdict.
    */
   readonly verdictStale?: string
+  /** Durable auto-resume count for an interrupted task. */
+  readonly retryCount?: number
   /** Latest task result/error summary; shown collapsed in the conversation card. */
   readonly output?: string
   /** Durable last-write stamp; drives the finished-member ordering (issue #192). */

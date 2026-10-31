@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.106] - 2026-10-31
+
+### Added
+- Resume checks classify interrupted attempts separately from quality failures
+  (reject/findings are never auto-resumed).
+- An atomic per-team `resume.json` checkpoint rejects a concurrent second
+  dispatch; corrupt/missing checkpoints degrade to "no checkpoint".
+- The resume control is disabled at the 3-attempt limit with a human-triage hint.
+
 ## [0.1.105] - 2026-10-31
 
 ### Added

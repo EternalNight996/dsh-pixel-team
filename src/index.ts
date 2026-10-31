@@ -40,6 +40,8 @@ import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assembleTeamSnapshot, collectArchivedTeamsActivity, collectTeamsActivity } from './snapshot.ts'
+import { isInterruptedTask } from './interruptions.ts'
+import { clearResumeCheckpoint, readResumeCheckpoint, writeResumeCheckpoint } from './resume-checkpoint.ts'
 import { archiveTeamDir, canDeclareDelivery, findTeamByCaptain, invalidateTaskAttempt, readTeam, withTeamLock, writeTeam } from './state.ts'
 import { auditTeamWorkspace } from './workspace-audit.ts'
 import { digestWorkspacePaths } from './artifacts.ts'
@@ -1044,7 +1046,7 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const interrupted = [...team.tasks]
-          .filter(task => task.status === 'failed' || task.status === 'cancelled')
+          .filter(isInterruptedTask)
           .sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0))[0]
         if (interrupted === undefined) {
           res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
@@ -1057,6 +1059,12 @@ export function apply(ctx: Context, config: Config): void {
           res.end(JSON.stringify({ error: 'auto resume limit reached; needs human triage', taskId: interrupted.id, retries: interrupted.retryCount ?? 0 }))
           return
         }
+        const prior = await readResumeCheckpoint(stateRoot, team.id)
+        if (prior !== undefined && prior.taskId === interrupted.id && Date.now() - prior.at < 120_000) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'resume already in progress', taskId: interrupted.id }))
+          return
+        }
         const definition = (ctx.get('tools') as { get?: (name: string) => { execute?: (args: unknown, exec: unknown) => Promise<unknown> } | undefined } | undefined)?.get?.('agent_teams_reassign_task')
         if (definition?.execute === undefined) {
           res.writeHead(503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
@@ -1066,6 +1074,13 @@ export function apply(ctx: Context, config: Config): void {
         const run = { agent: captain, signal: new AbortController().signal, deferContext() {}, concludeTurn() {} }
         let reserved = false
         try {
+          await writeResumeCheckpoint(stateRoot, team.id, {
+            version: 1,
+            taskId: interrupted.id,
+            attempt: interrupted.attempt ?? 0,
+            retry: (interrupted.retryCount ?? 0) + 1,
+            at: Date.now(),
+          }).catch(() => undefined)
           await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
             const fresh = await readTeam(stateRoot, team.id)
             const task = fresh?.tasks.find(candidate => candidate.id === interrupted.id)
@@ -1078,9 +1093,11 @@ export function apply(ctx: Context, config: Config): void {
             reserved = true
           })
           const value = await definition.execute({ task_id: interrupted.id, assignee, reason: '恢复上次中断任务' }, run)
+          await clearResumeCheckpoint(stateRoot, team.id).catch(() => undefined)
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
           res.end(JSON.stringify({ ok: true, taskId: interrupted.id, assignee, retries: (interrupted.retryCount ?? 0) + 1, value }))
         } catch (error: unknown) {
+          await clearResumeCheckpoint(stateRoot, team.id).catch(() => undefined)
           if (reserved) {
             try {
               await withTeamLock(teamLockKey(stateRoot, team.id), async () => {

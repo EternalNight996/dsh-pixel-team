@@ -73,6 +73,7 @@ import {
   type ActivityTask,
   type ActivityTeam,
 } from './activity-monitor.ts'
+import { isInterruptedTask } from '../interruptions.ts'
 import { ACTION_ART, LEAD_ART, memberArtUrl } from './artwork.ts'
 import { captainKey, cultivationFromXp, memberKey } from './cultivation.ts'
 import { useCultivationVersion, xpOf } from './cultivation-store.ts'
@@ -653,7 +654,8 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
       setResuming(false)
     }
   }
-  const interruptedTask = team.tasks.find(task => task.status === 'failed' || task.status === 'cancelled')
+  const interruptedTask = team.tasks.find(isInterruptedTask)
+  const resumeLimitReached = (interruptedTask?.retryCount ?? 0) >= 3
   const resumeLast = async (): Promise<void> => {
     if (resumingLast || interruptedTask === undefined) return
     setResumingLast(true)
@@ -772,9 +774,9 @@ export function TeamSection({ team, modelDirectory, onContinuePlanning, onDiscar
               type="button"
               className={css.teamResumeButton}
               data-control="team-resume-last"
-              disabled={resumingLast}
+              disabled={resumingLast || resumeLimitReached}
               onClick={() => { void resumeLast() }}
-              title={t('team.resumeLastHint')}
+              title={resumeLimitReached ? t('team.resumeLimit') : t('team.resumeLastHint')}
             >
               <span aria-hidden>↺</span>
               {resumingLast ? t('team.resuming') : t('team.resumeLast')}
