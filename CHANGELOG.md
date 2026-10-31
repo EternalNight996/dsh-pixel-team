@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.108] - 2026-10-31
+
+### Fixed
+- Solo plans cannot persist an unassigned task: new tasks are forced to the
+  captain when the team has no members, and task updates in a 0-member plan also
+  force the captain. The plan editor locks the assignee select to captain.
+
 ## [0.1.107] - 2026-10-31
 
 ### Added

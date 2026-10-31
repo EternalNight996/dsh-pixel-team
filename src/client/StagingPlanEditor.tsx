@@ -486,10 +486,11 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
 }) {
   const bodyId = useId()
   const taskDependencies = task.dependencies.join(', ')
+  const soloTeam = team.members.length === 0
   const [open, setOpen] = useState(false)
   const [subject, setSubject] = useState(task.subject)
   const [description, setDescription] = useState(task.description ?? '')
-  const [assignee, setAssignee] = useState(task.assignee)
+  const [assignee, setAssignee] = useState(task.assignee || (soloTeam ? 'captain' : ''))
   const [dependencies, setDependencies] = useState(taskDependencies)
   const [skills, setSkills] = useState<string[]>(() => [...(task.skills ?? [])])
   const [skillCatalog, setSkillCatalog] = useState<readonly { name: string; description: string }[]>([])
@@ -510,7 +511,7 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
   useEffect(() => {
     setSubject(task.subject)
     setDescription(task.description ?? '')
-    setAssignee(task.assignee)
+    setAssignee(task.assignee || (soloTeam ? 'captain' : ''))
     setDependencies(taskDependencies)
     setSkills([...(task.skills ?? [])])
     setSavedSignature(remoteSignature)
@@ -595,9 +596,11 @@ function StagedTaskEditor({ team, task, onPendingChange, t }: {
             <label>{t('plan.task.description')}<textarea name="description" value={description} onChange={(event) => { setDescription(event.currentTarget.value); markEdited() }} rows={3} /></label>
             <span className={css.planGrid}>
               <label>{t('plan.task.assignee')}
-                <select name="assignee" value={assignee} onChange={(event) => { setAssignee(event.currentTarget.value); markEdited() }}>
-                  <option value="">{t('plan.task.unassigned')}</option>
-                  {team.members.map((member) => <option key={member.name} value={member.name}>{member.name}</option>)}
+                <select name="assignee" value={assignee} disabled={soloTeam} onChange={(event) => { setAssignee(event.currentTarget.value); markEdited() }}>
+                  {soloTeam
+                    ? <option value="captain">captain</option>
+                    : <option value="">{t('plan.task.unassigned')}</option>}
+                  {!soloTeam && team.members.map((member) => <option key={member.name} value={member.name}>{member.name}</option>)}
                 </select>
               </label>
               <label>

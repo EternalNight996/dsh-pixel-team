@@ -896,7 +896,9 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           if (subject === '') throw new Error('task subject must not be empty')
           task.subject = subject
           task.description = trimmedOptional(mutation.description)
-          task.assignee = trimmedOptional(mutation.assignee)
+          // Solo teams have no roster; a task can only belong to the captain.
+          // Never let an update persist an unassigned task in a 0-member plan.
+          task.assignee = fresh.members.length === 0 ? CAPTAIN_KEY : trimmedOptional(mutation.assignee)
           task.dependencies = [...new Set(mutation.dependencies.map((item) => item.trim()).filter(Boolean))]
           if (mutation.skills !== undefined) {
             const skills = [...new Set(mutation.skills.map((item) => item.trim()).filter(Boolean))]
@@ -1808,8 +1810,9 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
             throw new Error(`dependency "${dependency}" does not exist in team "${fresh.name}"`)
           }
         }
-        // The captain may own tasks directly (solo teams have no members).
-        if (args.assignee !== undefined && args.assignee !== CAPTAIN_KEY) requireMember(fresh, args.assignee)
+        // Solo teams have no roster; every new task belongs to the captain.
+        const assignee = fresh.members.length === 0 ? CAPTAIN_KEY : args.assignee
+        if (assignee !== undefined && assignee !== CAPTAIN_KEY) requireMember(fresh, assignee)
         const kind = gate.kind ?? 'work'
         const objective = kind === 'review' || kind === 'requirements'
           ? sanitizeReviewObjective(input.objective)
@@ -1822,7 +1825,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): Agen
           subject: args.subject,
           description: args.description,
           status: 'pending',
-          assignee: args.assignee,
+          assignee,
           dependencies,
           attempt: 0,
           createdAt: Date.now(),
