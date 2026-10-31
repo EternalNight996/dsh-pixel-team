@@ -749,7 +749,6 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
           )}
 
           {error !== '' && <p className={css.error} role="alert">{error}</p>}
-          {busy && <p className={css.busyNote} role="status">{t('quickstart.generating')}</p>}
           {created !== undefined && <p className={css.success} role="status">{created}</p>}
       </div>
       <div className={css.wizardActions}>

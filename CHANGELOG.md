@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.87] - 2026-10-31
+
+### Fixed
+- Removed the duplicate "generating founding plan" note; the oath step now shows
+  it once.
+
 ## [0.1.86] - 2026-10-31
 
 ### Changed
