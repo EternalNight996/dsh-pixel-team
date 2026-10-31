@@ -446,7 +446,10 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
         const existing = /already lead team/i.test(raw)
         if (existing) {
           // The server confirms the same condition: show the confirm bubble and
-          // do not report it as a red error.
+          // do not report it as a red error. Clear the in-flight marker here so
+          // recovery does not later replace this prompt with a timeout error.
+          setSubmitting(false)
+          setSubmittedAt(0)
           setBlocked(true)
           setError('')
           return
@@ -748,21 +751,20 @@ export function QuickStartWizard({ sessionId, existingTeam, t, onDone, onFounded
             </section>
           )}
 
+          {blocked && (
+            <div className={css.confirmInline} role="alertdialog" aria-label={t('quickstart.replaceConfirm')}>
+              <p className={css.confirmFloatText}>{t('quickstart.replaceConfirm')}</p>
+              <div className={css.confirmFloatActions}>
+                <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
+                <button type="button" data-primary data-danger disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
+              </div>
+            </div>
+          )}
           {error !== '' && <p className={css.error} role="alert">{error}</p>}
           {busy && <p className={css.busyNote} role="status">{t('quickstart.generating')}</p>}
           {created !== undefined && <p className={css.success} role="status">{created}</p>}
       </div>
       <div className={css.wizardActions}>
-        {blocked && (
-          <div className={css.confirmFloat} role="alertdialog" aria-label={t('quickstart.replaceConfirm')}>
-            <p className={css.confirmFloatText}>{t('quickstart.replaceConfirm')}</p>
-            <div className={css.confirmFloatActions}>
-              <button type="button" disabled={busy} onClick={() => { setBlocked(false) }}>{t('quickstart.cancel')}</button>
-              <button type="button" data-primary data-danger disabled={busy} onClick={() => { setBlocked(false); void submit(true) }}>{t('quickstart.replace')}</button>
-            </div>
-            <span className={css.confirmFloatTail} aria-hidden />
-          </div>
-        )}
         <button type="button" disabled={busy} onClick={close}>{t('quickstart.cancel')}</button>
         {step > 0 && (
           <button type="button" data-control="quickstart-back" disabled={busy} onClick={() => { goTo(step - 1) }}>{t('quickstart.back')}</button>

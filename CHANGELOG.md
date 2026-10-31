@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.85] - 2026-10-31
+
+### Fixed
+- Existing-team rejection during oath now clears the in-flight marker and shows
+  an inline replace confirmation, instead of falling through to the 90s
+  "generation lost" timeout.
+
 ## [0.1.84] - 2026-10-31
 
 ### Fixed
