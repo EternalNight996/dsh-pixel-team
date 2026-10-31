@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.91] - 2026-10-31
+
+### Changed
+- The solo/one-captain choice moved to the 志向 (vow) step.
+- Quick-start reuses an existing active team instead of failing with
+  "you already lead team" or deleting/recreating it; the client opens that
+  team's review.
+
 ## [0.1.90] - 2026-10-31
 
 ### Changed
