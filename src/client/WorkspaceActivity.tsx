@@ -1,3 +1,15 @@
+/** Host-persisted visible session; some rc builds omit list.current. */
+function storedSessionId(): SessionId | undefined {
+  try {
+    const raw = window.localStorage.getItem('dsh.sessions.current')
+    if (raw === null) return undefined
+    const parsed = JSON.parse(raw) as { sessionId?: unknown }
+    return typeof parsed?.sessionId === 'string' ? parsed.sessionId as SessionId : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Native workspace content; discovery remains mounted independently of tab lifetime. */
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -85,7 +97,7 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
   const sessionsSnapshot = useSyncExternalStore(sessionsList.subscribe, sessionsList.getSnapshot)
   // Newer hosts can keep the visible conversation without setting list.current.
   // Fall back to the first known session so founding still has a session id.
-  const current = currentSessionId(sessionsSnapshot) ?? Object.values(sessionsSnapshot.byId)[0]?.id
+  const current = currentSessionId(sessionsSnapshot) ?? storedSessionId() ?? Object.values(sessionsSnapshot.byId)[0]?.id
   const snapshots = useSyncExternalStore(subscribeActivitySnapshots, getActivitySnapshotsSnapshot)
   const [directTeam, setDirectTeam] = useState<ActivityTeam | undefined>()
   const local = useSyncExternalStore(state.subscribe, state.getSnapshot)

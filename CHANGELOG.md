@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.101] - 2026-10-31
+
+### Fixed
+- The hall reads the host-persisted visible session from
+  `localStorage["dsh.sessions.current"]` when the session list omits
+  `current`. Founding now sends a real sessionId instead of hitting HTTP 400,
+  and the active team resolves to that session.
+
 ## [0.1.100] - 2026-10-31
 
 ### Fixed
