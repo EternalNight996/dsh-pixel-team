@@ -82,7 +82,10 @@ function WorkspaceMonitor({ sessionsList, sidebar, state, t, openMember, openCap
   sidebar?: ISidebarRight
   state: WorkspaceActivityState
 }) {
-  const current = currentSessionId(useSyncExternalStore(sessionsList.subscribe, sessionsList.getSnapshot))
+  const sessionsSnapshot = useSyncExternalStore(sessionsList.subscribe, sessionsList.getSnapshot)
+  // Newer hosts can keep the visible conversation without setting list.current.
+  // Fall back to the first known session so founding still has a session id.
+  const current = currentSessionId(sessionsSnapshot) ?? Object.values(sessionsSnapshot.byId)[0]?.id
   const snapshots = useSyncExternalStore(subscribeActivitySnapshots, getActivitySnapshotsSnapshot)
   const [directTeam, setDirectTeam] = useState<ActivityTeam | undefined>()
   const local = useSyncExternalStore(state.subscribe, state.getSnapshot)

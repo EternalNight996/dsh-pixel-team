@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.98] - 2026-10-31
+
+### Fixed
+- When the host publishes no explicit current session, the hall uses the first
+  known session. This gives founding a valid sessionId instead of an HTTP 400
+  and lets the plan/team association resolve.
+
 ## [0.1.97] - 2026-10-31
 
 ### Fixed
